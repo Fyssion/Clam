@@ -23,6 +23,36 @@ description = """
 General purpose Discord bot.
 """
 
+def get_prefix(client, message):
+    
+    prefixes = ['robo.', 'r.', 'Robo.', 'R.']
+
+    return commands.when_mentioned_or(*prefixes)(client, message)
+
+bot = commands.Bot(                         # Create a new bot
+    command_prefix=get_prefix,              # Set the prefix
+    description='A general purpose bot.',  # Set a description for the bot
+    owner_id=224513210471022592,            # Your unique User ID
+    case_insensitive=True,                   # Make the commands case insensitive
+    activity = discord.Activity(name="for robo.help", type = 3)
+)
+
+cogs = ['cogs.meta']
+
+@bot.event
+async def on_ready():
+    l.info(f'Logged in as {bot.user.name} - {bot.user.id}')
+    bot.remove_command('help')
+
+    for cog in cogs:
+        bot.load_extension(cog)
+    
+    return
+
+# Finally, login the bot
+bot.run(TOKEN, bot=True, reconnect=True)
+'''
+
 class Robonater(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix = "robo.", description = description, activity = discord.Activity(name = "for robo.help for help", type = 3))
@@ -61,3 +91,4 @@ async def on_ready():
     l.info("Logged in as {}".format(bot.user.name))
 
 bot.run(TOKEN)
+'''
