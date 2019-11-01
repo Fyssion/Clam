@@ -2,6 +2,7 @@ from discord.ext import commands
 import discord
 from datetime import datetime as d
 
+
 class Meta(commands.Cog):
     
     def __init__(self, bot):
