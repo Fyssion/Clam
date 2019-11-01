@@ -23,7 +23,6 @@ TOKEN = data['bot-token']
 description = """
 General purpose Discord bot.
 """
-startup = None
 
 def get_prefix(client, message):
     
@@ -31,23 +30,24 @@ def get_prefix(client, message):
 
     return commands.when_mentioned_or(*prefixes)(client, message)
 
-bot = commands.Bot(                         # Create a new bot
-    command_prefix=get_prefix,              # Set the prefix
-    description='A general purpose bot.',  # Set a description for the bot
-    owner_id=224513210471022592,            # Your unique User ID
-    case_insensitive=True,                   # Make the commands case insensitive
-    activity = discord.Activity(name="for robo.help", type = 3)
+bot = commands.Bot(
+    command_prefix=get_prefix,
+    description='A general purpose bot.',
+    owner_id=224513210471022592,
+    case_insensitive=True,
+    activity = discord.Activity(name="for robo.help", type = 3),
 )
+
+
 
 cogs = ['cogs.meta']
 
 @bot.event
 async def on_ready():
-    global startup
 
     l.info(f'Logged in as {bot.user.name} - {bot.user.id}')
-
-    startup = d.now()
+        
+    bot.startup_time = d.now()
 
     bot.remove_command('help')
 
