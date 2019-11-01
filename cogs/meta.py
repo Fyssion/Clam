@@ -35,7 +35,7 @@ class Meta(commands.Cog):
 
         em = discord.Embed(
             title = "Help",\
-            description = f"Commands are put in categories.\nFor more info on a specific category, use: `@{self.bot.user.name}#{self.bot.user.discriminator}` help [category]",
+            description = f"Commands are put in categories.\nFor more info on a specific category, use: `@{self.bot.user.name}#{self.bot.user.discriminator} help [category]`‍\n‍\n‍",
             color = 0x15DFEA,
             timestamp = d.utcnow()
         )
