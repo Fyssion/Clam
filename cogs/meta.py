@@ -94,7 +94,7 @@ class Meta(commands.Cog):
     @commands.command(
         name = "uptime",
         description = "Uptime command; replies with the uptime.",
-        aliases = ['u']
+        aliases = ['up']
     )
     async def uptime(self, ctx):
         now = d.now()
