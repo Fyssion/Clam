@@ -50,6 +50,20 @@ class Reddit(commands.Cog):
             
             sub = " ".join(args)
 
+            em = discord.Embed(
+                title = f":mag_right: Searching for `{sub}`...",
+                color=reddit_color, 
+                timestamp = d.utcnow()
+            )
+            em.set_footer(
+                    text = f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
+                    icon_url = self.bot.user.avatar_url
+                    )
+            try:
+                embed_msg = await ctx.channel.send(embed=em)
+            except discord.errors.Forbidden:
+                self.bot.l.error("Bot does not have permission to send messages in channel: '" + str(ctx.channel) + "'")
+
             self.bot.l.info(str(ctx.author) + " tried to link to '" + sub + "'")
 
             # My solution for people linking 'wosh' (or any other varient of 'woooosh')
@@ -76,8 +90,8 @@ class Reddit(commands.Cog):
                 
                 em = discord.Embed(
                     title = self.subreddit.title,
-                    description="[r/" + self.subreddit.display_name + "](https://reddit.com/r/" + self.subreddit.display_name + ")\n" + self.subreddit.public_description + self.isnsfw + self.wosh,
-                    url = "https://reddit.com/r/" + self.subreddit.display_name,
+                    description=f"[r/{self.subreddit.display_name}](https://reddit.com/r/{self.subreddit.display_name})\n" + self.subreddit.public_description + self.isnsfw + self.wosh,
+                    url = f"https://reddit.com/r/{self.subreddit.display_name}",
                     color=reddit_color, 
                     timestamp = d.utcnow()
                     )
@@ -90,12 +104,12 @@ class Reddit(commands.Cog):
                 # The next if/else statements are a bug patch. Sometimes, subreddit.icon_img returns None instead of a blank string.
                 # Disocrd will not accept this as a url, so I change None to a blank string
                 if self.subreddit.icon_img  == None:
-                    ico_img = ""
+                    self.ico_img = ""
                 else:
-                    ico_img = self.subreddit.icon_img
+                    self.ico_img = self.subreddit.icon_img
                 
                 em.set_thumbnail(
-                    url = ico_img
+                    url = self.ico_img
                     )
                 em.set_footer(
                     text = f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
@@ -103,9 +117,9 @@ class Reddit(commands.Cog):
                     )
 
                 try:
-                    await ctx.channel.send(embed=em)
+                    await embed_msg.edit(embed=em)
                 except discord.errors.Forbidden:
-                    self.bot.l.error("Bot does not have permission to send messages in channel: '" + str(ctx.channel) + "'")
+                    self.bot.l.error(f"Bot does not have permission to send messages in channel: '{str(ctx.channel)}'")
 
 
             # If the subreddit is not found in any searches
@@ -113,7 +127,7 @@ class Reddit(commands.Cog):
 
                 em = discord.Embed(
                     title = ":warning:Subreddit not found!",
-                    description = "r/" + sub + " is not a subreddit." + self.isnsfw + self.wosh,
+                    description = f"'{self.sub}'' is not a subreddit." + self.isnsfw + self.wosh,
                     color=warning_color
                     )
 
@@ -121,11 +135,11 @@ class Reddit(commands.Cog):
                     text = f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
                     icon_url = self.bot.user.avatar_url
                     )
-                    
+
                 self.bot.l.warning("Subreddit '" + sub + "' does not exist!")
                 
                 try:
-                    await ctx.channel.send(embed=em)
+                    await embed_msg.edit(embed=em)
                 except:
                     self.bot.l.error("Bot does not have permission to send messages in channel: '" + str(ctx.channel) + "'")
 
@@ -138,9 +152,89 @@ class Reddit(commands.Cog):
         usage = "[user]"
     )
     async def redditor_command(self, ctx, *args):
-        usr = " ".join(args)
-        self.bot.l.debug(usr)
-        await ctx.send("This feature is in development. Sorry!")
+        if len(args) < 1:
+            
+            self.bot.l.info(f"{str(ctx.author)} used the redditor command improperly!")
+            await ctx.send(f"Improper usage!\nProper usage: `robo.redditor [user]`")
+
+        else:
+
+            self.usr = " ".join(args)
+            
+            em = discord.Embed(
+                title = f":mag_right: Searching for `{self.usr}`...",
+                color=reddit_color, 
+                timestamp = d.utcnow()
+            )
+            em.set_footer(
+                    text = f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
+                    icon_url = self.bot.user.avatar_url
+                    )
+            try:
+                embed_msg = await ctx.channel.send(embed=em)
+            except discord.errors.Forbidden:
+                self.bot.l.error("Bot does not have permission to send messages in channel: '" + str(ctx.channel) + "'")
+
+            self.isusr = True
+            try:
+                self.user = self.redd.redditor(self.usr)
+                self.tkarma = self.user.comment_karma + self.user.link_karma # For some reason this generates an error
+            except:
+                self.isusr = False
+
+            self.bot.l.info(str(ctx.author) + " tried to link to '" + self.usr + "'")
+
+            if self.isusr == False:
+
+                em = discord.Embed(
+                    title = ":warning:Redditor not found!",
+                    description = f"'{self.usr}'' is not a redditor.",
+                    color=warning_color
+                    )
+                em.set_footer(
+                    text = f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
+                    icon_url = self.bot.user.avatar_url
+                    )
+
+                self.bot.l.warning("Redditor '" + self.usr + "' does not exist!")
+                
+                try:
+                    await embed_msg.edit(embed=em)
+                except:
+                    self.bot.l.error("Bot does not have permission to send messages in channel: '" + str(ctx.channel) + "'")
+
+            if self.isusr == True:
+                self.user = self.redd.redditor(self.usr)
+
+                if self.user.is_employee == True:
+                    self.emp = " <:employee:634152137445867531>\nThis user is a Reddit employee."
+                else:
+                    self.emp = ""
+                
+                self.tkarma = self.user.comment_karma + self.user.link_karma
+                em = discord.Embed(
+                    title = f"{self.user.name}",
+                    description=f"[u/{self.user.name}](https://reddit.com/u/{self.user.name})" + self.emp,
+                    url = f"https://reddit.com/u/{self.user.name}",
+                    color=reddit_color,
+                    timestamp = d.utcnow()
+                    )
+                em.add_field(
+                    name = "Karma:",
+                    value = str(self.tkarma)
+                    )
+                em.set_thumbnail(
+                    url = self.user.icon_img
+                    )
+                em.set_footer(
+                    text = f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
+                    icon_url = self.bot.user.avatar_url
+                    )
+
+                try:
+                    await embed_msg.edit(embed=em)
+                except discord.errors.Forbidden:
+                    self.bot.l.error("Bot does not have permission to send messages in channel: '" + str(ctx.channel) + "'")
 
 
 
