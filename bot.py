@@ -45,7 +45,7 @@ bot.reddit_secret = data['reddit-secret']
 bot.l = logging.getLogger(__name__)
 coloredlogs.install(level='DEBUG', logger=l, fmt='(%(asctime)s) %(levelname)s %(message)s', datefmt='%m/%d/%y - %H:%M:%S %Z')
 
-cogs = ['cogs.meta', 'cogs.reddit']
+cogs = ['cogs.meta', 'cogs.reddit', 'cogs.fun']
 
 @bot.event
 async def on_ready():
