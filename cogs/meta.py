@@ -14,6 +14,7 @@ class Meta(commands.Cog):
         aliases = ['p']
     )
     async def ping_command(self, ctx):
+        
         start = d.timestamp(d.now())
 
         msg = await ctx.send(content = "Pinging")
