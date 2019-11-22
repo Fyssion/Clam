@@ -4,25 +4,6 @@ import coloredlogs, logging
 import yaml
 from datetime import datetime as d
 
-# Colored logs install
-l = logging.getLogger(__name__)
-coloredlogs.install(level='DEBUG', logger=l, fmt='(%(asctime)s) %(levelname)s %(message)s', datefmt='%m/%d/%y - %H:%M:%S %Z')
-
-#Config.yml load
-with open("config.yml", 'r') as config:
-    try:
-        data = yaml.safe_load(config)
-
-    except yaml.YAMLError as exc:
-        l.critical("Could not load config.yml")
-        print(exc)
-        import sys
-        sys.exit()
-
-TOKEN = data['bot-token']
-description = """
-General purpose Discord bot.
-"""
 
 def get_prefix(client, message):
     
@@ -37,13 +18,26 @@ bot = commands.Bot(
     case_insensitive=True,
     activity = discord.Activity(name="for robo.help", type = 3),
 )
-bot.reddit_id = data['reddit-id']
-bot.reddit_secret = data['reddit-secret']
 
 
 # Colored logs install
 bot.l = logging.getLogger(__name__)
 coloredlogs.install(level='DEBUG', logger=l, fmt='(%(asctime)s) %(levelname)s %(message)s', datefmt='%m/%d/%y - %H:%M:%S %Z')
+
+#Config.yml load
+with open("config.yml", 'r') as config:
+    try:
+        data = yaml.safe_load(config)
+
+    except yaml.YAMLError as exc:
+        bot.l.critical("Could not load config.yml")
+        print(exc)
+        import sys
+        sys.exit()
+
+TOKEN = data['bot-token']
+bot.reddit_id = data['reddit-id']
+bot.reddit_secret = data['reddit-secret']
 
 cogs = ['cogs.meta', 'cogs.tools', 'cogs.reddit', 'cogs.fun']
 
