@@ -22,7 +22,7 @@ bot = commands.Bot(
 
 # Colored logs install
 bot.l = logging.getLogger(__name__)
-coloredlogs.install(level='DEBUG', logger=l, fmt='(%(asctime)s) %(levelname)s %(message)s', datefmt='%m/%d/%y - %H:%M:%S %Z')
+coloredlogs.install(level='DEBUG', logger=bot.l, fmt='(%(asctime)s) %(levelname)s %(message)s', datefmt='%m/%d/%y - %H:%M:%S %Z')
 
 #Config.yml load
 with open("config.yml", 'r') as config:
@@ -44,7 +44,7 @@ cogs = ['cogs.meta', 'cogs.tools', 'cogs.reddit', 'cogs.fun']
 @bot.event
 async def on_ready():
 
-    l.info(f'Logged in as {bot.user.name} - {bot.user.id}')
+    bot.l.info(f'Logged in as {bot.user.name} - {bot.user.id}')
         
     bot.startup_time = d.now()
 
