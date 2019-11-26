@@ -10,6 +10,20 @@ class Tools(commands.Cog):
         self.log = self.bot.l
 
     @commands.command(
+        name = "snowstamp",
+        description = "Get timestamp from a Discord snowflake.",
+        usage = "[snowflake]"
+    )
+    async def snowstamp_command(self, ctx, snowflake = None):
+        if snowflake == None:
+            return await ctx.send("Please specify a snowflake to convert.")
+        
+        timestamp = (int(snowflake) >> 22) + 1420070400000
+        timestamp /= 1000
+
+        await ctx.send(d.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S'))
+
+    @commands.command(
         name = "embed",
         description = "Create a custom embed and send it to a specified channel.",
         aliases = ['em']
