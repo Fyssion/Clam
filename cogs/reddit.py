@@ -12,6 +12,7 @@ class Reddit(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
+        self.log = self.bot.log
 
         # Reddit PRAW login
         try:
@@ -24,9 +25,9 @@ class Reddit(commands.Cog):
             sys.exit()
 
         if self.redd.read_only == True:
-            self.bot.l.info("Logged into Reddit")
+            self.log.info("Logged into Reddit")
         else:
-            self.bot.l.critical("Not logged into Reddit!")
+            self.log.critical("Not logged into Reddit!")
             import sys
             sys.exit()
 
@@ -42,7 +43,7 @@ class Reddit(commands.Cog):
         
         if len(args) < 1:
             
-            self.bot.l.info(f"{str(ctx.author)} used the subreddit command improperly!")
+            self.log.info(f"{str(ctx.author)} used the subreddit command improperly!")
             await ctx.send(f"Improper usage!\nProper usage: `robo.subreddit [subreddit]`")
 
 
@@ -62,9 +63,9 @@ class Reddit(commands.Cog):
             try:
                 embed_msg = await ctx.channel.send(embed=em)
             except discord.errors.Forbidden:
-                self.bot.l.error("Bot does not have permission to send messages in channel: '" + str(ctx.channel) + "'")
+                self.log.error("Bot does not have permission to send messages in channel: '" + str(ctx.channel) + "'")
 
-            self.bot.l.info(str(ctx.author) + " tried to link to '" + sub + "'")
+            self.log.info(str(ctx.author) + " tried to link to '" + sub + "'")
 
             # My solution for people linking 'wosh' (or any other varient of 'woooosh')
             if sub == "whosh" or sub == "wosh" or sub == "whoosh" or sub == "whooosh" or sub == "woosh" or sub == "wooosh"  or "oooo" in sub or "wosh" in sub or "whosh" in sub and sub != "woooosh":
@@ -77,7 +78,7 @@ class Reddit(commands.Cog):
             # Searching for subreddit to see if it exists
             self.subreddit_search = self.redd.subreddits.search_by_name(sub, include_nsfw=True, exact=False)
 
-            self.bot.l.debug(str(self.subreddit_search))
+            self.log.debug(str(self.subreddit_search))
 
             if sub in self.subreddit_search:
 
@@ -119,7 +120,7 @@ class Reddit(commands.Cog):
                 try:
                     await embed_msg.edit(embed=em)
                 except discord.errors.Forbidden:
-                    self.bot.l.error(f"Bot does not have permission to send messages in channel: '{str(ctx.channel)}'")
+                    self.log.error(f"Bot does not have permission to send messages in channel: '{str(ctx.channel)}'")
 
 
             # If the subreddit is not found in any searches
@@ -136,12 +137,12 @@ class Reddit(commands.Cog):
                     icon_url = self.bot.user.avatar_url
                     )
 
-                self.bot.l.warning("Subreddit '" + sub + "' does not exist!")
+                self.log.warning("Subreddit '" + sub + "' does not exist!")
                 
                 try:
                     await embed_msg.edit(embed=em)
                 except:
-                    self.bot.l.error("Bot does not have permission to send messages in channel: '" + str(ctx.channel) + "'")
+                    self.log.error("Bot does not have permission to send messages in channel: '" + str(ctx.channel) + "'")
 
             
 
@@ -154,7 +155,7 @@ class Reddit(commands.Cog):
     async def redditor_command(self, ctx, *args):
         if len(args) < 1:
             
-            self.bot.l.info(f"{str(ctx.author)} used the redditor command improperly!")
+            self.log.info(f"{str(ctx.author)} used the redditor command improperly!")
             await ctx.send(f"Improper usage!\nProper usage: `robo.redditor [user]`")
 
         else:
@@ -173,7 +174,7 @@ class Reddit(commands.Cog):
             try:
                 embed_msg = await ctx.channel.send(embed=em)
             except discord.errors.Forbidden:
-                self.bot.l.error("Bot does not have permission to send messages in channel: '" + str(ctx.channel) + "'")
+                self.log.error("Bot does not have permission to send messages in channel: '" + str(ctx.channel) + "'")
 
             self.isusr = True
             try:
@@ -182,7 +183,7 @@ class Reddit(commands.Cog):
             except:
                 self.isusr = False
 
-            self.bot.l.info(str(ctx.author) + " tried to link to '" + self.usr + "'")
+            self.log.info(str(ctx.author) + " tried to link to '" + self.usr + "'")
 
             if self.isusr == False:
 
@@ -196,12 +197,12 @@ class Reddit(commands.Cog):
                     icon_url = self.bot.user.avatar_url
                     )
 
-                self.bot.l.warning("Redditor '" + self.usr + "' does not exist!")
+                self.log.warning("Redditor '" + self.usr + "' does not exist!")
                 
                 try:
                     await embed_msg.edit(embed=em)
                 except:
-                    self.bot.l.error("Bot does not have permission to send messages in channel: '" + str(ctx.channel) + "'")
+                    self.log.error("Bot does not have permission to send messages in channel: '" + str(ctx.channel) + "'")
 
             if self.isusr == True:
                 self.user = self.redd.redditor(self.usr)
@@ -234,7 +235,7 @@ class Reddit(commands.Cog):
                 try:
                     await embed_msg.edit(embed=em)
                 except discord.errors.Forbidden:
-                    self.bot.l.error("Bot does not have permission to send messages in channel: '" + str(ctx.channel) + "'")
+                    self.log.error("Bot does not have permission to send messages in channel: '" + str(ctx.channel) + "'")
 
 
 

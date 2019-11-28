@@ -1,14 +1,58 @@
 from discord.ext import commands
 import discord
 from datetime import datetime as d
+import math
 
 
 class Fun(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
-        self.log = self.bot.l
+        self.log = self.bot.log
 
+    @commands.command(
+        name = "birthday",
+        description = "Sends specified user a bday message straight to their DMs",
+        aliases = ["bday"],
+        usage = "[mentioned user] [IRL Name ('None' to mention them)] [age]"
+    )
+    async def birthday_command(self, ctx, user = None, name = None, age = None):
+        if user is None or name is None or age is None:
+            return await ctx.send("Please enter in the required values.\nEx: `r.birthday [mentioned user] [IRL Name ('None' to mention them)] [age]`")
+
+        ageToGrowOn = str(int(age) + 1)
+
+        recipientID = ctx.message.mentions[0].id
+        recipient = self.bot.get_user(recipientID)
+
+        if name.lower() == "none":
+            mention = recipient.mention
+        else:
+            mention = None
+
+        ordinal = lambda n: "%d%s" % (n,"tsnrhtdd"[(math.floor(n/10)%10!=1)*(n%10<4)*n%10::4])
+
+        msg = f"Happy {ordinal(int(age))} Birthday, {mention or name}!\n"
+
+        for i in range(int(ageToGrowOn)):
+            msg += ":candle: "
+        
+        # OK OK OK I know this for-loop is super jank, but I'm too lazy to write good code for this
+        cakes = ""
+        isCupcake = False
+        for i in range(math.ceil(int(ageToGrowOn) / 2)):
+            if isCupcake == False:
+                cakes += ":cake: "
+                isCupcake = True
+            else:
+                cakes += ":cupcake: "
+                isCupcake = False
+    
+        await recipient.send(msg)
+        await recipient.send(cakes)
+        await recipient.send(f"`From: {ctx.author.name}#{ctx.author.discriminator}`")
+
+        await ctx.send(f"Sent birthday message to `{recipient.name}#{recipient.discriminator}`")
     @commands.command(
         name = "downvote",
         description = "Downvotes previous message or specified message.",
