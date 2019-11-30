@@ -184,9 +184,14 @@ class Meta(commands.Cog, name = ":gear: Meta"):
 
                 checks = [ch.__name__ for ch in command.checks]
 
+                if len(checks) != 0:
+                    joinedChecks = ', '.join(checks)
+                else:
+                    joinedChecks = "None"
+
                 em.description = f"**{command.cog_name} - {command.name.capitalize()}**\nName: {command.name}\nDescription: {command.description}\n\
                     Format: `@{self.bot.user.name}#{self.bot.user.discriminator} {command.name} {command.usage if command.usage is not None else ''}`\
-                    \n{self.aliases_section}\nHidden: `{command.hidden}`\nChecks: `{', '.join(checks) if len(checks) != 0 else 'None'}`\nEnabled: `{command.enabled}`"
+                    \n{self.aliases_section}\nHidden: `{command.hidden}`\nChecks: `{joinedChecks}`\nEnabled: `{command.enabled}`"
 
 
             else:
