@@ -100,7 +100,7 @@ class Tools(commands.Cog):
 
     @commands.command(
         name = "serverinfo",
-        description = "Get information about the current server.",
+        description = "Get information about the current server",
         aliases = ["guildinfo"]
     )
     async def serverinfo_command(self, ctx):
@@ -170,7 +170,7 @@ class Tools(commands.Cog):
 
     @commands.command(
         name = "snowstamp",
-        description = "Get timestamp from a Discord snowflake.",
+        description = "Get timestamp from a Discord snowflake",
         usage = "[snowflake]",
         hidden = True
     )

@@ -5,6 +5,10 @@ from datetime import datetime as d
 from string import Formatter
 
 def strfdelta(tdelta, fmt):
+    """
+    Similar to strftime from datetime.datetime
+    Returns formatted string of a timedelta
+    """
     f = Formatter()
     d = {}
     l = {'D': 86400, 'H': 3600, 'M': 60, 'S': 1}
@@ -23,36 +27,21 @@ class Meta(commands.Cog):
         self.bot = bot
         self.log = self.bot.log
 
-    @commands.command(
-        name = "ping",
-        description = "Ping command; replies with 'Pong!'",
-        aliases = ['p']
-    )
-    async def ping_command(self, ctx):
-        
-        start = d.timestamp(d.now())
-
-        msg = await ctx.send(content = "Pinging")
-
-        await msg.edit(content = f"Pong!\nOne message round-trip took {(d.timestamp( d.now()) - start ) * 1000}ms.")
-
-        return
-
-
-
     
     @commands.command(
         name = "help",
         description = "You're looking at it!",
         aliases = ['commands', 'command', 'info', 'h'],
-        usage = "[category]"
+        usage = "[command]"
     )
-    async def help_command(self, ctx, commd="all"):
+    async def help_command(self, ctx, commd = "all"):
 
+        # Create an embed that will be filled in with information
+        # depending on user input 
         em = discord.Embed(
-            title = "Help",\
-            description = f"Prefixes: {self.bot.prefixes}\nCommands are put in categories.\
-                \nFor more info on a specific category, use: `@{self.bot.user.name}#{self.bot.user.discriminator} help [category]`‍\n‍\n‍",
+            title = f"Help For {self.bot.user.name}",
+            description = f"**Prefixes:** {self.bot.prefixes}\
+                \nFor **more info** on a **specific command**, use: **`{self.bot.defaultPrefix}help [command]`‍**\n‍",
             color = 0x15DFEA,
             timestamp = d.utcnow()
         )
@@ -63,32 +52,31 @@ class Meta(commands.Cog):
             text = f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
             icon_url = self.bot.user.avatar_url
         )
-
+        
+    
         cogs = [c for c in self.bot.cogs.keys()]
 
-        if commd == 'all':
+        # If the user didn't specify a command, the full help command is sent
+        if commd == "all":
             for cog in cogs:
                 cog_commands = self.bot.get_cog(cog).get_commands()
-                commands_list = ''
+                commands_list = ""
                 for comm in cog_commands:
                     if comm.hidden == False:
-                        commands_list += f"**{comm.name}** - *{comm.description}*\n"
+                        commands_list += f"**`{comm.name}`** - {comm.description}\n"
                     
                 em.add_field(
                     name = cog,
-                    value=commands_list,
+                    value=commands_list + "‍",
                     inline = False
-                ).add_field(
-               name='\u200b', value='\u200b', inline=False
                 )
 
             dev = self.bot.get_user(224513210471022592)
             em.add_field(
-                    name = "Other Info",
-                    value= f"This bot was developed by {dev.mention}.\n*Programming Language* - Python\n*Framework* - Discord.py Commands",
+                    name = "Technical Info",
+                    value= f"**Developed by** - {dev.mention}\n**Programming Language** - Python\n**Framework** - Discord.py Commands",
                     inline = False
             )
-            pass
 
         else:
             all_commands_list = [command for command in self.bot.commands]
@@ -103,16 +91,28 @@ class Meta(commands.Cog):
 
 
             else:
-                await ctx.send("Invalid command specified.\nUse `help` to view list of all commands.")
-                return
+                return await ctx.send("Invalid command specified.\nUse `help` to view list of all commands.")
+
 
         await ctx.send(embed = em)
-        return
     
+    @commands.command(
+        name = "ping",
+        description = "__Ping__ command; replies with 'Pong!'",
+        aliases = ['p']
+    )
+    async def ping_command(self, ctx):
+        
+        start = d.timestamp(d.now())
+
+        msg = await ctx.send(content = "Pinging")
+
+        await msg.edit(content = f"Pong!\nOne message round-trip took {(d.timestamp( d.now()) - start ) * 1000}ms.")
+
 
     @commands.command(
         name = "uptime",
-        description = "Uptime command; replies with the uptime.",
+        description = "Uptime command; replies with the uptime",
         aliases = ['up']
     )
     async def uptime(self, ctx):
@@ -129,7 +129,7 @@ class Meta(commands.Cog):
     
     @commands.command(
         name = "invite",
-        description = "Invite me to your server."
+        description = "Invite me to your server"
     )
     async def invite_command(self, ctx):
         self.log.info(f"{str(ctx.author)} used the invite command")

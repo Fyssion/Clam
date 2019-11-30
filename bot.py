@@ -5,6 +5,7 @@ import yaml
 from datetime import datetime as d
 
 
+
 def get_prefix(client, message):
     
     prefixes = ['robo.', 'r.', 'Robo.', 'R.']
@@ -13,7 +14,7 @@ def get_prefix(client, message):
 
 bot = commands.Bot(
     command_prefix=get_prefix,
-    description='A general purpose bot.',
+    description="Robotic Clam: A general purpose Discord bot.",
     owner_id=224513210471022592,
     case_insensitive=True,
     # activity = discord.Activity(name="for robo.help", type = 3)
@@ -38,8 +39,10 @@ with open("config.yml", 'r') as config:
 bot.reddit_id = data['reddit-id']
 bot.reddit_secret = data['reddit-secret']
 bot.prefixes = ", ".join(['`r.`', '`R.`', '`robo.`', '`Robo.`', 'or when mentioned'])
+bot.defaultPrefix = "r."
 
 cogs = ['cogs.meta', 'cogs.tools', 'cogs.reddit', 'cogs.fun']
+
 
 @bot.event
 async def on_ready():
@@ -52,8 +55,8 @@ async def on_ready():
 
     for cog in cogs:
         bot.load_extension(cog)
+
     
-    return
 
 # Finally, login the bot
 bot.run(data['bot-token'], bot=True, reconnect=True)

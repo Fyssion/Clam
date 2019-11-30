@@ -2,6 +2,7 @@ from discord.ext import commands
 import discord
 from datetime import datetime as d
 import math
+from cogs.utils import thesaurize
 
 
 class Fun(commands.Cog):
@@ -55,7 +56,7 @@ class Fun(commands.Cog):
         await ctx.send(f"Sent birthday message to `{recipient.name}#{recipient.discriminator}`")
     @commands.command(
         name = "downvote",
-        description = "Downvotes previous message or specified message.",
+        description = "Downvotes previous message or specified message",
         usage = "[optional message id]"
     )
     async def downvote_commmand(self, ctx, *args):
@@ -140,7 +141,18 @@ class Fun(commands.Cog):
                  await ctx.send("This feature is in development.\n~~:warning: Message not found! Please use a vaild message ID.~~") # get message
             except:
                 await ctx.send("This feature is in development.\n~~:warning: Message not found! Please use a vaild message ID.~~")
-
+        
+    
+    # @commands.command(
+    #     name = "thesaurize",
+    #     description = "Thesaurize any sentence",
+    #     usage = "[sentence]",
+    #     aliases = ["thethis", "tt"]
+    # )
+    # async def thesaurize_command(self, ctx, *, sentence = None):
+    #     if not sentence:
+    #         return await ctx.send("Please include a sentence.")
+    #     await ctx.send(await thesaurize(sentence))
             
 
 

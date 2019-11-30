@@ -35,7 +35,7 @@ class Reddit(commands.Cog):
 
     @commands.command(
         name = "subreddit",
-        description = "Search for a subreddit.",
+        description = "Search for a subreddit",
         aliases = ['sub'],
         usage = "[subreddit]"
     )
@@ -150,7 +150,7 @@ class Reddit(commands.Cog):
 
     @commands.command(
         name = "redditor",
-        description = "Search for a Redditor.",
+        description = "Search for a Redditor",
         aliases = ['redditer'],
         usage = "[user]"
     )
