@@ -99,22 +99,31 @@ class Fun(commands.Cog):
             )
             em.add_field(
                 name = "Why did you do this?",
-                value = "There are several reasons I may deem a message to be unworthy of positive or neutral points. These include, but are not limited to:\n• Rudeness towards other users,\n• Spreading incorrect information,\n• Sarcasm not correctly flagged with a `/s`.",
+                value = "There are several reasons I may deem a message to be unworthy of positive or neutral points. \
+                    These include, but are not limited to:\n• Rudeness towards other users,\n• \
+                        Spreading incorrect information,\n• Sarcasm not correctly flagged with a `/s`.",
                 inline = False
             )
             em.add_field(
                 name = "Am I banned from the Discord?",
-                value = "No - not yet. But you should refrain from writing messages like this in the future. Otherwise I will be forced to issue an additional downvote, which may put your messaging privileges in jeopardy.",
+                value = "No - not yet. But you should refrain from writing messages like this in the future. \
+                    Otherwise I will be forced to issue an additional downvote, which may put your messaging privileges in jeopardy.",
                 inline = False
             )
             em.add_field(
                 name = "I don't believe my message deserved a downvote. Can you un-downvote it?",
-                value = "Sure, mistakes happen. But only in exceedingly rare circumstances will I undo a downvote. If you would like to issue an appeal, shoot me a direct message explaining what I got wrong. I tend to respond to Discord DMs within several minutes. Do note, however, that over 99.9% of downvote appeals are rejected, and yours is likely no exception.",
+                value = "Sure, mistakes happen. But only in exceedingly rare circumstances will I undo a downvote. \
+                    If you would like to issue an appeal, shoot me a direct message explaining what I got wrong. \
+                        I tend to respond to Discord DMs within several minutes. Do note, however, that \
+                            over 99.9% of downvote appeals are rejected, and yours is likely no exception.",
                 inline = False
             )
             em.add_field(
                 name = "How can I prevent this from happening in the future?",
-                value = "Accept the downvote and move on. But learn from this mistake: your behavior will not be tolerated on Discordapp.com. I will continue to issue downvotes until you improve your conduct. Remember: Discord is privilege, not a right.\n\n[What's this?](https://www.reddit.com/r/copypasta/comments/dfcuzs/i_just_downvoted_your_comment/)",
+                value = "Accept the downvote and move on. But learn from this mistake: your behavior will not be \
+                    tolerated on Discordapp.com. I will continue to issue downvotes until you improve your conduct. \
+                        Remember: Discord is privilege, not a right.\n\n\
+                            [What's this?](https://www.reddit.com/r/copypasta/comments/dfcuzs/i_just_downvoted_your_comment/)",
                 inline = False
             )
             em.set_footer(

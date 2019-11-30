@@ -68,7 +68,8 @@ class Reddit(commands.Cog):
             self.log.info(str(ctx.author) + " tried to link to '" + sub + "'")
 
             # My solution for people linking 'wosh' (or any other varient of 'woooosh')
-            if sub == "whosh" or sub == "wosh" or sub == "whoosh" or sub == "whooosh" or sub == "woosh" or sub == "wooosh"  or "oooo" in sub or "wosh" in sub or "whosh" in sub and sub != "woooosh":
+            if sub == "whosh" or sub == "wosh" or sub == "whoosh" or sub == "whooosh" or \
+                sub == "woosh" or sub == "wooosh"  or "oooo" in sub or "wosh" in sub or "whosh" in sub and sub != "woooosh":
                 if sub != "woooosh":
                     self.wosh = "\nLooking for [r/woooosh](https://reddit.com/r/woooosh)?"
                 else:
@@ -91,7 +92,8 @@ class Reddit(commands.Cog):
                 
                 em = discord.Embed(
                     title = self.subreddit.title,
-                    description=f"[r/{self.subreddit.display_name}](https://reddit.com/r/{self.subreddit.display_name})\n" + self.subreddit.public_description + self.isnsfw + self.wosh,
+                    description=f"[r/{self.subreddit.display_name}](https://reddit.com/r/{self.subreddit.display_name})\n" + \
+                        self.subreddit.public_description + self.isnsfw + self.wosh,
                     url = f"https://reddit.com/r/{self.subreddit.display_name}",
                     color=reddit_color, 
                     timestamp = d.utcnow()

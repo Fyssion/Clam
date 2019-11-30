@@ -78,12 +78,12 @@ class Tools(commands.Cog):
                     icon_url = self.bot.user.avatar_url
                     )
         self.em.add_field(
-            name = "Account Created",
+            name = ":clock1: Account Created",
             value = snowstamp(user.id),
             inline = True
         )
         self.em.add_field(
-            name = "Joined Server",
+            name = "<:join:649722959958638643> Joined Server",
             value = member.joined_at.strftime('%b %d, %Y at %#I:%M %p'),
             inline = True
         )
@@ -105,6 +105,10 @@ class Tools(commands.Cog):
     )
     async def serverinfo_command(self, ctx):
         self.log.info(f"{str(ctx.author)} used the serverinfo command")
+
+        if ctx.guild.unavailable == True:
+            self.log.warning("Woah... {ctx.guild} is unavailable.")
+            return await ctx.send("This guild is unavailable.\nWhat does this mean? I don't know either.\nMaybe Discord is having an outage...")
 
         desc = ""
         if ctx.guild.description:
@@ -145,9 +149,15 @@ class Tools(commands.Cog):
         )
         self.em.add_field(
             name = "<:boost:649644112034922516> Nitro Boosts",
-            value = f"Tier {ctx.guild.premium_tier} with {ctx.guild.premium_subscription_count} boosts.",
-            inline = False
+            value = f"Tier {ctx.guild.premium_tier} with {ctx.guild.premium_subscription_count} boosts",
+            inline = True
         )
+        self.em.add_field(
+            name = ":earth_americas: Region",
+            value = str(ctx.guild.region).replace("-", " ").upper(),
+            inline = True
+        )
+        
         # roles = ""
         # for role in member.roles[1:]:
         #     roles += f"{role.mention} "
@@ -208,56 +218,7 @@ class Tools(commands.Cog):
 
         # while hasPermissionToSend == False:
 
-    @commands.command(
-        name = "eval",
-        description = "Evaluates code",
-        hidden = True
-    )
-    async def eval_command(self, ctx, *, body: str):
-
-        env = {
-            'bot': self.bot,
-            'ctx': ctx,
-            'channel': ctx.channel,
-            'author': ctx.author,
-            'guild': ctx.guild,
-            'message': ctx.message,
-            '_': self._last_result
-        }
-
-        env.update(globals())
-
-        body = self.cleanup_code(body)
-        stdout = io.StringIO()
-
-        to_compile = f'async def func():\n{textwrap.indent(body, "  ")}'
-
-        try:
-            exec(to_compile, env)
-        except Exception as e:
-            return await ctx.send(f'```py\n{e.__class__.__name__}: {e}\n```')
-
-        func = env['func']
-        try:
-            with redirect_stdout(stdout):
-                ret = await func()
-        except Exception as e:
-            value = stdout.getvalue()
-            await ctx.send(f'```py\n{value}{traceback.format_exc()}\n```')
-        else:
-            value = stdout.getvalue()
-            try:
-                await ctx.message.add_reaction('\u2705')
-            except:
-                pass
-
-            if ret is None:
-                if value:
-                    await ctx.send(f'```py\n{value}\n```')
-            else:
-                self._last_result = ret
-                await ctx.send(f'```py\n{value}{ret}\n```')
-
+   
 
 def setup(bot):
     bot.add_cog(Tools(bot))

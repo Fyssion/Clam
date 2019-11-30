@@ -35,7 +35,6 @@ with open("config.yml", 'r') as config:
         import sys
         sys.exit()
 
-TOKEN = data['bot-token']
 bot.reddit_id = data['reddit-id']
 bot.reddit_secret = data['reddit-secret']
 bot.prefixes = ", ".join(['`r.`', '`R.`', '`robo.`', '`Robo.`', 'or when mentioned'])
@@ -57,4 +56,4 @@ async def on_ready():
     return
 
 # Finally, login the bot
-bot.run(TOKEN, bot=True, reconnect=True)
+bot.run(data['bot-token'], bot=True, reconnect=True)
