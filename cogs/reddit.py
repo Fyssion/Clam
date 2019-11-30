@@ -8,7 +8,7 @@ hyperlink_color = 0x3366BB # Not used
 warning_color = 0xFFCC4D
 
 
-class Reddit(commands.Cog):
+class Reddit(commands.Cog, name = "<:RedditLogo:650197892065263626> Reddit"):
     
     def __init__(self, bot):
         self.bot = bot
