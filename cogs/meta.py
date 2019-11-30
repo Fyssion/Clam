@@ -43,15 +43,16 @@ class Meta(commands.Cog):
     
     @commands.command(
         name = "help",
-        description = "The help command",
-        aliases = ['commands', 'command', 'nator', 'info', 'h'],
+        description = "You're looking at it!",
+        aliases = ['commands', 'command', 'info', 'h'],
         usage = "[category]"
     )
-    async def help_command(self, ctx, cog="all"):
+    async def help_command(self, ctx, commd="all"):
 
         em = discord.Embed(
             title = "Help",\
-            description = f"Prefixes: {self.bot.prefixes}\nCommands are put in categories.\nFor more info on a specific category, use: `@{self.bot.user.name}#{self.bot.user.discriminator} help [category]`‍\n‍\n‍",
+            description = f"Prefixes: {self.bot.prefixes}\nCommands are put in categories.\
+                \nFor more info on a specific category, use: `@{self.bot.user.name}#{self.bot.user.discriminator} help [category]`‍\n‍\n‍",
             color = 0x15DFEA,
             timestamp = d.utcnow()
         )
@@ -65,7 +66,7 @@ class Meta(commands.Cog):
 
         cogs = [c for c in self.bot.cogs.keys()]
 
-        if cog == 'all':
+        if commd == 'all':
             for cog in cogs:
                 cog_commands = self.bot.get_cog(cog).get_commands()
                 commands_list = ''
@@ -88,22 +89,23 @@ class Meta(commands.Cog):
                     inline = False
             )
             pass
+
         else:
-            lower_cogs = [c.lower() for c in cogs]
-            if cog.lower() in lower_cogs:
-                commands_list = self.bot.get_cog(cogs[lower_cogs.index(cog.lower())]).get_commands()
-                help_text = ''
+            all_commands_list = [command for command in self.bot.commands]
 
-                for command in commands_list:
-                    help_text += f"`{command.name}`\n" \
-                        f"**{command.description}**\n"
+            if commd.lower() in [command.name for command in self.bot.commands]:
 
-                    help_text += f'Format: `@{self.bot.user.name}#{self.bot.user.discriminator}' \
-                   f' {command.name} {command.usage if command.usage is not None else ""}`\n\n'
-                em.description = help_text    
+                command = next((c for c in all_commands_list if c.name == commd.lower()), None) # Finds the command in the list based off the name
+
+                em.description = f"**{command.name.capitalize()}**\n\n{command.description}\n\n\
+                    Format: `@{self.bot.user.name}#{self.bot.user.discriminator} {command.name} {command.usage if command.usage is not None else ''}`\
+                    \n\nAliases: {', '.join(command.aliases)}"
+
+
             else:
-                await ctx.send("Invalid command category specified.\nUse `help` to view list of all command categories.")
+                await ctx.send("Invalid command specified.\nUse `help` to view list of all commands.")
                 return
+
         await ctx.send(embed = em)
         return
     
@@ -124,7 +126,17 @@ class Meta(commands.Cog):
         await ctx.send(msg)
 
         return
-        
+    
+    @commands.command(
+        name = "invite",
+        description = "Invite me to your server."
+    )
+    async def invite_command(self, ctx):
+        self.log.info(f"{str(ctx.author)} used the invite command")
+        await ctx.send("Invite:\nhttps://discordapp.com/api/oauth2/authorize?client_id=639234650782564362&permissions=0&scope=bot")
+
+
+
     @commands.command(
         name = "logout",
         description = "Logs out and shuts down bot",
