@@ -43,8 +43,8 @@ class Meta(commands.Cog):
     
     @commands.command(
         name = "help",
-        description = "The help command",
-        aliases = ['commands', 'command', 'nator', 'info', 'h'],
+        description = "You're looking at it!",
+        aliases = ['commands', 'command', 'info', 'h'],
         usage = "[category]"
     )
     async def help_command(self, ctx, commd="all"):
@@ -89,36 +89,23 @@ class Meta(commands.Cog):
                     inline = False
             )
             pass
-        else:
-            # lower_commds = [commd.lower() for commd in cogs.get_commands()]
-            print(str(command.name for command in self.bot.commands))
-            if commd.lower() in (command.name for command in self.bot.commands):
-                command = self.bot.commands[commd]
 
-                em.description = f"**{command.name}**\n\
+        else:
+            all_commands_list = [command for command in self.bot.commands]
+
+            if commd.lower() in [command.name for command in self.bot.commands]:
+
+                command = next((c for c in all_commands_list if c.name == commd.lower()), None) # Finds the command in the list based off the name
+
+                em.description = f"**{command.name.capitalize()}**\n\n{command.description}\n\n\
                     Format: `@{self.bot.user.name}#{self.bot.user.discriminator} {command.name} {command.usage if command.usage is not None else ''}`\
-                    \n{command.description}"
+                    \n\nAliases: {', '.join(command.aliases)}"
+
+
             else:
                 await ctx.send("Invalid command specified.\nUse `help` to view list of all commands.")
                 return
 
-                # em.description = f"**{}"
-
-            # lower_cogs = [c.lower() for c in cogs]
-            # if commd.lower() in lower_cogs:
-            #     commands_list = self.bot.get_cog(cogs[lower_cogs.index(cog.lower())]).get_commands()
-            #     help_text = ''
-
-            #     for command in commands_list:
-            #         help_text += f"`{command.name}`\n" \
-            #             f"**{command.description}**\n"
-
-            #         help_text += f'Format: `@{self.bot.user.name}#{self.bot.user.discriminator}' \
-            #        f' {command.name} {command.usage if command.usage is not None else ""}`\n\n'
-            #     em.description = help_text    
-            # else:
-            #     await ctx.send("Invalid command category specified.\nUse `help` to view list of all command categories.")
-            #     return
         await ctx.send(embed = em)
         return
     
