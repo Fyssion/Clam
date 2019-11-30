@@ -10,7 +10,7 @@ def snowstamp(snowflake):
     return d.utcfromtimestamp(timestamp).strftime('%b %d, %Y at %#I:%M %p')
 
 
-class Tools(commands.Cog):
+class Tools(commands.Cog, name = ":tools: Tools"):
     
     def __init__(self, bot):
         self.bot = bot
@@ -186,6 +186,8 @@ class Tools(commands.Cog):
         aliases = ['em'],
         hidden = True
     )
+    @commands.guild_only()
+    @commands.is_owner()
     async def embed_command(self, ctx):
 
         def check(ms):

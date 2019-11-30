@@ -5,7 +5,7 @@ import math
 from cogs.utils import thesaurize
 
 
-class Fun(commands.Cog):
+class Fun(commands.Cog, name = ":tada: Fun"):
     
     def __init__(self, bot):
         self.bot = bot
