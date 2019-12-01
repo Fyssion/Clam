@@ -243,7 +243,7 @@ class Meta(commands.Cog, name = ":gear: Meta"):
     )
     async def invite_command(self, ctx):
         self.log.info(f"{str(ctx.author)} used the invite command")
-        await ctx.send("Invite:\nhttps://discordapp.com/api/oauth2/authorize?client_id=639234650782564362&permissions=0&scope=bot")
+        await ctx.send("Invite:\nhttps://discordapp.com/api/oauth2/authorize?client_id=639234650782564362&permissions=470150358&scope=bot")
 
 
     @commands.command(
