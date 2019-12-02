@@ -2,7 +2,7 @@ from discord.ext import commands
 import discord
 from datetime import datetime as d
 import math
-from cogs.utils import thesaurize
+from .utils.utils import thesaurize
 
 
 class Fun(commands.Cog, name = ":tada: Fun"):
