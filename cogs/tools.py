@@ -5,6 +5,9 @@ import re
 from .utils import fuzzy
 from .utils.utils import SphinxObjectFileReader
 import os
+import ast
+import aiohttp
+import asyncio
 
 
 def snowstamp(snowflake):
@@ -307,6 +310,9 @@ class Tools(commands.Cog, name = ":tools: Tools"):
 
         if not hasattr(self, '_rtfm_cache'):
             await ctx.trigger_typing()
+            # em = discord.Embed(colour = discord.Colour.blurple())
+            # em.add_field(name = "\u200b", value = ":mag: `Searching the docs...`")
+            # bot_msg = await ctx.send(embed = em)
             await self.build_rtfm_lookup_table(page_types)
 
         obj = re.sub(r'^(?:discord\.(?:ext\.)?)?(?:commands\.)?(.+)', r'\1', obj)
@@ -327,12 +333,17 @@ class Tools(commands.Cog, name = ":tools: Tools"):
 
         matches = fuzzy.finder(obj, cache, key=lambda t: t[0], lazy=False)[:8]
 
-        e = discord.Embed(colour=discord.Colour.blurple())
+        em = discord.Embed(colour=discord.Colour.blurple())
         if len(matches) == 0:
             return await ctx.send('Could not find anything. Sorry.')
-        e.add_field(name = f"`Results for '{obj}'`", value = '\n'.join(f'[`{key}`]({url})' for key, url in matches))
-        # e.description = '\n'.join(f'[`{key}`]({url})' for key, url in matches)
-        await ctx.send(embed=e)
+        em.add_field(name = f"`Results for '{obj}'`", value = '\n'.join(f'[`{key}`]({url})' for key, url in matches))
+        em.set_footer(
+            text = f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
+            icon_url = self.bot.user.avatar_url
+        )
+        # em.description = '\n'.join(f'[`{key}`]({url})' for key, url in matches)
+        # await bot_msg.edit(embed = em)
+        await ctx.send(embed=em)
 
     def transform_rtfm_language_key(self, ctx, prefix):
         if ctx.guild is not None:
@@ -366,6 +377,79 @@ class Tools(commands.Cog, name = ":tools: Tools"):
         """Gives you a documentation link for a Python entity."""
         key = self.transform_rtfm_language_key(ctx, 'python')
         await self.do_rtfm(ctx, key, obj)
+
+
+
+    def insert_returns(self, body):
+        # insert return stmt if the last expression is a expression statement
+        if isinstance(body[-1], ast.Expr):
+            body[-1] = ast.Return(body[-1].value)
+            ast.fix_missing_locations(body[-1])
+
+        # for if statements, we insert returns into the body and the orelse
+        if isinstance(body[-1], ast.If):
+            insert_returns(body[-1].body)
+            insert_returns(body[-1].orelse)
+
+        # for with blocks, again we insert returns into the body
+        if isinstance(body[-1], ast.With):
+            insert_returns(body[-1].body)
+
+
+    @commands.command(
+        name = "eval",
+        description = "Evaluates python code.",
+        aliases = ["e"],
+        usage = "[code]",
+        hidden = True
+        )
+    async def eval_fn(self, ctx, *, cmd):
+        """Evaluates input.
+        Input is interpreted as newline seperated statements.
+        If the last statement is an expression, that is the return value.
+        Usable globals:
+        - `bot`: the bot instance
+        - `discord`: the discord module
+        - `commands`: the discord.ext.commands module
+        - `ctx`: the invokation context
+        - `__import__`: the builtin `__import__` function
+        Such that `>eval 1 + 1` gives `2` as the result.
+        The following invokation will cause the bot to send the text '9'
+        to the channel of invokation and return '3' as the result of evaluating
+        >eval ```
+        a = 1 + 2
+        b = a * 2
+        await ctx.send(a + b)
+        a
+        ```
+        """
+        fn_name = "_eval_expr"
+
+        cmd = cmd.strip("` ")
+
+        # add a layer of indentation
+        cmd = "\n".join(f"    {i}" for i in cmd.splitlines())
+
+        # wrap in async def body
+        body = f"async def {fn_name}():\n{cmd}"
+
+        parsed = ast.parse(body)
+        body = parsed.body[0].body
+
+        self.insert_returns(body)
+
+        env = {
+            'bot': ctx.bot,
+            'discord': discord,
+            'commands': commands,
+            'ctx': ctx,
+            '__import__': __import__
+        }
+        exec(compile(parsed, filename="<ast>", mode="exec"), env)
+
+        result = (await eval(f"{fn_name}()", env))
+        await ctx.send(result)
+
    
 
 def setup(bot):

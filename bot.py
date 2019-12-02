@@ -23,7 +23,7 @@ class RoboClam(commands.Bot):
             case_insensitive=True,
             # activity = discord.Activity(name="for robo.help", type = 3)
         )
-        self.session = aiohttp.ClientSession(loop=self.loop)
+        # self.session = aiohttp.ClientSession(loop=self.loop)
 
         self.add_listener(self.my_message, 'on_message')
 
@@ -63,6 +63,8 @@ class RoboClam(commands.Bot):
         for cog in self.cogsToLoad:
             self.load_extension(cog)
         self.load_extension("jishaku")
+
+        self.session = aiohttp.ClientSession(loop=self.loop)
     
     def run(self):
         super().run(self.data['bot-token'], reconnect=True, bot=True)

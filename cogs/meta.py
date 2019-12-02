@@ -47,7 +47,8 @@ class Meta(commands.Cog, name = ":gear: Meta"):
             title = f"Help For {self.bot.user.name}",
             description = f"{self.bot.description}\n\n**Prefixes:** {self.bot.prefixes}\
                 \nFor **more info** on a **specific command**, use: **`{self.bot.defaultPrefix}help [command]`‍**\n‍",
-            color = 0x15DFEA,
+            # color = 0x15DFEA,
+            color = 0xFF95B0,
             timestamp = d.utcnow()
         )
         em.set_thumbnail(
@@ -131,7 +132,8 @@ class Meta(commands.Cog, name = ":gear: Meta"):
             title = f"Admin Help For {self.bot.user.name}",
             description = f"{self.bot.description}\n\n**Prefixes:** {self.bot.prefixes}\
                 \nFor **more info** on a **specific command**, use: **`{self.bot.defaultPrefix}help admin [command]`‍**\n‍",
-            color = 0x15DFEA,
+            # color = 0x15DFEA,
+            color = 0xFF95B0,
             timestamp = d.utcnow()
         )
         em.set_thumbnail(
@@ -291,6 +293,8 @@ class Meta(commands.Cog, name = ":gear: Meta"):
     @commands.is_owner()
     async def logout_command(self, ctx):
         self.log.info("Logging out of Discord.")
+
+        await self.bot.session.close()
 
         await ctx.send("Logging out :wave:")
 
