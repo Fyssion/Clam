@@ -4,7 +4,7 @@ from datetime import datetime as d
 
 from string import Formatter
 
-from cogs.utils import wait_for_deletion
+from .utils.utils import wait_for_deletion
 
 def strfdelta(tdelta, fmt):
     """
@@ -66,16 +66,20 @@ class Meta(commands.Cog, name = ":gear: Meta"):
             for cog in cogs:
                 cog_commands = self.bot.get_cog(cog).get_commands()
 
-                commands_list = ""
-                for comm in cog_commands:
-                    if comm.hidden == False:
-                        commands_list += f"**`{comm.name}`** - {comm.description}\n"
-                    
-                em.add_field(
-                    name = cog,
-                    value=commands_list + "‍",
-                    inline = False
-                )
+                if cog == "Jishaku":
+                    pass
+                else:
+
+                    commands_list = ""
+                    for comm in cog_commands:
+                        if comm.hidden == False:
+                            commands_list += f"**`{comm.name}`** - {comm.description}\n"
+                        
+                    em.add_field(
+                        name = cog,
+                        value=commands_list + "‍",
+                        inline = False
+                    )
 
             dev = self.bot.get_user(224513210471022592)
             em.add_field(
@@ -116,6 +120,7 @@ class Meta(commands.Cog, name = ":gear: Meta"):
     @help_command.command(
         name = "admin",
         description = "Displays all admin commands",
+        aliases = ["a"],
         hidden = True
     )
     @commands.is_owner()

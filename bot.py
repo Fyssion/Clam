@@ -3,6 +3,7 @@ from discord.ext import commands
 import coloredlogs, logging
 import yaml
 from datetime import datetime as d
+import aiohttp
 
 
 
@@ -22,6 +23,7 @@ class RoboClam(commands.Bot):
             case_insensitive=True,
             # activity = discord.Activity(name="for robo.help", type = 3)
         )
+        self.session = aiohttp.ClientSession(loop=self.loop)
 
         self.add_listener(self.my_message, 'on_message')
 
@@ -47,8 +49,8 @@ class RoboClam(commands.Bot):
         self.cogsToLoad = ['cogs.meta', 'cogs.tools', 'cogs.reddit', 'cogs.fun']
     
     async def my_message(self, message):
-        if self.user.mentioned_in(message) and message.mention_everyone is False:
-            await message.channel.send(f"Hey there! I'm a bot. :robot:\nTo find out more about me, enter: `{self.defaultPrefix}help`")
+        if message.content == f"<@{self.user.id}>":
+            await message.channel.send(f"Hey there! I'm a bot. :robot:\nTo find out more about me, type: `{self.defaultPrefix}help`")
 
     async def on_ready(self):
 
@@ -60,6 +62,7 @@ class RoboClam(commands.Bot):
 
         for cog in self.cogsToLoad:
             self.load_extension(cog)
+        self.load_extension("jishaku")
     
     def run(self):
         super().run(self.data['bot-token'], reconnect=True, bot=True)
