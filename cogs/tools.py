@@ -94,14 +94,15 @@ class Tools(commands.Cog, name = ":tools: Tools"):
             value = member.joined_at.strftime('%b %d, %Y at %#I:%M %p'),
             inline = True
         )
-        roles = ""
-        for role in member.roles[1:]:
-            roles += f"{role.mention} "
-        self.em.add_field(
-            name = "Roles",
-            value = roles,
-            inline = False
-        )
+        if member.roles[1:]:
+            roles = ""
+            for role in member.roles[1:]:
+                roles += f"{role.mention} "
+            self.em.add_field(
+                name = "Roles",
+                value = roles,
+                inline = False
+            )
         await ctx.send(embed = self.em)
 
 
