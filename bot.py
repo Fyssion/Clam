@@ -46,7 +46,7 @@ class RoboClam(commands.Bot):
         self.prefixes = ", ".join(['`r.`', '`R.`', '`robo.`', '`Robo.`', 'or when mentioned'])
         self.defaultPrefix = "r."
 
-        self.cogsToLoad = ['cogs.meta', 'cogs.tools', 'cogs.reddit', 'cogs.fun']
+        self.cogsToLoad = ['cogs.meta', 'cogs.tools', 'cogs.reddit', 'cogs.fun', 'cogs.moderation']
     
     async def my_message(self, message):
         if message.content == f"<@{self.user.id}>":
