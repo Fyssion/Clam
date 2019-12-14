@@ -11,7 +11,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
     
     @commands.command(
         name = "purge",
-        description = "Purge messages in a channel.",
+        description = "Purge messages in a channel.\n**Note: The user calling the command and the bot must have the manage messages permission.**",
         aliases = ["cleanup"],
         usage = "[amount]"
     )

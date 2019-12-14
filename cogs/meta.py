@@ -46,7 +46,7 @@ class Meta(commands.Cog, name = ":gear: Meta"):
         em = discord.Embed(
             title = f"Help For {self.bot.user.name}",
             description = f"{self.bot.description}\n\n**Prefixes:** {self.bot.prefixes}\
-                \nFor **more info** on a **specific command**, use: **`{self.bot.defaultPrefix}help [command]`‍**\n‍",
+                \nFor **more info** on a **specific category**, use: **`{self.bot.defaultPrefix}help [category]`‍**\n‍",
             # color = 0x15DFEA,
             color = 0xFF95B0,
             timestamp = d.utcnow()
@@ -64,6 +64,7 @@ class Meta(commands.Cog, name = ":gear: Meta"):
 
         # If the user didn't specify a command, the full help command is sent
         if commd == "all":
+            all_categories = ""
             for cog in cogs:
                 cog_commands = self.bot.get_cog(cog).get_commands()
 
@@ -71,22 +72,19 @@ class Meta(commands.Cog, name = ":gear: Meta"):
                     pass
                 else:
 
-                    commands_list = ""
-                    for comm in cog_commands:
-                        if comm.hidden == False:
-                            commands_list += f"**`{comm.name}`** - {comm.description}\n"
-                        
-                    em.add_field(
-                        name = cog,
-                        value=commands_list + "‍",
-                        inline = False
-                    )
+                    all_categories += f"\n{cog}"
+
+            em.add_field(
+                name = ":diamond_shape_with_a_dot_inside: Categories",
+                value = all_categories,
+                inline = True
+            )
 
             dev = self.bot.get_user(224513210471022592)
             em.add_field(
                     name = ":information_source: Technical Info",
-                    value= f"**Developed by** - {dev.mention}\n**Programming Language** - Python\n**Framework** - Discord.py Commands",
-                    inline = False
+                    value= f"Developed by - {dev.mention}\nProgramming Language - Python\nFramework - Discord.py Commands",
+                    inline = True
             )
 
         else:
@@ -104,7 +102,7 @@ class Meta(commands.Cog, name = ":gear: Meta"):
                     self.aliases_section = ""
 
                 em.description = f"**{command.name.capitalize()}**\n\n{command.description}\n\n\
-                    Format: `@{self.bot.user.name}#{self.bot.user.discriminator} {command.name} {command.usage if command.usage is not None else ''}`\
+                    Format: `{self.bot.defaultPrefix}{command.name} {command.usage if command.usage is not None else ''}`\
                     \n\n{self.aliases_section}"
 
 
