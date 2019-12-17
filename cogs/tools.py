@@ -404,6 +404,7 @@ class Tools(commands.Cog, name = ":tools: Tools"):
         usage = "[code]",
         hidden = True
         )
+    @commands.is_owner()
     async def eval_fn(self, ctx, *, cmd):
         """Evaluates input.
         Input is interpreted as newline seperated statements.
