@@ -75,7 +75,7 @@ class Meta(commands.Cog, name = ":gear: Meta"):
                     all_categories += f"\n{cog}"
 
             em.add_field(
-                name = ":diamond_shape_with_a_dot_inside: Categories",
+                name = "Categories",
                 value = all_categories,
                 inline = True
             )
@@ -239,8 +239,6 @@ class Meta(commands.Cog, name = ":gear: Meta"):
         # Attach :02 to a time (Ex: {D:02}) to add the second 0
 
         await ctx.send(msg)
-
-        return
     
     @commands.command(
         name = "invite",
