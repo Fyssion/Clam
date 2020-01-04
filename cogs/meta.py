@@ -33,20 +33,17 @@ class Meta(commands.Cog, name = ":gear: Meta"):
     @commands.group(
         name = "help",
         description = "You're looking at it!",
-        aliases = ['commands', 'command', 'info', 'h'],
+        aliases = ['commands', 'command', 'h'],
         usage = "[command]",
         invoke_without_command = True
     )
     async def help_command(self, ctx, commd = "all"):
-        def check(ms):
-            return ms.channel == ctx.author.dm_channel and ms.author == ctx.author and ms.message == ctx.message and str(ms.emoji) == '❌'
-
         # Create an embed that will be filled in with information
         # depending on user input 
         em = discord.Embed(
             title = f"Help For {self.bot.user.name}",
             description = f"{self.bot.description}\n\n**Prefixes:** {self.bot.prefixes}\
-                \nFor **more info** on a **specific command**, use: **`{self.bot.defaultPrefix}help [command]`‍**\n‍",
+                \nFor **more info** on a **specific category**, use: **`{self.bot.defaultPrefix}help [category]`‍**\n‍",
             # color = 0x15DFEA,
             color = 0xFF95B0,
             timestamp = d.utcnow()
@@ -64,6 +61,7 @@ class Meta(commands.Cog, name = ":gear: Meta"):
 
         # If the user didn't specify a command, the full help command is sent
         if commd == "all":
+            all_categories = ""
             for cog in cogs:
                 cog_commands = self.bot.get_cog(cog).get_commands()
 
@@ -71,28 +69,47 @@ class Meta(commands.Cog, name = ":gear: Meta"):
                     pass
                 else:
 
-                    commands_list = ""
-                    for comm in cog_commands:
-                        if comm.hidden == False:
-                            commands_list += f"**`{comm.name}`** - {comm.description}\n"
-                        
-                    em.add_field(
-                        name = cog,
-                        value=commands_list + "‍",
-                        inline = False
-                    )
+                    all_categories += f"\n{cog}"
+
+            em.add_field(
+                name = "Categories",
+                value = all_categories,
+                inline = True
+            )
 
             dev = self.bot.get_user(224513210471022592)
             em.add_field(
                     name = ":information_source: Technical Info",
-                    value= f"**Developed by** - {dev.mention}\n**Programming Language** - Python\n**Framework** - Discord.py Commands",
-                    inline = False
+                    value= f"Developed by - {dev.mention}\nProgramming Language - Python\nFramework - Discord.py Commands",
+                    inline = True
             )
 
         else:
             all_commands_list = [command for command in self.bot.commands]
 
-            if commd.lower() in [command.name for command in self.bot.commands]:
+            cog_search_lowered = []
+            for cog in cogs:
+                if cog not in ["Jishaku"]:
+                    args = cog.split(" ")
+                    cog = args[1:]
+                    cog = "".join(cog)
+                    cog_search_lowered.append(cog.lower())
+
+            # cog_search_lowered = [cog[1:].lower() for cog in cogs]
+            if commd.lower() in cog_search_lowered:
+                cog_called = self.bot.get_cog(cogs[cog_search_lowered.index(commd.lower())])
+                commands_list = cog_called.get_commands()
+                help_text = f"**{cog_called.qualified_name}**\n\n"
+
+                for command in commands_list:
+                    help_text += f"**`{self.bot.defaultPrefix}{command.name}`** - {command.description}\n"
+
+                    if len(command.aliases) > 0:
+                        prefix_aliases = [f"`{self.bot.defaultPrefix}{a}`" for a in command.aliases]
+                        help_text += f"Aliases : {', '.join(prefix_aliases)}\n"
+                em.description = help_text
+
+            elif commd.lower() in [command.name for command in self.bot.commands]:
 
                 command = next((c for c in all_commands_list if c.name == commd.lower()), None) # Finds the command in the list based off the name
                 if command.hidden == True:
@@ -104,12 +121,12 @@ class Meta(commands.Cog, name = ":gear: Meta"):
                     self.aliases_section = ""
 
                 em.description = f"**{command.name.capitalize()}**\n\n{command.description}\n\n\
-                    Format: `@{self.bot.user.name}#{self.bot.user.discriminator} {command.name} {command.usage if command.usage is not None else ''}`\
+                    Format: `{self.bot.defaultPrefix}{command.name} {command.usage if command.usage is not None else ''}`\
                     \n\n{self.aliases_section}"
 
 
             else:
-                return await ctx.send("Invalid command specified.\nUse `help` to view list of all commands.")
+                return await ctx.send(f"Invalid category/command specified.\nUse `{self.bot.defaultPrefix}help` to view list of all categories and commands.")
 
 
         bot_message = await ctx.send(embed = em)
@@ -212,6 +229,36 @@ class Meta(commands.Cog, name = ":gear: Meta"):
         )
 
 
+    @commands.command(
+        name = "stats",
+        description = "Display statistics about the bot",
+        aliases = ["statistics"]
+    )
+    async def stats(self, ctx):
+        em = discord.Embed(
+            title = "Robot Clam Statistics",
+            color = 0xFF95B0,
+            timestamp = d.utcnow()
+        )
+        em.set_thumbnail(
+            url = self.bot.user.avatar_url
+        )
+        em.set_footer(
+            text = f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
+            icon_url = self.bot.user.avatar_url
+        )
+        dev = self.bot.get_user(224513210471022592)
+        em.add_field(name = ":gear: Developer", value = dev.mention)
+        em.add_field(name = ":adult: User Count", value = len(self.bot.users))
+        em.add_field(name = ":family: Server Count", value = len(self.bot.guilds))
+        em.add_field(name = ":speech_balloon: Channel Count", value = len(list(self.bot.get_all_channels())))
+        now = d.now()
+        startupt = self.bot.startup_time
+        up = now-startupt
+        em.add_field(name = "<:online:649270802088460299> Uptime", value = strfdelta(up, '`{D}D {H}H {M}M {S}S`'))
+        
+        await ctx.send(embed = em)
+
 
     @commands.command(
         name = "ping",
@@ -241,8 +288,6 @@ class Meta(commands.Cog, name = ":gear: Meta"):
         # Attach :02 to a time (Ex: {D:02}) to add the second 0
 
         await ctx.send(msg)
-
-        return
     
     @commands.command(
         name = "invite",
