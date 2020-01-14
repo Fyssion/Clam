@@ -9,7 +9,7 @@ import aiohttp
 
 def get_prefix(client, message):
     
-    prefixes = ['robo.', 'r.', 'Robo.', 'R.']
+    prefixes = ['r.']
 
     return commands.when_mentioned_or(*prefixes)(client, message)
 
@@ -43,10 +43,10 @@ class RoboClam(commands.Bot):
 
         self.reddit_id = self.data['reddit-id']
         self.reddit_secret = self.data['reddit-secret']
-        self.prefixes = ", ".join(['`r.`', '`R.`', '`robo.`', '`Robo.`', 'or when mentioned'])
+        self.prefixes = " ".join(['`r.`', 'or when mentioned'])
         self.defaultPrefix = "r."
 
-        self.cogsToLoad = ['cogs.meta', 'cogs.tools', 'cogs.reddit', 'cogs.fun', 'cogs.moderation']
+        self.cogsToLoad = ['cogs.meta', 'cogs.tools', 'cogs.reddit', 'cogs.fun', 'cogs.moderation', 'cogs.music']
     
     async def my_message(self, message):
         if message.content == f"<@{self.user.id}>":
@@ -64,7 +64,10 @@ class RoboClam(commands.Bot):
             self.load_extension(cog)
         self.load_extension("jishaku")
 
+        self.ordered_cogs = [c for c in self.cogs.keys()]
+
         self.session = aiohttp.ClientSession(loop=self.loop)
+
     
     def run(self):
         super().run(self.data['bot-token'], reconnect=True, bot=True)
