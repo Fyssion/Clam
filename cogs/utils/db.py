@@ -1,82 +1,110 @@
-import json
+import sqlite3
 
-class Profile:
-    def __init__(self, id):
-        self.id = id
+def create_connection(db_file):
+    """ create a database connection to the SQLite database
+        specified by db_file
+    :param db_file: database file
+    :return: Connection object or None
+    """
+    conn = None
+    try:
+        conn = sqlite3.connect(db_file)
+        return conn
+    except sqlite3.Error as e:
+        print(e)
 
-    def save(self):
-        add_profile(self)
-    def delete(self):
-        delete_profile(self)
+    return conn
 
-class Guild(Profile):
-    def __init__(self, id):
-        self.id = id
+def create_table(conn, sql_code):
+    """ create a table from the sql_code statement
+    :param conn: Connection object
+    :param sql_code: a CREATE TABLE statement
+    :return:
+    """
+    try:
+        c = conn.cursor()
+        c.execute(sql_code)
+    except sqlite3.Error as e:
+        print(e)
 
-database_file = "database.json"
+def create_project(conn, project):
+    """
+    Create a new project into the projects table
+    :param conn:
+    :param project:
+    :return: project id
+    """
+    sql = ''' INSERT INTO projects(name,begin_date,end_date)
+              VALUES(?,?,?) '''
+    cur = conn.cursor()
+    cur.execute(sql, project)
+    return cur.lastrowid
 
-def profile_to_data(profile, data):
-    data[str(profile.id)] = {
-        "name": profile.name,
-        "timezone": profile.timezone
-    }
-    if profile.last_conversation:
-        data[str(profile.id)]["last_conversation"] = profile.last_conversation
+def create_task(conn, task):
+    """
+    Create a new task
+    :param conn:
+    :param task:
+    :return:
+    """
+ 
+    sql = ''' INSERT INTO tasks(name,priority,status_id,project_id,begin_date,end_date)
+              VALUES(?,?,?,?,?,?) '''
+    cur = conn.cursor()
+    cur.execute(sql, task)
+    return cur.lastrowid
 
-    return data
-
-def data_to_profile(data, id):
-    if str(id) in data:
-        saved_usr = data[str(id)]
-        user = Profile(id)
-        user.name = saved_usr["name"]
-        user.timezone = saved_usr["timezone"]
-        if saved_usr["last_conversation"]:
-            user.last_conversation = saved_usr["last_conversation"]
-        return user
-
+def projects_and_tasks(database):
+ 
+    projects_table = """ CREATE TABLE IF NOT EXISTS projects (
+                                        id integer PRIMARY KEY,
+                                        name text NOT NULL,
+                                        begin_date text,
+                                        end_date text
+                                    ); """
+ 
+    tasks_table = """CREATE TABLE IF NOT EXISTS tasks (
+                                    id integer PRIMARY KEY,
+                                    name text NOT NULL,
+                                    priority integer,
+                                    status_id integer NOT NULL,
+                                    project_id integer NOT NULL,
+                                    begin_date text NOT NULL,
+                                    end_date text NOT NULL,
+                                    FOREIGN KEY (project_id) REFERENCES projects (id)
+                                );"""
+ 
+    # create a database connection
+    conn = create_connection(database)
+ 
+    # create tables
+    if conn is not None:
+        # create projects table
+        create_table(conn, projects_table)
+ 
+        # create tasks table
+        create_table(conn, tasks_table)
     else:
-        return None
+        print("Error! cannot create the database connection.")
 
+def add_data_to_projects(database):
+     # create a database connection
+    conn = create_connection(database)
+    with conn:
+        # create a new project
+        project = ('Cool App with SQLite & Python', '2020-01-01', '2020-01-30');
+        project_id = create_project(conn, project)
+ 
+        # tasks
+        task_1 = ('Analyze the requirements of the app', 1, 1, project_id, '2020-01-01', '2020-01-02')
+        task_2 = ('Confirm with user about the top requirements', 1, 1, project_id, '2020-01-03', '2020-01-05')
+ 
+        # create tasks
+        create_task(conn, task_1)
+        create_task(conn, task_2)
+    
 
-def add_profile(profile):
-    with open(database_file, 'r') as f:
-        data = json.load(f)
-
-    data = profile_to_data(profile, data)
-
-    with open(database_file, 'w') as f:
-        json.dump(data, f)
-
-update_profile = add_profile
-
-
-# def update_profile(profile):
-#     with open(database_file, 'r') as f:
-#         data = json.load(f)
-
-#     if str(id) in data:
-        
-
-#         with open(database_file, 'w') as f:
-#             json.dump(data, f)
-
-#     else:
-#         add_profile(profile)
-
-
-def get_profile(id):
-    with open(database_file, 'r') as f:
-        data = json.load(f)
-
-    return data_to_profile(data, id)
-
-
-def delete_profile(id):
-    with open(database_file, 'r') as f:
-        data = json.load(f)
-
-    if get_profile(id):
-        del data[str(id)]
-        with open(database_file, 'w') as f:
-            json.dump(data, f)
+if __name__ == '__main__':
+    database = "database.db"
+    # projects_and_tasks(database)
+    add_data_to_projects(database)
