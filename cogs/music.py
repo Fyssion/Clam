@@ -393,7 +393,7 @@ class Music(commands.Cog, name = ":notes: Music"):
 
         if ctx.voice_state.is_playing:
             ctx.voice_state.voice.stop()
-            await ctx.send(':stop_button: Stopped and queue cleared.')
+            await ctx.send('**:stop_button: Song stopped and queue cleared.**')
 
     @commands.command(name='skip', description = "Vote to skip a song. The requester can automatically skip.")
     async def _skip(self, ctx):
@@ -427,7 +427,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         """
 
         if len(ctx.voice_state.songs) == 0:
-            return await ctx.send('Empty queue.')
+            return await ctx.send('Queue is empty. Nothing to display!')
 
         items_per_page = 10
         pages = math.ceil(len(ctx.voice_state.songs) / items_per_page)
@@ -448,7 +448,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         """Shuffles the queue."""
 
         if len(ctx.voice_state.songs) == 0:
-            return await ctx.send('Empty queue.')
+            return await ctx.send('Queue is empty. Nothing to shuffle!')
 
         ctx.voice_state.songs.shuffle()
         await ctx.send("**:twisted_rightwards_arrows: Shuffled tracks**")
@@ -458,7 +458,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         """Removes a song from the queue at a given index."""
 
         if len(ctx.voice_state.songs) == 0:
-            return await ctx.send('Empty queue.')
+            return await ctx.send('Queue is empty. Nothing to remove!')
         
         to_be_removed = ctx.voice_state.songs[index - 1].source.title
         ctx.voice_state.songs.remove(index - 1)
@@ -481,12 +481,15 @@ class Music(commands.Cog, name = ":notes: Music"):
             await ctx.send(f"**:repeat_one: :x: No longer looping** `{ctx.voice_state.current.source.title}`")
 
 
-    @commands.command(name='play', description = "Search for a song and play it.", aliases = ['p', 'yt'])
+    @commands.command(name='play', description = "Search for a song and play it.", aliases = ['p', 'yt'], usage = "[song]")
     async def _play(self, ctx, *, search: str = None):
 
-        if not search and ctx.voice_state.is_playing and ctx.voice_state.voice.is_paused():
+        if not search and ctx.voice_state.is_playing and ctx.voice_state.voice.is_paused()\
+             and ctx.author.guild_permissions.manage_guild:
             ctx.voice_state.voice.resume()
             return await ctx.send(f"**:arrow_forward: Resuming** `{ctx.voice_state.current.source.title}`")
+        if not search:
+            return await ctx.send("Please specify a song to play/search for.")
 
         if not ctx.voice_state.voice:
             await ctx.invoke(self._join)
@@ -497,7 +500,7 @@ class Music(commands.Cog, name = ":notes: Music"):
             try:
                 source = await YTDLSource.create_source(ctx, search, loop=self.bot.loop)
             except YTDLError as e:
-                await ctx.send('An error occurred while processing this request: {}'.format(str(e)))
+                await ctx.send(f"An error occurred while processing this request: ```py {str(e)}```")
             else:
                 song = Song(source)
 
