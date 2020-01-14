@@ -24,10 +24,13 @@ def strfdelta(tdelta, fmt):
     return f.format(fmt, **d)
 
 class Meta(commands.Cog, name = ":gear: Meta"):
+    """Everything to do with the bot itself."""
     
     def __init__(self, bot):
         self.bot = bot
         self.log = self.bot.log
+        self.more_info_category = f"For **more info** on a **specific category**, use: **`{self.bot.defaultPrefix}help [category]`‍**"
+        self.more_info_cmd = f"For **more info** on a **specific command**, use: **`{self.bot.defaultPrefix}help [command]`‍**"
 
     
     @commands.group(
@@ -38,12 +41,10 @@ class Meta(commands.Cog, name = ":gear: Meta"):
         invoke_without_command = True
     )
     async def help_command(self, ctx, commd = "all"):
-        # Create an embed that will be filled in with information
-        # depending on user input 
         em = discord.Embed(
-            title = f"Help For {self.bot.user.name}",
-            description = f"{self.bot.description}\n\n**Prefixes:** {self.bot.prefixes}\
-                \nFor **more info** on a **specific category**, use: **`{self.bot.defaultPrefix}help [category]`‍**\n‍",
+            title = f"Help for {self.bot.user.name}",
+            description = f"{self.bot.description}\n\n**Prefix:** {self.bot.prefixes}. Ex: `{self.bot.defaultPrefix}help`\
+                \n{self.more_info_category}\n",
             # color = 0x15DFEA,
             color = 0xFF95B0,
             timestamp = d.utcnow()
@@ -57,12 +58,19 @@ class Meta(commands.Cog, name = ":gear: Meta"):
         )
         
     
-        cogs = [c for c in self.bot.cogs.keys()]
+        cogs = [c for c in self.bot.cogs.values()]
+        cog_names = [c for c in self.bot.cogs.keys()]
+        cog_class_names = []
+        for cog in cog_names:
+            args = cog.split(" ")
+            cog = args[1:]
+            cog = "".join(cog)
+            cog_class_names.append(cog)
 
         # If the user didn't specify a command, the full help command is sent
         if commd == "all":
             all_categories = ""
-            for cog in cogs:
+            for cog in self.bot.ordered_cogs:
                 cog_commands = self.bot.get_cog(cog).get_commands()
 
                 if cog == "Jishaku":
@@ -87,26 +95,23 @@ class Meta(commands.Cog, name = ":gear: Meta"):
         else:
             all_commands_list = [command for command in self.bot.commands]
 
-            cog_search_lowered = []
-            for cog in cogs:
-                if cog not in ["Jishaku"]:
-                    args = cog.split(" ")
-                    cog = args[1:]
-                    cog = "".join(cog)
-                    cog_search_lowered.append(cog.lower())
+            cog_search_lowered = [c.lower() for c in cog_class_names]
 
             # cog_search_lowered = [cog[1:].lower() for cog in cogs]
             if commd.lower() in cog_search_lowered:
-                cog_called = self.bot.get_cog(cogs[cog_search_lowered.index(commd.lower())])
+                cog_called = self.bot.get_cog(cog_names[cog_search_lowered.index(commd.lower())])
                 commands_list = cog_called.get_commands()
-                help_text = f"**{cog_called.qualified_name}**\n\n"
+                help_text = f"**{cog_called.qualified_name}**\n"
+                help_text += (cog_called.description + "\n\n" if cog_called.description is not None else "\n")
 
                 for command in commands_list:
-                    help_text += f"**`{self.bot.defaultPrefix}{command.name}`** - {command.description}\n"
+                    if not command.hidden:
+                        help_text += f"**`{self.bot.defaultPrefix}{command.name}`** - {command.description}\n"
 
-                    if len(command.aliases) > 0:
-                        prefix_aliases = [f"`{self.bot.defaultPrefix}{a}`" for a in command.aliases]
-                        help_text += f"Aliases : {', '.join(prefix_aliases)}\n"
+                        if len(command.aliases) > 0:
+                            prefix_aliases = [f"`{self.bot.defaultPrefix}{a}`" for a in command.aliases]
+                            help_text += f"Aliases : {', '.join(prefix_aliases)}\n"
+                help_text += f"\n{self.more_info_cmd}"
                 em.description = help_text
 
             elif commd.lower() in [command.name for command in self.bot.commands]:
@@ -115,14 +120,11 @@ class Meta(commands.Cog, name = ":gear: Meta"):
                 if command.hidden == True:
                     return await ctx.send("That command is hidden!")
 
-                if len(command.aliases) != 0:
-                    self.aliases_section = f"Aliases: {', '.join(command.aliases)}"
-                else:
-                    self.aliases_section = ""
-
-                em.description = f"**{command.name.capitalize()}**\n\n{command.description}\n\n\
-                    Format: `{self.bot.defaultPrefix}{command.name} {command.usage if command.usage is not None else ''}`\
-                    \n\n{self.aliases_section}"
+                em.description = f"**{command.name.capitalize()}**\n{command.description}\n\n\
+                    Format: `{self.bot.defaultPrefix}{command.name}{' ' + command.usage if command.usage is not None else ''}`\n"
+                if len(command.aliases) > 0:
+                    prefix_aliases = [f"`{self.bot.defaultPrefix}{a}`" for a in command.aliases]
+                    em.description += f"Aliases : {', '.join(prefix_aliases)}\n"
 
 
             else:
@@ -262,8 +264,7 @@ class Meta(commands.Cog, name = ":gear: Meta"):
 
     @commands.command(
         name = "ping",
-        description = "Ping command; replies with 'Pong!'",
-        aliases = ['p']
+        description = "Ping command; replies with 'Pong!'"
     )
     async def ping_command(self, ctx):
         

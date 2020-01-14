@@ -1,6 +1,7 @@
 from discord.ext import commands
 import discord
 from datetime import datetime as d
+import time
 import re
 from .utils import fuzzy
 from .utils.utils import SphinxObjectFileReader
@@ -18,6 +19,7 @@ def snowstamp(snowflake):
 
 
 class Tools(commands.Cog, name = ":tools: Tools"):
+    """Useful Discord tools."""
     
     def __init__(self, bot):
         self.bot = bot
@@ -48,6 +50,11 @@ class Tools(commands.Cog, name = ":tools: Tools"):
             self.log.info(f"{str(ctx.author)} successfully used the userinfo command on '{user}'")
 
         member = ctx.guild.get_member(user.id)
+
+        # def time_ago(user, dt):
+        #     if dt is None:
+        #         return ""
+        #     return f"{snowstamp(user.id)}\n({time.human_timedelta(dt, accuracy=3)})"
 
         desc = ""
         if user == self.bot.user:
@@ -163,6 +170,16 @@ class Tools(commands.Cog, name = ":tools: Tools"):
         self.em.add_field(
             name = ":earth_americas: Region",
             value = str(ctx.guild.region).replace("-", " ").upper(),
+            inline = True
+        )
+        self.em.add_field(
+            name = ":family: Members",
+            value = len(ctx.guild.members),
+            inline = True
+        )
+        self.em.add_field(
+            name = ":speech_balloon: Channels",
+            value = f"<:text_channel:661798072384225307> {len(ctx.guild.text_channels)} • <:voice_channel:665577300552843294> {len(ctx.guild.voice_channels)}",
             inline = True
         )
         
@@ -358,7 +375,6 @@ class Tools(commands.Cog, name = ":tools: Tools"):
 
     @commands.group(
         aliases=['rtfm', 'rtfd'],
-        hidden = True,
         invoke_without_command=True,
         description = "Gives you a documentation link for a discord.py entity."
         )
