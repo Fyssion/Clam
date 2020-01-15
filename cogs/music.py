@@ -269,9 +269,16 @@ class VoiceState:
             await self.voice.disconnect()
             self.voice = None
 
+def is_music_master():
+    def predicate(ctx):
+        author = ctx.author
+        role_cap = discord.utils.get(ctx.guild.roles, name="DJ")
+        role_lower = role = discord.utils.get(ctx.guild.roles, name="dj")
+        return author.guild_permissions.manage_guild or role_cap in author.roles or role_lower in author.roles
+    return commands.check(predicate)
 
 class Music(commands.Cog, name = ":notes: Music"):
-    """Music cog is not yet developed. Check back later."""
+    """Listen to music in any voice channel!\nUse `r.play` to play a song."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.voice_states = {}
@@ -298,7 +305,41 @@ class Music(commands.Cog, name = ":notes: Music"):
         ctx.voice_state = self.get_voice_state(ctx)
 
     async def cog_command_error(self, ctx: commands.Context, error: commands.CommandError):
-        await ctx.send('An error occurred: {}'.format(str(error)))
+        await ctx.send(f"Oops: {str(error)}")
+        print(str(error))
+
+    async def votes(self, ctx, cmd: str, func, param = None):
+        async def run_func():
+            if param:
+                await func(param)
+            else:
+                await func()
+        voter = ctx.message.author
+        if_is_requester = (voter == ctx.voice_state.current.requester)
+        if_has_perms = voter.guild_permissions.manage_guild
+        if len(ctx.voice_state.voice.channel.members) < 5:
+            if len(ctx.voice_state.voice.channel.members) < 3:
+                is_only_user = True
+            else:
+                is_only_user = False
+                required_votes = len(ctx.voice_state.voice.channel.members) - 1
+        else:
+            is_only_user = False
+            required_votes = 3
+        if if_is_requester or if_has_perms or is_only_user:
+            await run_func()
+
+        elif voter.id not in ctx.voice_state.skip_votes:
+            ctx.voice_state.skip_votes.add(voter.id)
+            total_votes = len(ctx.voice_state.skip_votes)
+
+            if total_votes >= required_votes:
+                await run_func()
+            else:
+                await ctx.send(f'{cmd.capitalize()} vote added, currently at `{total_votes}/{required_votes}`')
+
+        else:
+            await ctx.send(f'You have already voted to {cmd}.')
 
     @commands.command(name='join', description = "Joins a voice channel.", aliases = ['connect'], invoke_without_subcommand=True)
     async def _join(self, ctx: commands.Context):
@@ -311,7 +352,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         ctx.voice_state.voice = await destination.connect()
 
     @commands.command(name='summon', description = "Summons the bot to a voice channel. If no channel was specified, it joins your channel.")
-    @commands.has_permissions(manage_guild=True)
+    @is_music_master()
     async def _summon(self, ctx, *, channel: discord.VoiceChannel = None):
 
         if not channel and not ctx.author.voice:
@@ -325,7 +366,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         ctx.voice_state.voice = await destination.connect()
 
     @commands.command(name='leave', description = "Clears the queue and leaves the voice channel.", aliases=['disconnect'])
-    @commands.has_permissions(manage_guild=True)
+    @is_music_master()
     async def _leave(self, ctx):
         
 
@@ -370,7 +411,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         await ctx.send(embed=em)
 
     @commands.command(name='pause', description = "Pauses the currently playing song.")
-    @commands.has_permissions(manage_guild=True)
+    @is_music_master()
     async def _pause(self, ctx):
 
         if ctx.voice_state.is_playing and ctx.voice_state.voice.is_playing():
@@ -378,7 +419,7 @@ class Music(commands.Cog, name = ":notes: Music"):
             await ctx.send(f'**:pause_button: Paused** `{ctx.voice_state.current.source.title}`')
 
     @commands.command(name='resume', description = "Resumes a currently paused song.")
-    @commands.has_permissions(manage_guild=True)
+    @is_music_master()
     async def _resume(self, ctx):
 
         if ctx.voice_state.is_playing and ctx.voice_state.voice.is_paused():
@@ -386,7 +427,7 @@ class Music(commands.Cog, name = ":notes: Music"):
             await ctx.send(f"**:arrow_forward: Resuming** `{ctx.voice_state.current.source.title}`")
 
     @commands.command(name='stop', description = "Stops playing song and clears the queue.")
-    @commands.has_permissions(manage_guild=True)
+    @is_music_master()
     async def _stop(self, ctx):
 
         ctx.voice_state.songs.clear()
@@ -397,34 +438,17 @@ class Music(commands.Cog, name = ":notes: Music"):
 
     @commands.command(name='skip', description = "Vote to skip a song. The requester can automatically skip.")
     async def _skip(self, ctx):
-
-        if not ctx.voice_state.is_playing:
-            return await ctx.send('Not playing any music right now.')
-
-        voter = ctx.message.author
-        if_has_perms = voter.guild_permissions.manage_guild
-        if voter == ctx.voice_state.current.requester or if_has_perms:
+        async def skip_song():
             await ctx.message.add_reaction('⏭')
             ctx.voice_state.skip()
+        
+        if not ctx.voice_state.is_playing:
+            return await ctx.send("Nothing is playing. There is nothing to skip!")
 
-        elif voter.id not in ctx.voice_state.skip_votes:
-            ctx.voice_state.skip_votes.add(voter.id)
-            total_votes = len(ctx.voice_state.skip_votes)
+        await self.votes(ctx, "skip", skip_song)
 
-            if total_votes >= 3:
-                await ctx.message.add_reaction('⏭')
-                ctx.voice_state.skip()
-            else:
-                await ctx.send(f'Skip vote added, currently at **{total_votes}/3**')
-
-        else:
-            await ctx.send('You have already voted to skip this song.')
-
-    @commands.command(name='queue')
+    @commands.command(name='queue', description = "Shows the player's queue. You can optionally select the page.", usage = "<page #>")
     async def _queue(self, ctx, *, page: int = 1):
-        """Shows the player's queue.
-        You can optionally specify the page to show. Each page contains 10 elements.
-        """
 
         if len(ctx.voice_state.songs) == 0:
             return await ctx.send('Queue is empty. Nothing to display!')
@@ -439,36 +463,36 @@ class Music(commands.Cog, name = ":notes: Music"):
         for i, song in enumerate(ctx.voice_state.songs[start:end], start=start):
             queue += f'`{i+1}.` **[{song.source.title}]({song.source.url})**\n'
 
-        embed = discord.Embed(title = "Queue",description=f'**{len(ctx.voice_state.songs)} Track(s):**\n\n{queue}')
+        embed = discord.Embed(title = "Queue",description=f'**{len(ctx.voice_state.songs)} Song(s):**\n\n{queue}')
         embed.set_footer(text=f'Page {page} of {pages}')
         await ctx.send(embed=embed)
 
-    @commands.command(name='shuffle')
+    @commands.command(name='shuffle', description = "Shuffles the queue.")
     async def _shuffle(self, ctx):
-        """Shuffles the queue."""
+
+        async def shuffle_queue():
+            ctx.voice_state.songs.shuffle()
+            await ctx.send("**:twisted_rightwards_arrows: Shuffled songs**")
 
         if len(ctx.voice_state.songs) == 0:
             return await ctx.send('Queue is empty. Nothing to shuffle!')
 
-        ctx.voice_state.songs.shuffle()
-        await ctx.send("**:twisted_rightwards_arrows: Shuffled tracks**")
+        await self.votes(ctx, "shuffle", shuffle_queue)
 
-    @commands.command(name='remove')
+    @commands.command(name='remove', description = "Removes a song from the queue at a given index.", usage = "[song #]")
     async def _remove(self, ctx, index: int):
-        """Removes a song from the queue at a given index."""
+        async def remove_song(index):
+            to_be_removed = ctx.voice_state.songs[index - 1].source.title
+            ctx.voice_state.songs.remove(index - 1)
+            await ctx.send(f"**:wastebasket: Removed** `{to_be_removed}`")
 
         if len(ctx.voice_state.songs) == 0:
             return await ctx.send('Queue is empty. Nothing to remove!')
         
-        to_be_removed = ctx.voice_state.songs[index - 1].source.title
-        ctx.voice_state.songs.remove(index - 1)
-        await ctx.send(f"**:wastebasket: Removed** `{to_be_removed}`")
+        await self.votes(ctx, "remove", remove_song, index)
 
-    @commands.command(name='loop')
+    @commands.command(name='loop', description = "Loops/unloops the currently playing song.")
     async def _loop(self, ctx):
-        """Loops the currently playing song.
-        Invoke this command again to unloop the song.
-        """
 
         if not ctx.voice_state.is_playing:
             return await ctx.send('Nothing being played at the moment.')

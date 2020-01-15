@@ -106,7 +106,7 @@ class Meta(commands.Cog, name = ":gear: Meta"):
 
                 for command in commands_list:
                     if not command.hidden:
-                        help_text += f"**`{self.bot.defaultPrefix}{command.name}`** - {command.description}\n"
+                        help_text += f"**`{self.bot.defaultPrefix}{command.name}{' ' + command.usage if command.usage is not None else ''}`** - {command.description}\n"
 
                         if len(command.aliases) > 0:
                             prefix_aliases = [f"`{self.bot.defaultPrefix}{a}`" for a in command.aliases]
