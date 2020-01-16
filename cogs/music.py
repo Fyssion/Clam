@@ -608,11 +608,11 @@ class Music(commands.Cog, name = ":notes: Music"):
             await ctx.send(f"An error occurred while processing this request: ```py {str(e)}```")
         else:
             for source in playlist:
-            song = Song(source)
+                song = Song(source)
 
-            await ctx.voice_state.songs.put(song)
-            if ctx.voice_state.is_playing:
-                await ctx.send(f'**:page_facing_up: Enqueued** {str(source)}')
+                await ctx.voice_state.songs.put(song)
+                if ctx.voice_state.is_playing:
+                    await ctx.send(f'**:page_facing_up: Enqueued** {str(source)}')
 
 
     @commands.command(name='play', description = "Search for a song and play it.", aliases = ['p', 'yt'], usage = "[song]")
@@ -634,8 +634,8 @@ class Music(commands.Cog, name = ":notes: Music"):
             if len(re.findall(youtube_urls, search)) > 0:
                 if "list=" in search:
                     # TODO: Add youtube emoji
-                    await ctx.send(f"**:closed_book: Fetching YouTube playlist {search}**)
-                    await fetch_yt_playlist(ctx, search)
+                    await ctx.send(f"**:closed_book: Fetching YouTube playlist** `{search}`")
+                    await self.fetch_yt_playlist(ctx, search)
                     return
             else:
                 await ctx.send(f"**:green_book: Fetching hastebin** `{search}`")
