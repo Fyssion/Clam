@@ -9,6 +9,7 @@ import itertools
 import math
 import random
 from async_timeout import timeout
+import re
 
 
 """
@@ -226,6 +227,14 @@ class VoiceState:
 
     @property
     def is_playing(self):
+        if self.voice:
+            if self.voice.is_paused(): # The player is techincally in the middle of playing a song
+                return True
+            return self.voice.is_playing() == True and self.current is not None
+        return self.voice is not None and self.current is not None
+
+    @property
+    def has_started(self):
         return self.voice is not None and self.current is not None
 
     async def audio_player_task(self):
@@ -233,6 +242,11 @@ class VoiceState:
             self.next.clear()
 
             if not self.loop:
+
+                # if self.songs.qsize() < 1:
+                #     self.bot.loop.create_task(self.stop())
+                #     return
+                
                 # Try to get the next song within 3 minutes.
                 # If no song will be added to the queue in time,
                 # the player will disconnect due to performance
@@ -246,7 +260,10 @@ class VoiceState:
 
             self.current.source.volume = self._volume
             self.voice.play(self.current.source, after=self.play_next_song)
-            await self.current.source.channel.send(self.current.create_message())
+            if not self.loop:
+                await self.current.source.channel.send(self.current.create_message())
+            # else:
+            #     await self.current.source.channel.send("Looping...")
 
             await self.next.wait()
 
@@ -269,7 +286,7 @@ class VoiceState:
             await self.voice.disconnect()
             self.voice = None
 
-def is_music_master():
+def is_dj():
     def predicate(ctx):
         author = ctx.author
         role_cap = discord.utils.get(ctx.guild.roles, name="DJ")
@@ -352,7 +369,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         ctx.voice_state.voice = await destination.connect()
 
     @commands.command(name='summon', description = "Summons the bot to a voice channel. If no channel was specified, it joins your channel.")
-    @is_music_master()
+    @is_dj()
     async def _summon(self, ctx, *, channel: discord.VoiceChannel = None):
 
         if not channel and not ctx.author.voice:
@@ -366,7 +383,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         ctx.voice_state.voice = await destination.connect()
 
     @commands.command(name='leave', description = "Clears the queue and leaves the voice channel.", aliases=['disconnect'])
-    @is_music_master()
+    @is_dj()
     async def _leave(self, ctx):
         
 
@@ -384,6 +401,7 @@ class Music(commands.Cog, name = ":notes: Music"):
 
     @commands.command(name='volume', description = "Sets the volume of the player.")
     async def _volume(self, ctx, *, volume: int = None):
+        return await ctx.send(":warning: :( Sorry, this feature is currently under maintenance. Check back later.")
 
         if not volume:
             volume = ctx.voice_state.volume * 100
@@ -411,7 +429,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         await ctx.send(embed=em)
 
     @commands.command(name='pause', description = "Pauses the currently playing song.")
-    @is_music_master()
+    @is_dj()
     async def _pause(self, ctx):
 
         if ctx.voice_state.is_playing and ctx.voice_state.voice.is_playing():
@@ -419,7 +437,7 @@ class Music(commands.Cog, name = ":notes: Music"):
             await ctx.send(f'**:pause_button: Paused** `{ctx.voice_state.current.source.title}`')
 
     @commands.command(name='resume', description = "Resumes a currently paused song.")
-    @is_music_master()
+    @is_dj()
     async def _resume(self, ctx):
 
         if ctx.voice_state.is_playing and ctx.voice_state.voice.is_paused():
@@ -427,7 +445,7 @@ class Music(commands.Cog, name = ":notes: Music"):
             await ctx.send(f"**:arrow_forward: Resuming** `{ctx.voice_state.current.source.title}`")
 
     @commands.command(name='stop', description = "Stops playing song and clears the queue.")
-    @is_music_master()
+    @is_dj()
     async def _stop(self, ctx):
 
         ctx.voice_state.songs.clear()
@@ -493,6 +511,8 @@ class Music(commands.Cog, name = ":notes: Music"):
 
     @commands.command(name='loop', description = "Loops/unloops the currently playing song.")
     async def _loop(self, ctx):
+
+        return await ctx.send(":warning: :( Sorry, this feature is currently under maintenance. Check back later.")
 
         if not ctx.voice_state.is_playing:
             return await ctx.send('Nothing being played at the moment.')
