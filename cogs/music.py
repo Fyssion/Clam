@@ -401,7 +401,7 @@ class Music(commands.Cog, name = ":notes: Music"):
 
     @commands.command(name='volume', description = "Sets the volume of the player.")
     async def _volume(self, ctx, *, volume: int = None):
-        return await ctx.send(":warning: :( Sorry, this feature is currently under maintenance. Check back later.")
+        return await ctx.send("To change the volume:\nRight click on me in the voice channel, and adjust the `User Volume` slider.")
 
         if not volume:
             volume = ctx.voice_state.volume * 100
@@ -524,6 +524,46 @@ class Music(commands.Cog, name = ":notes: Music"):
         else:
             await ctx.send(f"**:repeat_one: :x: No longer looping** `{ctx.voice_state.current.source.title}`")
 
+    
+    async def get_haste(self, url='https://hastebin.com'):
+        args = url.split(".com/")
+        args.insert(1, ".com/raw/")
+        url = "".join(args)
+        try:
+            async with timeout(10):
+                async with self.bot.session.get(url) as resp:
+                    f = await resp.read()
+        except asyncio.TimeoutError:
+            await ctx.send(":warning: Could not fetch data from hastebin. Is the site down? Try https://www.pastebin.com")
+            return None
+        async with self.bot.session.get(url) as resp:
+            f = await resp.read()
+            f = f.decode("utf-8")
+            print(f"File:\n-------\n{f}\n-------\n")
+            return f
+
+    async def hastebin_playlist(self, ctx, search):
+        output = await self.get_haste(search)
+        if not output:
+            return
+        youtube_urls = "(?:https?://)?(?:www.)?(?:youtube.com|youtu.be)/(?:watch\?v=)?([^\s]+)"
+        if output == "404: Not Found":
+            return await ctx.send(":warning: This is not a hastebin or hastebin-like website.")
+        if len(re.findall(youtube_urls, output)) == 0:
+            return await ctx.send(":warning: There are no YouTube URLS in this bin.")
+        videos = output.splitlines()
+        for video in videos:
+            try:
+                source = await YTDLSource.create_source(ctx, video, loop=self.bot.loop)
+            except YTDLError as e:
+                await ctx.send(f"An error occurred while processing this request: ```py {str(e)}```")
+            else:
+                song = Song(source)
+
+                await ctx.voice_state.songs.put(song)
+                if ctx.voice_state.is_playing:
+                    await ctx.send(f'**:page_facing_up: Enqueued** {str(source)}')
+
 
     @commands.command(name='play', description = "Search for a song and play it.", aliases = ['p', 'yt'], usage = "[song]")
     async def _play(self, ctx, *, search: str = None):
@@ -537,6 +577,16 @@ class Music(commands.Cog, name = ":notes: Music"):
 
         if not ctx.voice_state.voice:
             await ctx.invoke(self._join)
+
+        urls = "http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
+        if len(re.findall(urls, search)) > 0:
+            youtube_urls = "(?:https?://)?(?:www.)?(?:youtube.com|youtu.be)/(?:watch\?v=)?([^\s]+)"
+            if len(re.findall(youtube_urls, search)) > 0:
+                pass
+            else:
+                await ctx.send(f"**:green_book: Fetching hastebin** `{search}`")
+                await self.hastebin_playlist(ctx, search)
+                return
 
         await ctx.send(f"**:mag: Searching** `{search}`")
 

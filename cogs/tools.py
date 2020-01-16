@@ -468,6 +468,8 @@ class Tools(commands.Cog, name = ":tools: Tools"):
         result = (await eval(f"{fn_name}()", env))
         await ctx.send(result)
 
+
+
    
 
 def setup(bot):
