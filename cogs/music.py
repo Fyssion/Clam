@@ -42,7 +42,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         'audioformat': 'mp3',
         'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
         'restrictfilenames': True,
-        'noplaylist': True,
+        'noplaylist': False,
         'nocheckcertificate': True,
         'ignoreerrors': False,
         'logtostderr': False,
@@ -85,7 +85,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return f"`{self.title}`"
 
     @classmethod
-    async def create_source(cls, ctx: commands.Context, search: str, *, loop: asyncio.BaseEventLoop = None):
+    async def create_source(cls, ctx: commands.Context, search: str, *, loop: asyncio.BaseEventLoop = None, playlist = False):
         loop = loop or asyncio.get_event_loop()
 
         partial = functools.partial(cls.ytdl.extract_info, search, download=False, process=False)
@@ -124,6 +124,38 @@ class YTDLSource(discord.PCMVolumeTransformer):
                     raise YTDLError('Couldn\'t retrieve any matches for `{}`'.format(webpage_url))
 
         return cls(ctx, discord.FFmpegPCMAudio(info['url'], **cls.FFMPEG_OPTIONS), data=info)
+    
+    
+    @classmethod
+    async def get_playlist(cls, ctx: commands.Context, search: str, *, loop: asyncio.BaseEventLoop = None, playlist = False):
+        loop = loop or asyncio.get_event_loop()
+
+        partial = functools.partial(cls.ytdl.extract_info, search, download=False)
+        data = await loop.run_in_executor(None, partial)
+
+        if data is None:
+            raise YTDLError('Couldn\'t find anything that matches `{}`'.format(search))
+
+        if 'entries' not in data:
+            data_list = data
+        else:
+            data_list = []
+            for entry in data['entries']:
+                if entry:
+                    data_list.append(entry)
+                    
+
+            if len(playlist) == 0:
+                raise YTDLError("Playlist is empty")
+                
+        playlist = []
+        for video in data_list:
+            source = cls(ctx, discord.FFmpegPCMAudio(viddo['url'], **cls.FFMPEG_OPTIONS), data=video)
+            playlist.append(source)
+
+
+        return playlist
+
 
     @staticmethod
     def parse_duration(duration: int):
@@ -568,6 +600,19 @@ class Music(commands.Cog, name = ":notes: Music"):
                 await ctx.voice_state.songs.put(song)
                 if ctx.voice_state.is_playing:
                     await ctx.send(f'**:page_facing_up: Enqueued** {str(source)}')
+                    
+    async def fetch_yt_playlist(self, ctx, url):
+        try:
+            playlist = await YTDLSource.get_playlist(ctx, search, loop=self.bot.loop)
+        except YTDLError as e:
+            await ctx.send(f"An error occurred while processing this request: ```py {str(e)}```")
+        else:
+            for source in playlist:
+            song = Song(source)
+
+            await ctx.voice_state.songs.put(song)
+            if ctx.voice_state.is_playing:
+                await ctx.send(f'**:page_facing_up: Enqueued** {str(source)}')
 
 
     @commands.command(name='play', description = "Search for a song and play it.", aliases = ['p', 'yt'], usage = "[song]")
@@ -582,17 +627,21 @@ class Music(commands.Cog, name = ":notes: Music"):
 
         if not ctx.voice_state.voice:
             await ctx.invoke(self._join)
-
+        
         urls = "http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
         if len(re.findall(urls, search)) > 0:
             youtube_urls = "(?:https?://)?(?:www.)?(?:youtube.com|youtu.be)/(?:watch\?v=)?([^\s]+)"
             if len(re.findall(youtube_urls, search)) > 0:
-                pass
+                if "list=" in search:
+                    # TODO: Add youtube emoji
+                    await ctx.send(f"**:closed_book: Fetching YouTube playlist {search}**)
+                    await fetch_yt_playlist(ctx, search)
+                    return
             else:
                 await ctx.send(f"**:green_book: Fetching hastebin** `{search}`")
                 await self.hastebin_playlist(ctx, search)
                 return
-
+                                   
         await ctx.send(f"**:mag: Searching** `{search}`")
 
         async with ctx.typing():
