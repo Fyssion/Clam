@@ -150,7 +150,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
                 
         playlist = []
         for video in data_list:
-            source = cls(ctx, discord.FFmpegPCMAudio(viddo['url'], **cls.FFMPEG_OPTIONS), data=video)
+            source = cls(ctx, discord.FFmpegPCMAudio(video['url'], **cls.FFMPEG_OPTIONS), data=video)
             playlist.append(source)
 
 
@@ -322,7 +322,7 @@ def is_dj():
     def predicate(ctx):
         author = ctx.author
         role_cap = discord.utils.get(ctx.guild.roles, name="DJ")
-        role_lower = role = discord.utils.get(ctx.guild.roles, name="dj")
+        role_lower = discord.utils.get(ctx.guild.roles, name="dj")
         return author.guild_permissions.manage_guild or role_cap in author.roles or role_lower in author.roles
     return commands.check(predicate)
 
@@ -572,7 +572,7 @@ class Music(commands.Cog, name = ":notes: Music"):
                 async with self.bot.session.get(url) as resp:
                     f = await resp.read()
         except asyncio.TimeoutError:
-            await ctx.send(":warning: Could not fetch data from hastebin. Is the site down? Try https://www.pastebin.com")
+            raise TimeoutError(":warning: Could not fetch data from hastebin. Is the site down? Try https://www.pastebin.com")
             return None
         async with self.bot.session.get(url) as resp:
             f = await resp.read()
@@ -603,7 +603,7 @@ class Music(commands.Cog, name = ":notes: Music"):
                     
     async def fetch_yt_playlist(self, ctx, url):
         try:
-            playlist = await YTDLSource.get_playlist(ctx, search, loop=self.bot.loop)
+            playlist = await YTDLSource.get_playlist(ctx, url, loop=self.bot.loop)
         except YTDLError as e:
             await ctx.send(f"An error occurred while processing this request: ```py {str(e)}```")
         else:
