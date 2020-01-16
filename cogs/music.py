@@ -526,8 +526,14 @@ class Music(commands.Cog, name = ":notes: Music"):
 
     
     async def get_haste(self, url='https://hastebin.com'):
-        args = url.split(".com/")
-        args.insert(1, ".com/raw/")
+        if ".com" in url:
+            args = url.split(".com/")
+            args.insert(1, ".com/raw/")
+        elif ".io" in url: # Pastie.io in particular
+            args = url.split(".io/")
+            args.insert(1, ".io/raw/")
+        else:
+            url += "/raw"
         url = "".join(args)
         try:
             async with timeout(10):
@@ -539,7 +545,6 @@ class Music(commands.Cog, name = ":notes: Music"):
         async with self.bot.session.get(url) as resp:
             f = await resp.read()
             f = f.decode("utf-8")
-            print(f"File:\n-------\n{f}\n-------\n")
             return f
 
     async def hastebin_playlist(self, ctx, search):
