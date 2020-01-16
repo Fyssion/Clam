@@ -85,7 +85,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return f"`{self.title}`"
 
     @classmethod
-    async def create_source(cls, ctx: commands.Context, search: str, *, loop: asyncio.BaseEventLoop = None, playlist = False):
+    async def create_source(cls, ctx: commands.Context, search: str, *, loop: asyncio.BaseEventLoop = None):
         loop = loop or asyncio.get_event_loop()
 
         partial = functools.partial(cls.ytdl.extract_info, search, download=False, process=False)
@@ -127,7 +127,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
     
     
     @classmethod
-    async def get_playlist(cls, ctx: commands.Context, search: str, *, loop: asyncio.BaseEventLoop = None, playlist = False):
+    async def get_playlist(cls, ctx: commands.Context, search: str, *, loop: asyncio.BaseEventLoop = None):
         loop = loop or asyncio.get_event_loop()
 
         partial = functools.partial(cls.ytdl.extract_info, search, download=False)
@@ -145,7 +145,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
                     data_list.append(entry)
                     
 
-            if len(playlist) == 0:
+            if len(data_list) == 0:
                 raise YTDLError("Playlist is empty")
                 
         playlist = []
@@ -607,12 +607,13 @@ class Music(commands.Cog, name = ":notes: Music"):
         except YTDLError as e:
             await ctx.send(f"An error occurred while processing this request: ```py {str(e)}```")
         else:
-            for source in playlist:
+            msg = "**:page_facing_up: Enqueued:**"
+            for i, source in enumerate(playlist):
                 song = Song(source)
 
                 await ctx.voice_state.songs.put(song)
-                if ctx.voice_state.is_playing:
-                    await ctx.send(f'**:page_facing_up: Enqueued** {str(source)}')
+                msg += f'\n• {str(source)}'
+            await ctx.send(msg)
 
 
     @commands.command(name='play', description = "Search for a song and play it.", aliases = ['p', 'yt'], usage = "[song]")
