@@ -153,22 +153,26 @@ class YTDLSource(discord.PCMVolumeTransformer):
             print(str(video))
             webpage_url = video['url']
             full = functools.partial(cls.ytdl.extract_info, webpage_url, download=False)
-            data = await loop.run_in_executor(None, full)
-            
-            if data is None:
-                await ctx.send(f"Couldn't fetch `{webpage_url}`")
-
-            if 'entries' not in data:
-                info = data
+            try:
+                data = await loop.run_in_executor(None, full)
+            except:
+                print("cannot download video")
             else:
-                info = None
-                while info is None:
-                    try:
-                        info = data['entries'].pop(0)
-                    except IndexError:
-                        await ctx.send(f"Couldn't retrieve any matches for `{webpage_url}`")
-            source = cls(ctx, discord.FFmpegPCMAudio(info['url'], **cls.FFMPEG_OPTIONS), data=info)
-            playlist.append(source)
+            
+                if data is None:
+                    await ctx.send(f"Couldn't fetch `{webpage_url}`")
+
+                if 'entries' not in data:
+                    info = data
+                else:
+                    info = None
+                    while info is None:
+                        try:
+                            info = data['entries'].pop(0)
+                        except IndexError:
+                            await ctx.send(f"Couldn't retrieve any matches for `{webpage_url}`")
+                source = cls(ctx, discord.FFmpegPCMAudio(info['url'], **cls.FFMPEG_OPTIONS), data=info)
+                playlist.append(source)
 
 
         return playlist
@@ -383,6 +387,9 @@ class Music(commands.Cog, name = ":notes: Music"):
         voter = ctx.message.author
         if_is_requester = (voter == ctx.voice_state.current.requester)
         if_has_perms = voter.guild_permissions.manage_guild
+        role_cap = discord.utils.get(ctx.guild.roles, name="DJ")
+        role_lower = discord.utils.get(ctx.guild.roles, name="dj")
+        if_is_dj = role_cap in author.roles or role_lower in author.roles
         if len(ctx.voice_state.voice.channel.members) < 5:
             if len(ctx.voice_state.voice.channel.members) < 3:
                 is_only_user = True
@@ -392,7 +399,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         else:
             is_only_user = False
             required_votes = 3
-        if if_is_requester or if_has_perms or is_only_user:
+        if if_is_requester or if_has_perms or is_only_user or if_is_dj:
             await run_func()
 
         elif voter.id not in ctx.voice_state.skip_votes:
@@ -629,7 +636,11 @@ class Music(commands.Cog, name = ":notes: Music"):
                 song = Song(source)
 
                 await ctx.voice_state.songs.put(song)
-                msg += f'\n• {str(source)}'
+                if i < 9:
+                    msg += f'\n• {str(source)}'
+                elif i == 9 and len(playlist) > 10:
+                    songs_left = len(playlist) - (i + 1)
+                    msg += f'\n• {str(source)}\n...and {songs_left} more song(s)'
             await ctx.send(msg)
 
 
@@ -651,7 +662,7 @@ class Music(commands.Cog, name = ":notes: Music"):
             youtube_urls = "(?:https?://)?(?:www.)?(?:youtube.com|youtu.be)/(?:watch\?v=)?([^\s]+)"
             if len(re.findall(youtube_urls, search)) > 0:
                 if "list=" in search:
-                    await ctx.send(f"**<:youtube:667536366447493120> Fetching YouTube playlist** `{search}`")
+                    await ctx.send(f"**<:youtube:667536366447493120> Fetching YouTube playlist** `{search}`\nThis make take awhile depending on playlist size.")
                     await self.fetch_yt_playlist(ctx, search)
                     return
             else:
