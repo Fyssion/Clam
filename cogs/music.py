@@ -663,6 +663,7 @@ class Music(commands.Cog, name = ":notes: Music"):
             if len(re.findall(youtube_urls, search)) > 0:
                 if "list=" in search:
                     await ctx.send(f"**<:youtube:667536366447493120> Fetching YouTube playlist** `{search}`\nThis make take awhile depending on playlist size.")
+
                     await self.fetch_yt_playlist(ctx, search)
                     return
             else:
