@@ -130,27 +130,44 @@ class YTDLSource(discord.PCMVolumeTransformer):
     async def get_playlist(cls, ctx: commands.Context, search: str, *, loop: asyncio.BaseEventLoop = None):
         loop = loop or asyncio.get_event_loop()
 
-        partial = functools.partial(cls.ytdl.extract_info, search, download=False)
-        data = await loop.run_in_executor(None, partial)
+        partial = functools.partial(cls.ytdl.extract_info, search, download=False, process=False)
+        unproccessed = await loop.run_in_executor(None, partial)
 
-        if data is None:
+        if unproccessed is None:
             raise YTDLError('Couldn\'t find anything that matches `{}`'.format(search))
 
-        if 'entries' not in data:
-            data_list = data
+        if 'entries' not in unproccessed:
+            data_list = unproccessed
         else:
             data_list = []
-            for entry in data['entries']:
+            for entry in unproccessed['entries']:
                 if entry:
                     data_list.append(entry)
                     
 
             if len(data_list) == 0:
                 raise YTDLError("Playlist is empty")
-                
+        
         playlist = []
         for video in data_list:
-            source = cls(ctx, discord.FFmpegPCMAudio(video['url'], **cls.FFMPEG_OPTIONS), data=video)
+            print(str(video))
+            webpage_url = video['url']
+            full = functools.partial(cls.ytdl.extract_info, webpage_url, download=False)
+            data = await loop.run_in_executor(None, full)
+            
+            if data is None:
+                await ctx.send(f"Couldn't fetch `{webpage_url}`")
+
+            if 'entries' not in data:
+                info = data
+            else:
+                info = None
+                while info is None:
+                    try:
+                        info = data['entries'].pop(0)
+                    except IndexError:
+                        await ctx.send(f"Couldn't retrieve any matches for `{webpage_url}`")
+            source = cls(ctx, discord.FFmpegPCMAudio(info['url'], **cls.FFMPEG_OPTIONS), data=info)
             playlist.append(source)
 
 
@@ -634,12 +651,11 @@ class Music(commands.Cog, name = ":notes: Music"):
             youtube_urls = "(?:https?://)?(?:www.)?(?:youtube.com|youtu.be)/(?:watch\?v=)?([^\s]+)"
             if len(re.findall(youtube_urls, search)) > 0:
                 if "list=" in search:
-                    # TODO: Add youtube emoji
-                    await ctx.send(f"**:closed_book: Fetching YouTube playlist** `{search}`")
+                    await ctx.send(f"**<:youtube:667536366447493120> Fetching YouTube playlist** `{search}`")
                     await self.fetch_yt_playlist(ctx, search)
                     return
             else:
-                await ctx.send(f"**:green_book: Fetching hastebin** `{search}`")
+                await ctx.send(f"**:globe_with_meridians: Fetching from external website** `{search}`")
                 await self.hastebin_playlist(ctx, search)
                 return
                                    
