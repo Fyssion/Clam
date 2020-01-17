@@ -634,12 +634,11 @@ class Music(commands.Cog, name = ":notes: Music"):
             youtube_urls = "(?:https?://)?(?:www.)?(?:youtube.com|youtu.be)/(?:watch\?v=)?([^\s]+)"
             if len(re.findall(youtube_urls, search)) > 0:
                 if "list=" in search:
-                    # TODO: Add youtube emoji
-                    await ctx.send(f"**:closed_book: Fetching YouTube playlist** `{search}`")
+                    await ctx.send(f"**<:youtube:667536366447493120> Fetching YouTube playlist** `{search}`")
                     await self.fetch_yt_playlist(ctx, search)
                     return
             else:
-                await ctx.send(f"**:green_book: Fetching hastebin** `{search}`")
+                await ctx.send(f"**:globe_with_meridians: Fetching from external website** `{search}`")
                 await self.hastebin_playlist(ctx, search)
                 return
                                    
