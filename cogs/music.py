@@ -89,7 +89,11 @@ class YTDLSource(discord.PCMVolumeTransformer):
         loop = loop or asyncio.get_event_loop()
 
         partial = functools.partial(cls.ytdl.extract_info, search, download=False, process=False)
-        data = await loop.run_in_executor(None, partial)
+        try:
+            data = await loop.run_in_executor(None, partial)
+        except youtube_dl.DownloadError:
+            await ctx.send(f"**:x: Error while searching for** `{search}`")
+            return
 
         if data is None:
             raise YTDLError('Couldn\'t find anything that matches `{}`'.format(search))
@@ -108,22 +112,25 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
         webpage_url = process_info['webpage_url']
         partial = functools.partial(cls.ytdl.extract_info, webpage_url, download=False)
-        processed_info = await loop.run_in_executor(None, partial)
-
-        if processed_info is None:
-            raise YTDLError('Couldn\'t fetch `{}`'.format(webpage_url))
-
-        if 'entries' not in processed_info:
-            info = processed_info
+        try:
+            processed_info = await loop.run_in_executor(None, partial)
+        except youtube_dl.DownloadError:
+            await ctx.send(f"**:x: Error while downloading** `{webpage_url}`")
         else:
-            info = None
-            while info is None:
-                try:
-                    info = processed_info['entries'].pop(0)
-                except IndexError:
-                    raise YTDLError('Couldn\'t retrieve any matches for `{}`'.format(webpage_url))
+            if processed_info is None:
+                raise YTDLError('Couldn\'t fetch `{}`'.format(webpage_url))
 
-        return cls(ctx, discord.FFmpegPCMAudio(info['url'], **cls.FFMPEG_OPTIONS), data=info)
+            if 'entries' not in processed_info:
+                info = processed_info
+            else:
+                info = None
+                while info is None:
+                    try:
+                        info = processed_info['entries'].pop(0)
+                    except IndexError:
+                        raise YTDLError('Couldn\'t retrieve any matches for `{}`'.format(webpage_url))
+
+            return cls(ctx, discord.FFmpegPCMAudio(info['url'], **cls.FFMPEG_OPTIONS), data=info)
     
     
     @classmethod
@@ -155,8 +162,8 @@ class YTDLSource(discord.PCMVolumeTransformer):
             full = functools.partial(cls.ytdl.extract_info, webpage_url, download=False)
             try:
                 data = await loop.run_in_executor(None, full)
-            except:
-                print("cannot download video")
+            except youtube_dl.DownloadError:
+                pass
             else:
             
                 if data is None:
@@ -619,11 +626,12 @@ class Music(commands.Cog, name = ":notes: Music"):
             except YTDLError as e:
                 await ctx.send(f"An error occurred while processing this request: ```py {str(e)}```")
             else:
-                song = Song(source)
+                if source:
+                    song = Song(source)
 
-                await ctx.voice_state.songs.put(song)
-                if ctx.voice_state.is_playing:
-                    await ctx.send(f'**:page_facing_up: Enqueued** {str(source)}')
+                    await ctx.voice_state.songs.put(song)
+                    if ctx.voice_state.is_playing:
+                        await ctx.send(f'**:page_facing_up: Enqueued** {str(source)}')
                     
     async def fetch_yt_playlist(self, ctx, url):
         try:
