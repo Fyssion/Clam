@@ -262,7 +262,11 @@ class VoiceState:
 
         self._loop = False
         self._volume = 0.5
-        self.skip_votes = set()
+        self._votes = {
+            "skip" : set(),
+            "shuffle" : set(),
+            "remove" : set()
+            }
 
         self.audio_player = bot.loop.create_task(self.audio_player_task())
 
@@ -334,7 +338,7 @@ class VoiceState:
         self.next.set()
 
     def skip(self):
-        self.skip_votes.clear()
+        self._votes["skip"].clear()
 
         if self.is_playing:
             self.voice.stop()
@@ -396,7 +400,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         if_has_perms = voter.guild_permissions.manage_guild
         role_cap = discord.utils.get(ctx.guild.roles, name="DJ")
         role_lower = discord.utils.get(ctx.guild.roles, name="dj")
-        if_is_dj = role_cap in author.roles or role_lower in author.roles
+        if_is_dj = role_cap in voter.roles or role_lower in voter.roles
         if len(ctx.voice_state.voice.channel.members) < 5:
             if len(ctx.voice_state.voice.channel.members) < 3:
                 is_only_user = True
@@ -409,11 +413,12 @@ class Music(commands.Cog, name = ":notes: Music"):
         if if_is_requester or if_has_perms or is_only_user or if_is_dj:
             await run_func()
 
-        elif voter.id not in ctx.voice_state.skip_votes:
-            ctx.voice_state.skip_votes.add(voter.id)
-            total_votes = len(ctx.voice_state.skip_votes)
+        elif voter.id not in ctx.voice_state._votes[cmd]:
+            ctx.voice_state._votes[cmd].add(voter.id)
+            total_votes = len(ctx.voice_state._votes[cmd])
 
             if total_votes >= required_votes:
+                ctx.voice_state._votes[cmd].clear()
                 await run_func()
             else:
                 await ctx.send(f'{cmd.capitalize()} vote added, currently at `{total_votes}/{required_votes}`')
@@ -620,6 +625,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         if len(re.findall(youtube_urls, output)) == 0:
             return await ctx.send(":warning: There are no YouTube URLS in this bin.")
         videos = output.splitlines()
+        playlist = []
         for video in videos:
             try:
                 source = await YTDLSource.create_source(ctx, video, loop=self.bot.loop)
@@ -627,11 +633,19 @@ class Music(commands.Cog, name = ":notes: Music"):
                 await ctx.send(f"An error occurred while processing this request: ```py {str(e)}```")
             else:
                 if source:
-                    song = Song(source)
+                    playlist.append(source)
+        msg = "**:page_facing_up: Enqueued:**"
+        for i, src in enumerate(playlist):
+            song = Song(src)
 
-                    await ctx.voice_state.songs.put(song)
-                    if ctx.voice_state.is_playing:
-                        await ctx.send(f'**:page_facing_up: Enqueued** {str(source)}')
+            await ctx.voice_state.songs.put(song)
+            if i < 9:
+                msg += f'\n• {str(src)}'
+            elif i == 9 and len(playlist) > 10:
+                songs_left = len(playlist) - (i + 1)
+                msg += f'\n• {str(src)}\n...and {songs_left} more song(s)'
+        await ctx.send(msg)
+
                     
     async def fetch_yt_playlist(self, ctx, url):
         try:
@@ -675,7 +689,7 @@ class Music(commands.Cog, name = ":notes: Music"):
                     await self.fetch_yt_playlist(ctx, search)
                     return
             else:
-                await ctx.send(f"**:globe_with_meridians: Fetching from external website** `{search}`")
+                await ctx.send(f"**:globe_with_meridians: Fetching from bin** `{search}`\nThis make take awhile depending on amount of videos.")
                 await self.hastebin_playlist(ctx, search)
                 return
                                    
