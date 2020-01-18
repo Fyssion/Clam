@@ -10,6 +10,7 @@ import math
 import random
 from async_timeout import timeout
 import re
+from datetime import datetime as d
 
 
 """
@@ -73,7 +74,8 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self.title = data.get('title')
         self.thumbnail = data.get('thumbnail')
         self.description = data.get('description')
-        self.duration = self.parse_duration(int(data.get('duration')))
+        self.human_duration = self.parse_duration(int(data.get('duration')))
+        self.duration = self.timestamp_duration(int(data.get('duration')))
         self.tags = data.get('tags')
         self.url = data.get('webpage_url')
         self.views = data.get('view_count')
@@ -203,6 +205,18 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
         return ', '.join(duration)
 
+    @staticmethod
+    def timestamp_duration(duration: int):
+        minutes, seconds = divmod(duration, 60)
+        hours, minutes = divmod(minutes, 60)
+        days, hours = divmod(hours, 24)
+
+        duration = ""
+        if hours > 0:
+            duration += (f"{hours}:")
+        duration += (f"{minutes}:{seconds:02d}")
+        return duration
+
 
 class Song:
     __slots__ = ('source', 'requester')
@@ -215,7 +229,7 @@ class Song:
         embed = (discord.Embed(title=title,
                                description='```css\n{0.source.title}\n```'.format(self),
                                color=discord.Color.blurple())
-                 .add_field(name='Duration', value=self.source.duration)
+                 .add_field(name='Duration', value=self.source.human_duration)
                  .add_field(name='Requested by', value=self.requester.mention)
                  .add_field(name='Uploader', value='[{0.source.uploader}]({0.source.uploader_url})'.format(self))
                  .add_field(name='URL', value='[Click]({0.source.url})'.format(self))
@@ -485,7 +499,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         ctx.voice_state.volume = volume / 100
         await ctx.send(f'**{self.get_volume_emoji(volume)} Volume:** `{volume}%`')
 
-    @commands.command(name='now', description = "Displays the currently playing song.", aliases=['current', 'playing'])
+    @commands.command(name='now', description = "Displays the currently playing song.", aliases=['current', 'playing', 'np'])
     async def _now(self, ctx):
         if not ctx.voice_state.is_playing:
             return await ctx.send("Not currently playing a song.")
@@ -522,7 +536,7 @@ class Music(commands.Cog, name = ":notes: Music"):
             ctx.voice_state.voice.stop()
             await ctx.send('**:stop_button: Song stopped and queue cleared.**')
 
-    @commands.command(name='skip', description = "Vote to skip a song. The requester can automatically skip.")
+    @commands.command(name='skip', description = "Vote to skip a song. The requester can automatically skip.", aliases = ['next'])
     async def _skip(self, ctx):
         async def skip_song():
             await ctx.message.add_reaction('⏭')
@@ -545,11 +559,11 @@ class Music(commands.Cog, name = ":notes: Music"):
         start = (page - 1) * items_per_page
         end = start + items_per_page
 
-        queue = ''
+        queue = "`#` [Song](https://www.youtube.com) `Duration` @Requester\n\n"
         for i, song in enumerate(ctx.voice_state.songs[start:end], start=start):
-            queue += f'`{i+1}.` **[{song.source.title}]({song.source.url})**\n'
+            queue += f"`{i+1}.` [{song.source.title}]({song.source.url}) `{song.source.duration}` {song.source.requester.mention}\n"
 
-        embed = discord.Embed(title = "Queue",description=f'**{len(ctx.voice_state.songs)} Song(s):**\n\n{queue}')
+        embed = discord.Embed(title = "**:page_facing_up: Queue**",description=f'**{len(ctx.voice_state.songs)} Song(s):**\n{queue}')
         embed.set_footer(text=f'Page {page} of {pages}')
         await ctx.send(embed=embed)
 
@@ -634,17 +648,24 @@ class Music(commands.Cog, name = ":notes: Music"):
             else:
                 if source:
                     playlist.append(source)
-        msg = "**:page_facing_up: Enqueued:**"
+        em = discord.Embed(title = "**:page_facing_up: Enqueued:**", timestamp = d.utcnow(), color = discord.Color.blurple())
+        description = ""
+        total_duration = 0
         for i, src in enumerate(playlist):
             song = Song(src)
-
+            total_duration += int(source.data.get('duration'))
             await ctx.voice_state.songs.put(song)
             if i < 9:
-                msg += f'\n• {str(src)}'
+                description += f'\n• [{src.title}]({src.url}) `{src.duration}`'
             elif i == 9 and len(playlist) > 10:
                 songs_left = len(playlist) - (i + 1)
-                msg += f'\n• {str(src)}\n...and {songs_left} more song(s)'
-        await ctx.send(msg)
+                description += f'\n• [{src.title}]({src.url}) `{src.duration}`\n...and {songs_left} more song(s)'
+        total_duration = YTDLSource.parse_duration(total_duration)
+        description += f"\nTotal duration: {total_duration}"
+        em.description = description
+        em.set_footer(text = f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
+        icon_url = self.bot.user.avatar_url)
+        await ctx.send(embed = em)
 
                     
     async def fetch_yt_playlist(self, ctx, url):
@@ -653,17 +674,25 @@ class Music(commands.Cog, name = ":notes: Music"):
         except YTDLError as e:
             await ctx.send(f"An error occurred while processing this request: ```py {str(e)}```")
         else:
-            msg = "**:page_facing_up: Enqueued:**"
+            em = discord.Embed(title = "**:page_facing_up: Enqueued:**", timestamp = d.utcnow(), color = 0xFF0000)
+            description = ""
+            total_duration = 0
             for i, source in enumerate(playlist):
                 song = Song(source)
-
+                
                 await ctx.voice_state.songs.put(song)
+                total_duration += int(source.data.get('duration'))
                 if i < 9:
-                    msg += f'\n• {str(source)}'
+                    description += f'\n• [{source.title}]({source.url}) `{source.duration}`' 
                 elif i == 9 and len(playlist) > 10:
                     songs_left = len(playlist) - (i + 1)
-                    msg += f'\n• {str(source)}\n...and {songs_left} more song(s)'
-            await ctx.send(msg)
+                    description += f'\n• [{source.title}]({source.url}) `{source.duration}`\n...and {songs_left} more song(s)'
+            total_duration = YTDLSource.parse_duration(total_duration)
+            description += f"\nTotal duration: {total_duration}"
+            em.description = description
+            em.set_footer(text = f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
+            icon_url = self.bot.user.avatar_url)
+            await ctx.send(embed = em)
 
 
     @commands.command(name='play', description = "Search for a song and play it.", aliases = ['p', 'yt'], usage = "[song]")
