@@ -1,15 +1,79 @@
 from discord.ext import commands
 import discord
+
 from datetime import datetime as d
 import math
+import random
+
 from .utils.utils import thesaurize
 
+num2words1 = {1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five', \
+            6: 'six', 7: 'seven', 8: 'eight', 9: 'nine', 10: 'ten', \
+            11: 'eleven', 12: 'twelve', 13: 'thirteen', 14: 'fourteen', \
+            15: 'fifteen', 16: 'sixteen', 17: 'seventeen', 18: 'eighteen', 19: 'nineteen'}
+num2words2 = ['twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety']
 
 class Fun(commands.Cog, name = ":tada: Fun"):
     
     def __init__(self, bot):
         self.bot = bot
         self.log = self.bot.log
+
+        
+    def number(self, num):
+        if 1 <= num <= 19:
+            return num2words1[num]
+        elif 20 <= num <= 99:
+            tens, below_ten = divmod(num, 10)
+            return num2words2[tens - 2] + '-' + num2words1[below_ten]
+        else:
+            return str(num)
+
+    @commands.command(
+        description = "Flip a coin.",
+    )
+    async def flipcoin(self, ctx):
+        await ctx.send(f"You flipped a **{random.choice(['heads', 'tails'])}**.")
+
+    @commands.group(
+        description = "Roll a die or two. Also see `r.rolldice sides [# of sides]`",
+        usage = "<# of dice>",
+        aliases = ['diceroll'],
+        invoke_without_command = True
+    )
+    async def rolldice(self, ctx, dice: int = 1):
+        if dice > 10:
+            return await ctx.send(":warning: Too many dice. You can roll up to 10 dice.")
+        rolls = []
+        for i in range(dice):
+            rolls.append(random.randrange(1, 6))
+        if dice == 1:
+            return await ctx.send(f":game_die: You rolled **{self.number(rolls[0])}**.")
+        
+        word_rolls = [f"**{self.number(num)}**" for num in rolls]
+        await ctx.send(f":game_die: You rolled {', '.join(word_rolls[:-1])} and **{word_rolls[-1]}** for a total of **{self.number(sum(rolls))}**.")
+            
+
+
+    @rolldice.command(
+        name = "sides",
+        description = "Roll a dice with a specified # of sizes.",
+        aliases = ['side'],
+        usage = "[# of sides] <# of dice>"
+    )
+    async def rolldice_sides(self, ctx, sides: int = 6, dice: int = 1):
+        if dice > 10:
+            return await ctx.send(":warning: Too many dice. You can roll up to 10 dice.")
+        if sides < 2:
+            return await ctx.send(":warning: You must have more than two sides.")
+        rolls = []
+        for i in range(dice):
+            rolls.append(random.randrange(1, sides))
+        if dice == 1:
+            return await ctx.send(f":game_die: You rolled **{self.number(rolls[0])}**.")
+        
+        word_rolls = [f"**{self.number(num)}**" for num in rolls]
+        await ctx.send(f":game_die: You rolled {', '.join(word_rolls[:-1])} and **{word_rolls[-1]}** for a total of **{self.number(sum(rolls))}**.")
 
     @commands.command(
         name = "birthday",
