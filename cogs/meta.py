@@ -71,14 +71,15 @@ class Meta(commands.Cog, name = ":gear: Meta"):
         if commd == "all":
             all_categories = ""
             for cog in self.bot.ordered_cogs:
-                cog_commands = self.bot.get_cog(cog).get_commands()
+                cog_docstring = self.bot.get_cog(cog).__doc__
 
                 if cog == "Jishaku":
                     pass
                 else:
 
                     all_categories += f"\n{cog}"
-
+                    if cog_docstring:
+                        all_categories += f""" [?](https://www.discordapp.com/channels/{ctx.guild.id}/{ctx.channel.id} "{cog_docstring}")"""
             em.add_field(
                 name = "Categories",
                 value = all_categories,
