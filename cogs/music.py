@@ -230,10 +230,15 @@ class Song:
         em = discord.Embed(
             title=title,
             description=f'```css\n{src.title}\n```',
-            color=discord.Color.blurple())
+            color=discord.Color.blurple()
+        )
         em.add_field(name='Duration', value=src.duration)
-        em.add_field(name='Requested by', value=self.requester.mention)
-        em.add_field(name='Uploader', value=f'[{src.uploader}]({src.uploader_url})')
+        em.add_field(name='Requested by',
+        value=self.requester.mention)
+        em.add_field(
+            name='Uploader',
+            value=f'[{src.uploader}]({src.uploader_url})'
+        )
         em.add_field(name='URL', value=f'[Click]({src.url})')
         em.set_thumbnail(url=self.source.thumbnail)
 
@@ -246,7 +251,8 @@ class Song:
 class SongQueue(asyncio.Queue):
     def __getitem__(self, item):
         if isinstance(item, slice):
-            return list(itertools.islice(self._queue, item.start, item.stop, item.step))
+            return list(itertools.islice(self._queue,
+            item.start, item.stop, item.step))
         else:
             return self._queue[item]
 
@@ -284,7 +290,9 @@ class VoiceState:
             "remove" : set()
             }
 
-        self.audio_player = bot.loop.create_task(self.audio_player_task())
+        self.audio_player = bot.loop.create_task(
+            self.audio_player_task()
+        )
 
     def __del__(self):
         self.audio_player.cancel()
@@ -308,9 +316,12 @@ class VoiceState:
     @property
     def is_playing(self):
         if self.voice:
-            if self.voice.is_paused(): # The player is techincally in the middle of playing a song
+            if self.voice.is_paused():
+                # The player is techincally in
+                # the middle of playing a song
                 return True
-            return self.voice.is_playing() == True and self.current is not None
+            return self.voice.is_playing() == True and \
+            self.current is not None
         return self.voice is not None and self.current is not None
 
     @property
