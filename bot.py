@@ -11,6 +11,9 @@ def get_prefix(client, message):
     
     prefixes = ['r.']
 
+    if message.guild.id in [454469821376102410]: # My coding server
+        prefixes.append("!")
+
     return commands.when_mentioned_or(*prefixes)(client, message)
 
 class RoboClam(commands.Bot):

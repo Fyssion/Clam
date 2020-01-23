@@ -1,8 +1,9 @@
 from discord.ext import commands
 import discord
-from datetime import datetime as d
 
+from datetime import datetime as d
 from string import Formatter
+import traceback
 
 from .utils.utils import wait_for_deletion
 
@@ -49,6 +50,8 @@ class Meta(commands.Cog, name = ":gear: Meta"):
             color = 0xFF95B0,
             timestamp = d.utcnow()
         )
+        if ctx.guild:
+            em.description += f"""Hover over [`?`](https://www.discordapp.com/channels/{ctx.guild.id}/{ctx.channel.id} "More info here.") to get more info (sorry mobile users).\n"""
         em.set_thumbnail(
             url = self.bot.user.avatar_url
         )
@@ -78,8 +81,8 @@ class Meta(commands.Cog, name = ":gear: Meta"):
                 else:
 
                     all_categories += f"\n{cog}"
-                    if cog_docstring:
-                        all_categories += f""" [?](https://www.discordapp.com/channels/{ctx.guild.id}/{ctx.channel.id} "{cog_docstring}")"""
+                    if cog_docstring and ctx.guild:
+                        all_categories += f""" [`?`](https://www.discordapp.com/channels/{ctx.guild.id}/{ctx.channel.id} "{cog_docstring}")"""
             em.add_field(
                 name = "Categories",
                 value = all_categories,
@@ -303,33 +306,31 @@ class Meta(commands.Cog, name = ":gear: Meta"):
     @commands.command(
         name = "reload",
         description = "Reload an extension",
+        aliases = ['load'],
         usage = "[cog]",
         hidden = True
     )
     @commands.is_owner()
-    async def reload_cog_command(self, ctx, cog = "all"):
+    async def _reload(self, ctx, cog = "all"):
         if cog == "all":
             for ext in self.bot.cogsToLoad:
-                await ctx.send(f"Reloading `{ext}`")
-                self.bot.reload_extension(ext)
-            return await ctx.send("All cogs successfully reloaded.")
+                try:
+                    self.bot.reload_extension(ext)
+                    await ctx.send(f"**:repeat: Reloaded** `{ext}`")
+                except Exception as e:
+                    traceback_data = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
+                    await ctx.send(f"**:warning: Extension `{ext}` not loaded.**\n```py\n{traceback_data}```")
+                    self.log.warning(f"Extension 'cogs.{cog.lower()}' not loaded.\n{traceback_data}")
+            return
         
         try:
-            self.bot.reload_extension(f"cogs.{cog.lower()}")
-            await ctx.send(f"Extension `cogs.{cog.lower()}` successfully reloaded.")
-            self.log.info(f"Extension 'cogs.{cog.lower()}' successfully reloaded.")
-        except commands.ExtensionNotFound as error:
-            await ctx.send(f":warning: Extension not found.\n```{error}```")
-            self.log.warning(f"Extension 'cogs.{cog.lower()}' not found.")
-            print(error)
-        except commands.ExtensionFailed as error:
-            await ctx.send(f":warning: Extension failed.\n```{error}```")
-            self.log.warning(f"Extension 'cogs.{cog.lower()}' failed.")
-            print(error)
-        except commands.ExtensionNotLoaded as error:
-            await ctx.send(f":warning: Extension not loaded.\n```{error}```")
-            self.log.warning(f"Extension 'cogs.{cog.lower()}' not loaded.")
-            print(error)
+            self.bot.reload_extension(cog.lower())
+            await ctx.send(f"**:repeat: Reloaded** `{cog.lower()}`")
+            self.log.info(f"Extension '{cog.lower()}' successfully reloaded.")
+        except Exception as e:
+            traceback_data = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
+            await ctx.send(f"**:warning: Extension `{cog.lower()}` not loaded.**\n```py\n{traceback_data}```")
+            self.log.warning(f"Extension 'cogs.{cog.lower()}' not loaded.\n{traceback_data}")
 
 
     @commands.command(

@@ -9,6 +9,9 @@ warning_color = 0xFFCC4D
 
 
 class Reddit(commands.Cog, name = "<:RedditLogo:650197892065263626> Reddit"):
+    """
+    Get information about subreddits and redditors.
+    """
     
     def __init__(self, bot):
         self.bot = bot

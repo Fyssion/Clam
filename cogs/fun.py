@@ -14,6 +14,9 @@ num2words1 = {1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five', \
 num2words2 = ['twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety']
 
 class Fun(commands.Cog, name = ":tada: Fun"):
+    """
+    Fun commands to mess around with.
+    """
     
     def __init__(self, bot):
         self.bot = bot

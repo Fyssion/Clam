@@ -193,17 +193,20 @@ class YTDLSource(discord.PCMVolumeTransformer):
         hours, minutes = divmod(minutes, 60)
         days, hours = divmod(hours, 24)
 
-        duration = []
+        duration_str = []
         if days > 0:
-            duration.append('{} days'.format(days))
+            duration_str.append('{} days'.format(days))
         if hours > 0:
-            duration.append('{} hours'.format(hours))
+            duration_str.append('{} hours'.format(hours))
         if minutes > 0:
-            duration.append('{} minutes'.format(minutes))
+            duration_str.append('{} minutes'.format(minutes))
         if seconds > 0:
-            duration.append('{} seconds'.format(seconds))
+            duration_str.append('{} seconds'.format(seconds))
 
-        return ', '.join(duration)
+        if len(duration_str) == 0:
+            return YTDLSource.timestamp_duration(duration)
+
+        return ', '.join(duration_str)
 
     @staticmethod
     def timestamp_duration(duration: int):
@@ -214,6 +217,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         duration = ""
         if hours > 0:
             duration += (f"{hours}:")
+            minutes = f"{minutes:02d}"
         duration += (f"{minutes}:{seconds:02d}")
         return duration
 
@@ -273,8 +277,10 @@ class VoiceState:
         self.voice = None
         self.next = asyncio.Event()
         self.songs = SongQueue()
+        self.saved_queue = SongQueue()
 
         self._loop = False
+        self._loop_queue = False
         self._volume = 0.5
         self._votes = {
             "skip" : set(),
@@ -294,6 +300,19 @@ class VoiceState:
     @loop.setter
     def loop(self, value: bool):
         self._loop = value
+
+    @property
+    def loop_queue(self):
+        return self._loop_queue
+
+    @loop_queue.setter
+    def loop_queue(self, value: bool):
+        self._loop_queue = value
+        if self._loop_queue == True:
+            self.saved_queue = self.songs
+        else:
+            self.saved_queue = SongQueue()
+            self.saved_queue = None
 
     @property
     def volume(self):
@@ -319,6 +338,13 @@ class VoiceState:
         while True:
             self.next.clear()
 
+            if self.loop_queue:
+                print("Passed loop_queue")
+                print(f"Length: {len(self.songs)}")
+                if len(self.songs) == 0:
+                    print("Passed songs")
+                    self.songs = self.saved_queue
+
             if not self.loop:
 
                 # if self.songs.qsize() < 1:
@@ -329,6 +355,7 @@ class VoiceState:
                 # If no song will be added to the queue in time,
                 # the player will disconnect due to performance
                 # reasons.
+
                 try:
                     async with timeout(180):  # 3 minutes
                         self.current = await self.songs.get()
@@ -470,7 +497,10 @@ class Music(commands.Cog, name = ":notes: Music"):
         
 
         if not ctx.voice_state.voice:
-            return await ctx.send('Not connected to any voice channel.')
+            if ctx.voice_client:
+                ctx.voice_state.voice = ctx.voice_client
+            else:
+                return await ctx.send('Not connected to any voice channel.')
 
         await ctx.voice_state.stop()
         del self.voice_states[ctx.guild.id]
@@ -547,7 +577,7 @@ class Music(commands.Cog, name = ":notes: Music"):
 
         await self.votes(ctx, "skip", skip_song)
 
-    @commands.command(name='queue', description = "Shows the player's queue. You can optionally select the page.", usage = "<page #>")
+    @commands.command(name='queue', description = "Shows the player's queue. You can optionally select the page.", usage = "<page #>", aliases = ['playlist'])
     async def _queue(self, ctx, *, page: int = 1):
 
         if len(ctx.voice_state.songs) == 0:
@@ -591,7 +621,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         
         await self.votes(ctx, "remove", remove_song, index)
 
-    @commands.command(name='loop', description = "Loops/unloops the currently playing song.")
+    @commands.group(name='loop', description = "Loops/unloops the currently playing song.", invoke_without_command = True)
     async def _loop(self, ctx):
 
         return await ctx.send(":warning: :( Sorry, this feature is currently under maintenance. Check back later.")
@@ -601,10 +631,27 @@ class Music(commands.Cog, name = ":notes: Music"):
 
         # Inverse boolean value to loop and unloop.
         ctx.voice_state.loop = not ctx.voice_state.loop
+        ctx.voice_state.loop_queue = False
         if ctx.voice_state.loop:
             await ctx.send(f"**:repeat_one: Now looping** `{ctx.voice_state.current.source.title}`")
         else:
             await ctx.send(f"**:repeat_one: :x: No longer looping** `{ctx.voice_state.current.source.title}`")
+
+    @_loop.command(name = 'playlist', description = "Loop the entire playlist.", aliases = ['queue'])
+    async def _loop_queue(self, ctx):
+        if not ctx.voice_state.is_playing:
+            return await ctx.send('Nothing being played at the moment.')
+        if len(ctx.voice_state.songs) == 0:
+            return await ctx.send("The queue is empty. Nothing to loop!")
+        
+
+        ctx.voice_state.loop_queue = not ctx.voice_state.loop_queue
+        ctx.voice_state.loop = False
+
+        if ctx.voice_state.loop_queue:
+            await ctx.send(f"**:repeat_one: Now looping queue**")
+        else:
+            await ctx.send(f"**:repeat_one: :x: No longer looping queue**")
 
     
     async def get_haste(self, url='https://hastebin.com'):
