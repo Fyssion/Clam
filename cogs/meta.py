@@ -313,15 +313,17 @@ class Meta(commands.Cog, name = ":gear: Meta"):
     @commands.is_owner()
     async def _reload(self, ctx, cog = "all"):
         if cog == "all":
+            msg = ""
             for ext in self.bot.cogsToLoad:
                 try:
                     self.bot.reload_extension(ext)
-                    await ctx.send(f"**:repeat: Reloaded** `{ext}`")
+                    msg += f"**:repeat: Reloaded** `{ext}`\n\n"
+                    self.log.info(f"Extension '{cog.lower()}' successfully reloaded.")
                 except Exception as e:
                     traceback_data = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
-                    await ctx.send(f"**:warning: Extension `{ext}` not loaded.**\n```py\n{traceback_data}```")
+                    msg += f"**:warning: Extension `{ext}` not loaded.**\n```py\n{traceback_data}```\n\n"
                     self.log.warning(f"Extension 'cogs.{cog.lower()}' not loaded.\n{traceback_data}")
-            return
+            return await ctx.send(msg)
         
         try:
             self.bot.reload_extension(cog.lower())
