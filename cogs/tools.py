@@ -1,14 +1,13 @@
 from discord.ext import commands
 import discord
+
 from datetime import datetime as d
-import time
 import re
-from .utils import fuzzy
-from .utils.utils import SphinxObjectFileReader
 import os
 import ast
-import aiohttp
-import asyncio
+
+from .utils import fuzzy
+from .utils.utils import SphinxObjectFileReader
 
 
 def snowstamp(snowflake):
@@ -18,7 +17,7 @@ def snowstamp(snowflake):
     return d.utcfromtimestamp(timestamp).strftime('%b %d, %Y at %#I:%M %p')
 
 
-class Tools(commands.Cog, name = ":tools: Tools"):
+class Tools(commands.Cog, name=":tools: Tools"):
     """Useful Discord tools."""
 
     def __init__(self, bot):
@@ -27,97 +26,87 @@ class Tools(commands.Cog, name = ":tools: Tools"):
 
 
     @commands.command(
-        name = "userinfo",
-        description = "Get information about a user",
-        aliases = ["memberinfo"],
-        usage = "[user]"
+        name="userinfo",
+        description="Get information about a user",
+        aliases=["memberinfo"],
+        usage="[user]"
     )
-    async def userinfo_command(self, ctx, *, user = None):
+    async def userinfo_command(self, ctx, *, user=None):
 
         if user and len(ctx.message.mentions) == 0:
             user = ctx.guild.get_member_named(user)
             if not user:
-                self.log.info(f"{str(ctx.author)} unsuccessfully used the userinfo command on a nonexistent user")
-                return await ctx.send(":warning: Member not found! Search for members with their username or nickname.")
+                self.log.info(f"{str(ctx.author)} unsuccessfully used the "
+                              "userinfo command on a nonexistent user")
+                return await ctx.send(":warning: Member not found! "
+                                      "Search for members with their "
+                                      "username or nickname.")
         elif user:
             user = ctx.message.mentions[0]
 
         user = user or ctx.author
 
         if user == ctx.author:
-            self.log.info(f"{str(ctx.author)} successfully used the userinfo command on themself")
+            self.log.info(f"{str(ctx.author)} successfully used the "
+                          "userinfo command on themself")
         else:
-            self.log.info(f"{str(ctx.author)} successfully used the userinfo command on '{user}'")
+            self.log.info(f"{str(ctx.author)} successfully used the "
+                          f"userinfo command on '{user}'")
 
         member = ctx.guild.get_member(user.id)
 
         # def time_ago(user, dt):
         #     if dt is None:
         #         return ""
-        #     return f"{snowstamp(user.id)}\n({time.human_timedelta(dt, accuracy=3)})"
+        #     return f"{snowstamp(user.id)}\n"
+        #            f"({time.human_timedelta(dt, accuracy=3)})"
 
         desc = ""
         if user == self.bot.user:
             desc += "\n:wave:Hey, that's me!"
-        if user.bot == True:
+        if user.bot is True:
             desc += "\n:robot: This user is a bot."
         if user.id == ctx.guild.owner_id:
-            desc += "\n<:owner:649355683598303260> This user is the server owner."
+            desc += ("\n<:owner:649355683598303260> "
+                     "This user is the server owner.")
         if user.id == self.bot.owner_id:
             desc += "\n:gear: This user owns this bot."
         if member.premium_since:
-            desc += f"\n<:boost:649644112034922516> This user has been boosting this server since {member.premium_since.strftime('%b %d, %Y at %#I:%M %p')}."
+            formatted = member.premium_since.strftime('%b %d, %Y at %#I:%M %p')
+            desc += ("\n<:boost:649644112034922516> "
+                     "This user has been boosting this server since "
+                     f"{formatted}.")
 
         author = str(user)
         if member.nick:
             author += f" ({member.nick})"
         author += f" - {str(user.id)}"
 
-        self.em = discord.Embed(
-            description = desc,
-            timestamp = d.utcnow()
-        )
+        self.em = discord.Embed(description=desc, timestamp=d.utcnow())
         if user.color.value:
             self.em.color = user.color
 
-        self.em.set_thumbnail(
-            url = user.avatar_url
-            )
-        self.em.set_author(
-            name = author,
-            icon_url = user.avatar_url
-            )
-        self.em.set_footer(
-                    text = f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
-                    icon_url = self.bot.user.avatar_url
-                    )
+        self.em.set_thumbnail(url=user.avatar_url)
+        self.em.set_author(name=author, icon_url=user.avatar_url)
+        self.em.set_footer(text=f"Requested by {str(ctx.author)}",
+                           icon_url=self.bot.user.avatar_url)
+        self.em.add_field(name=":clock1: Account Created",
+                          value=snowstamp(user.id),
+                          inline=True)
         self.em.add_field(
-            name = ":clock1: Account Created",
-            value = snowstamp(user.id),
-            inline = True
-        )
-        self.em.add_field(
-            name = "<:join:649722959958638643> Joined Server",
-            value = member.joined_at.strftime('%b %d, %Y at %#I:%M %p'),
-            inline = True
-        )
+            name="<:join:649722959958638643> Joined Server",
+            value=member.joined_at.strftime('%b %d, %Y at %#I:%M %p'),
+            inline=True)
         if member.roles[1:]:
             roles = ""
             for role in member.roles[1:]:
                 roles += f"{role.mention} "
-            self.em.add_field(
-                name = "Roles",
-                value = roles,
-                inline = False
-            )
-        await ctx.send(embed = self.em)
+            self.em.add_field(name="Roles", value=roles, inline=False)
+        await ctx.send(embed=self.em)
 
-
-    @commands.command(
-        name = "serverinfo",
-        description = "Get information about the current server",
-        aliases = ["guildinfo"]
-    )
+    @commands.command(name="serverinfo",
+                      description="Get information about the current server",
+                      aliases=["guildinfo"])
     async def serverinfo_command(self, ctx):
         self.log.info(f"{str(ctx.author)} used the serverinfo command")
 
