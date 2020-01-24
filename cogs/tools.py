@@ -20,7 +20,7 @@ def snowstamp(snowflake):
 
 class Tools(commands.Cog, name = ":tools: Tools"):
     """Useful Discord tools."""
-    
+
     def __init__(self, bot):
         self.bot = bot
         self.log = self.bot.log
@@ -130,7 +130,7 @@ class Tools(commands.Cog, name = ":tools: Tools"):
             desc += f"\n{ctx.guild.description}\n"
         if ctx.guild.large == True:
             desc += "\n:information_source: This guild is considered large (over 250 members)."
-    
+
 
         self.em = discord.Embed(
             description = desc,
@@ -182,7 +182,7 @@ class Tools(commands.Cog, name = ":tools: Tools"):
             value = f"<:text_channel:661798072384225307> {len(ctx.guild.text_channels)} • <:voice_channel:665577300552843294> {len(ctx.guild.voice_channels)}",
             inline = True
         )
-        
+
         # roles = ""
         # for role in member.roles[1:]:
         #     roles += f"{role.mention} "
@@ -202,7 +202,7 @@ class Tools(commands.Cog, name = ":tools: Tools"):
     async def snowstamp_command(self, ctx, snowflake = None):
         if snowflake == None:
             return await ctx.send("Please specify a snowflake to convert.")
-        
+
         await ctx.send(snowstamp(snowflake))
 
     @commands.command(
@@ -470,7 +470,7 @@ class Tools(commands.Cog, name = ":tools: Tools"):
 
 
 
-   
+
 
 def setup(bot):
     bot.add_cog(Tools(bot))

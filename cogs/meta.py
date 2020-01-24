@@ -7,6 +7,7 @@ import traceback
 
 from .utils.utils import wait_for_deletion
 
+
 def strfdelta(tdelta, fmt):
     """
     Similar to strftime from datetime.datetime
@@ -14,54 +15,66 @@ def strfdelta(tdelta, fmt):
     """
     f = Formatter()
     d = {}
-    l = {'D': 86400, 'H': 3600, 'M': 60, 'S': 1}
-    k = map( lambda x: x[1], list(f.parse(fmt)))
+    lang = {'D': 86400, 'H': 3600, 'M': 60, 'S': 1}
+    k = map(lambda x: x[1], list(f.parse(fmt)))
     rem = int(tdelta.total_seconds())
 
     for i in ('D', 'H', 'M', 'S'):
-        if i in k and i in l.keys():
-            d[i], rem = divmod(rem, l[i])
+        if i in k and i in lang.keys():
+            d[i], rem = divmod(rem, lang[i])
 
     return f.format(fmt, **d)
 
-class Meta(commands.Cog, name = ":gear: Meta"):
+
+class Meta(commands.Cog, name=":gear: Meta"):
     """Everything to do with the bot itself."""
-    
+
     def __init__(self, bot):
         self.bot = bot
         self.log = self.bot.log
-        self.more_info_category = f"For **more info** on a **specific category**, use: **`{self.bot.defaultPrefix}help [category]`‍**"
-        self.more_info_cmd = f"For **more info** on a **specific command**, use: **`{self.bot.defaultPrefix}help [command]`‍**"
+        self.more_info_category = "For **more info** on a "\
+            f"**specific category**, use: **`{self.bot.defaultPrefix}help "\
+            "[category]`‍**"
+        self.more_info_cmd = "For **more info** on a **specific command**, "\
+            f"use: **`{self.bot.defaultPrefix}help [command]`‍**"
 
-    
+    def hover_link(self, ctx, msg):
+        return ("[`?`](https://www.discordapp.com/"
+                f"channels/{ctx.guild.id}/{ctx.channel.id} "
+                f""""{msg}") to get more info """)
+
     @commands.group(
-        name = "help",
-        description = "You're looking at it!",
-        aliases = ['commands', 'command', 'h'],
-        usage = "[command]",
-        invoke_without_command = True
+        name="help",
+        description="You're looking at it!",
+        aliases=['commands', 'command', 'h'],
+        usage="[command]",
+        invoke_without_command=True
     )
-    async def help_command(self, ctx, commd = "all"):
+    async def help_command(self, ctx, commd="all"):
         em = discord.Embed(
-            title = f"Help for {self.bot.user.name}",
-            description = f"{self.bot.description}\n\n**Prefix:** {self.bot.prefixes}. Ex: `{self.bot.defaultPrefix}help`\
-                \n{self.more_info_category}\n",
+            title=f"Help for {self.bot.user.name}",
+            description=(f"{self.bot.description}\n\n**Prefix:** "
+                         f"{self.bot.prefixes}. "
+                         f"Ex: `{self.bot.defaultPrefix}help`"
+                         f"\n{self.more_info_category}\n"),
             # color = 0x15DFEA,
-            color = 0xFF95B0,
-            timestamp = d.utcnow()
+            color=0xFF95B0,
+            timestamp=d.utcnow()
         )
         if ctx.guild:
-            em.description += f"""Hover over [`?`](https://www.discordapp.com/channels/{ctx.guild.id}/{ctx.channel.id} "More info here.") to get more info (sorry mobile users).\n"""
+            hover = self.hover_link(ctx, "More info here")
+            em.description += (f"Hover over {hover} to get more info """
+                               "(sorry mobile users).\n")
         em.set_thumbnail(
-            url = self.bot.user.avatar_url
+            url=self.bot.user.avatar_url
         )
         em.set_footer(
-            text = f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
-            icon_url = self.bot.user.avatar_url
+            text=f"Requested by {ctx.message.author.name}#"
+                 f"{ctx.message.author.discriminator}",
+            icon_url=self.bot.user.avatar_url
         )
-        
-    
-        cogs = [c for c in self.bot.cogs.values()]
+
+        # cogs = [c for c in self.bot.cogs.values()]
         cog_names = [c for c in self.bot.cogs.keys()]
         cog_class_names = []
         for cog in cog_names:
@@ -82,18 +95,20 @@ class Meta(commands.Cog, name = ":gear: Meta"):
 
                     all_categories += f"\n{cog}"
                     if cog_docstring and ctx.guild:
-                        all_categories += f""" [`?`](https://www.discordapp.com/channels/{ctx.guild.id}/{ctx.channel.id} "{cog_docstring}")"""
+                        all_categories += self.hover_link(ctx, cog_docstring)
             em.add_field(
-                name = "Categories",
-                value = all_categories,
-                inline = True
+                name="Categories",
+                value=all_categories,
+                inline=True
             )
 
             dev = self.bot.get_user(224513210471022592)
             em.add_field(
-                    name = ":information_source: Technical Info",
-                    value= f"Developed by - {dev.mention}\nProgramming Language - Python\nFramework - Discord.py Commands",
-                    inline = True
+                    name=":information_source: Technical Info",
+                    value=(f"Developed by - {dev.mention}\n"
+                           "Programming Language - Python\n"
+                           "Framework - Discord.py Commands"),
+                    inline=True
             )
 
         else:
@@ -103,14 +118,24 @@ class Meta(commands.Cog, name = ":gear: Meta"):
 
             # cog_search_lowered = [cog[1:].lower() for cog in cogs]
             if commd.lower() in cog_search_lowered:
-                cog_called = self.bot.get_cog(cog_names[cog_search_lowered.index(commd.lower())])
+                cog_called = self.bot.get_cog(
+                    cog_names[cog_search_lowered.index(commd.lower())])
+
                 commands_list = cog_called.get_commands()
+
                 help_text = f"**{cog_called.qualified_name}**\n"
-                help_text += (cog_called.description + "\n\n" if cog_called.description is not None else "\n")
+                help_text += (cog_called.description + "\n\n"
+                              if cog_called.description is not None
+                              else "\n")
 
                 for command in commands_list:
                     if not command.hidden:
-                        help_text += f"**`{self.bot.defaultPrefix}{command.name}{' ' + command.usage if command.usage is not None else ''}`** - {command.description}\n"
+                        command_usage = (" " + command.usage
+                                         if command.usage is not None
+                                         else '')
+                        help_text += (f"**`{self.bot.defaultPrefix}"
+                                      f"{command.name}{command_usage}`** - "
+                                      f"{command.description}\n")
 
                         if len(command.aliases) > 0:
                             prefix_aliases = [f"`{self.bot.defaultPrefix}{a}`" for a in command.aliases]
@@ -140,7 +165,7 @@ class Meta(commands.Cog, name = ":gear: Meta"):
         self.bot.loop.create_task(
             wait_for_deletion(bot_message, user_ids=(ctx.author.id,), client=self.bot)
         )
-    
+
     @help_command.command(
         name = "admin",
         description = "Displays all admin commands",
@@ -150,7 +175,7 @@ class Meta(commands.Cog, name = ":gear: Meta"):
     @commands.is_owner()
     async def help_admin_command(self, ctx, commd = "all"):
         # Create an embed that will be filled in with information
-        # depending on user input 
+        # depending on user input
         em = discord.Embed(
             title = f"Admin Help For {self.bot.user.name}",
             description = f"{self.bot.description}\n\n**Prefixes:** {self.bot.prefixes}\
@@ -166,8 +191,8 @@ class Meta(commands.Cog, name = ":gear: Meta"):
             text = f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
             icon_url = self.bot.user.avatar_url
         )
-        
-    
+
+
         cogs = [c for c in self.bot.cogs.keys()]
 
         # If the user didn't specify a command, the full help command is sent
@@ -186,7 +211,7 @@ class Meta(commands.Cog, name = ":gear: Meta"):
                     for comm in cog_commands:
                         if comm.hidden == True:
                             commands_list += f"**`{comm.name}`** - {comm.description}\n"
-                        
+
                     em.add_field(
                         name = cog,
                         value=commands_list + "‍",
@@ -262,7 +287,7 @@ class Meta(commands.Cog, name = ":gear: Meta"):
         startupt = self.bot.startup_time
         up = now-startupt
         em.add_field(name = "<:online:649270802088460299> Uptime", value = strfdelta(up, '`{D}D {H}H {M}M {S}S`'))
-        
+
         await ctx.send(embed = em)
 
 
@@ -271,7 +296,7 @@ class Meta(commands.Cog, name = ":gear: Meta"):
         description = "Ping command; replies with 'Pong!'"
     )
     async def ping_command(self, ctx):
-        
+
         start = d.timestamp(d.now())
 
         msg = await ctx.send(content = "Pinging")
@@ -293,7 +318,7 @@ class Meta(commands.Cog, name = ":gear: Meta"):
         # Attach :02 to a time (Ex: {D:02}) to add the second 0
 
         await ctx.send(msg)
-    
+
     @commands.command(
         name = "invite",
         description = "Invite me to your server"
@@ -324,7 +349,7 @@ class Meta(commands.Cog, name = ":gear: Meta"):
                     msg += f"**:warning: Extension `{ext}` not loaded.**\n```py\n{traceback_data}```\n\n"
                     self.log.warning(f"Extension 'cogs.{cog.lower()}' not loaded.\n{traceback_data}")
             return await ctx.send(msg)
-        
+
         try:
             self.bot.reload_extension(cog.lower())
             await ctx.send(f"**:repeat: Reloaded** `{cog.lower()}`")

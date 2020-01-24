@@ -136,8 +136,8 @@ class YTDLSource(discord.PCMVolumeTransformer):
                         raise YTDLError('Couldn\'t retrieve any matches for `{}`'.format(webpage_url))
 
             return cls(ctx, discord.FFmpegPCMAudio(info['url'], **cls.FFMPEG_OPTIONS), data=info)
-    
-    
+
+
     @classmethod
     async def get_playlist(cls, ctx: commands.Context, search: str, *, loop: asyncio.BaseEventLoop = None):
         loop = loop or asyncio.get_event_loop()
@@ -155,11 +155,11 @@ class YTDLSource(discord.PCMVolumeTransformer):
             for entry in unproccessed['entries']:
                 if entry:
                     data_list.append(entry)
-                    
+
 
             if len(data_list) == 0:
                 raise YTDLError("Playlist is empty")
-        
+
         playlist = []
         for video in data_list:
             print(str(video))
@@ -170,7 +170,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
             except youtube_dl.DownloadError:
                 pass
             else:
-            
+
                 if data is None:
                     await ctx.send(f"Couldn't fetch `{webpage_url}`")
 
@@ -250,7 +250,7 @@ class Song:
         em.set_thumbnail(url=self.source.thumbnail)
 
         return em
-    
+
     def create_message(self):
         return f"**:notes: Now playing** `{self.source.title}`"
 
@@ -366,7 +366,7 @@ class VoiceState:
                 # if self.songs.qsize() < 1:
                 #     self.bot.loop.create_task(self.stop())
                 #     return
-                
+
                 # Try to get the next song within 3 minutes.
                 # If no song will be added to the queue in time,
                 # the player will disconnect due to performance
@@ -487,7 +487,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         else:
             await ctx.send(f'You have already voted to {cmd}.')
 
-    @commands.command(name='join', description = "Joins a voice channel.", 
+    @commands.command(name='join', description = "Joins a voice channel.",
     aliases = ['connect'], invoke_without_subcommand=True)
     async def _join(self, ctx: commands.Context):
 
@@ -523,7 +523,7 @@ class Music(commands.Cog, name = ":notes: Music"):
     )
     @is_dj()
     async def _leave(self, ctx):
-        
+
 
         if not ctx.voice_state.voice:
             if ctx.voice_client:
@@ -548,7 +548,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         if not volume:
             volume = ctx.voice_state.volume * 100
             return await ctx.send(f'**{self.get_volume_emoji(volume)} Volume:** `{volume}%`')
-        
+
 
         if not ctx.voice_state.is_playing:
             return await ctx.send('Nothing is being played at the moment.')
@@ -571,7 +571,7 @@ class Music(commands.Cog, name = ":notes: Music"):
             em = ctx.voice_state.current.create_embed("Currently Paused")
         else:
             em = ctx.voice_state.current.create_embed()
-            
+
         await ctx.send(embed=em)
 
     @commands.command(name='pause', description = "Pauses the currently playing song.")
@@ -609,7 +609,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         async def skip_song():
             await ctx.message.add_reaction('⏭')
             ctx.voice_state.skip()
-        
+
         if not ctx.voice_state.is_playing:
             return await ctx.send("Nothing is playing. There is nothing to skip!")
 
@@ -668,7 +668,7 @@ class Music(commands.Cog, name = ":notes: Music"):
 
         if len(ctx.voice_state.songs) == 0:
             return await ctx.send('Queue is empty. Nothing to remove!')
-        
+
         await self.votes(ctx, "remove", remove_song, index)
 
     @commands.group(name='loop', description = "Loops/unloops the currently playing song.", invoke_without_command = True)
@@ -696,7 +696,7 @@ class Music(commands.Cog, name = ":notes: Music"):
             return await ctx.send('Nothing being played at the moment.')
         if len(ctx.voice_state.songs) == 0:
             return await ctx.send("The queue is empty. Nothing to loop!")
-        
+
 
         ctx.voice_state.loop_queue = not ctx.voice_state.loop_queue
         ctx.voice_state.loop = False
@@ -706,7 +706,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         else:
             await ctx.send(f"**:repeat_one: :x: No longer looping queue**")
 
-    
+
     async def get_haste(self, url='https://hastebin.com'):
         if ".com" in url:
             args = url.split(".com/")
@@ -772,7 +772,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         icon_url = self.bot.user.avatar_url)
         await ctx.send(embed = em)
 
-                    
+
     async def fetch_yt_playlist(self, ctx, url):
         try:
             playlist = await YTDLSource.get_playlist(ctx, url, loop=self.bot.loop)
@@ -784,11 +784,11 @@ class Music(commands.Cog, name = ":notes: Music"):
             total_duration = 0
             for i, source in enumerate(playlist):
                 song = Song(source)
-                
+
                 await ctx.voice_state.songs.put(song)
                 total_duration += int(source.data.get('duration'))
                 if i < 9:
-                    description += f'\n• [{source.title}]({source.url}) `{source.duration}`' 
+                    description += f'\n• [{source.title}]({source.url}) `{source.duration}`'
                 elif i == 9 and len(playlist) > 10:
                     songs_left = len(playlist) - (i + 1)
                     description += f'\n• [{source.title}]({source.url}) \
@@ -818,7 +818,7 @@ class Music(commands.Cog, name = ":notes: Music"):
 
         if not ctx.voice_state.voice:
             await ctx.invoke(self._join)
-        
+
         urls = "http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
         if len(re.findall(urls, search)) > 0:
             youtube_urls = "(?:https?://)?(?:www.)?(?:youtube.com|youtu.be)/(?:watch\?v=)?([^\s]+)"
@@ -834,7 +834,7 @@ class Music(commands.Cog, name = ":notes: Music"):
                 `{search}`\nThis make take awhile depending on amount of videos.")
                 await self.hastebin_playlist(ctx, search)
                 return
-                                   
+
         await ctx.send(f"**:mag: Searching** `{search}`")
 
         async with ctx.typing():
