@@ -59,6 +59,13 @@ def create_task(conn, task):
     return cur.lastrowid
 
 
+def prefixes_table(database):
+    prefixes_table = """CREATE TABLE IF NOT EXISTS prefixes (
+                                        id integer PRIMARY KEY,
+                                        prefixes text
+                                    ); """
+
+
 def projects_and_tasks(database):
 
     projects_table = """ CREATE TABLE IF NOT EXISTS projects (
@@ -68,7 +75,7 @@ def projects_and_tasks(database):
                                         end_date text
                                     ); """
 
-    tasks_table = ("""CREATE TABLE IF NOT EXISTS tasks (
+    tasks_table = """CREATE TABLE IF NOT EXISTS tasks (
                                     id integer PRIMARY KEY,
                                     name text NOT NULL,
                                     priority integer,
@@ -76,9 +83,7 @@ def projects_and_tasks(database):
                                     project_id integer NOT NULL,
                                     begin_date text NOT NULL,
                                     end_date text NOT NULL,
-                                    FOREIGN KEY (project_id) """
-                   """REFERENCES projects (id)
-                                );""")
+                                    FOREIGN KEY (project_id) REFERENCES projects (id));"""
 
     # create a database connection
     conn = create_connection(database)
