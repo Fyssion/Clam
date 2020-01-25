@@ -283,9 +283,9 @@ class VoiceState:
         self._loop_queue = False
         self._volume = 0.5
         self._votes = {
-            "skip" : set(),
-            "shuffle" : set(),
-            "remove" : set()
+            "skip": set(),
+            "shuffle": set(),
+            "remove": set()
             }
 
         self.audio_player = bot.loop.create_task(
@@ -310,7 +310,7 @@ class VoiceState:
     @loop_queue.setter
     def loop_queue(self, value: bool):
         self._loop_queue = value
-        if self._loop_queue == True:
+        if self._loop_queue is True:
             self.saved_queue = self.songs
         else:
             self.saved_queue = SongQueue()
@@ -331,8 +331,8 @@ class VoiceState:
                 # The player is techincally in
                 # the middle of playing a song
                 return True
-            return self.voice.is_playing() == True and \
-            self.current is not None
+            return self.voice.is_playing() is True and \
+                self.current is not None
         return self.voice is not None and self.current is not None
 
     @property
@@ -355,11 +355,6 @@ class VoiceState:
                 # if self.songs.qsize() < 1:
                 #     self.bot.loop.create_task(self.stop())
                 #     return
-
-                # Try to get the next song within 3 minutes.
-                # If no song will be added to the queue in time,
-                # the player will disconnect due to performance
-                # reasons.
 
                 try:
                     async with timeout(180):  # 3 minutes
@@ -396,13 +391,17 @@ class VoiceState:
             await self.voice.disconnect()
             self.voice = None
 
+
 def is_dj():
     def predicate(ctx):
         author = ctx.author
         role_cap = discord.utils.get(ctx.guild.roles, name="DJ")
         role_lower = discord.utils.get(ctx.guild.roles, name="dj")
-        return author.guild_permissions.manage_guild or role_cap in author.roles or role_lower in author.roles
+        return (author.guild_permissions.manage_guild
+                or role_cap in author.roles
+                or role_lower in author.roles)
     return commands.check(predicate)
+
 
 class Music(commands.Cog, name = ":notes: Music"):
     """Listen to music in any voice channel!\nUse `r.play` to play a song."""
@@ -422,20 +421,20 @@ class Music(commands.Cog, name = ":notes: Music"):
         for state in self.voice_states.values():
             self.bot.loop.create_task(state.stop())
 
-    def cog_check(self, ctx: commands.Context):
+    def cog_check(self, ctx):
         if not ctx.guild:
             raise commands.NoPrivateMessage("This command can't be used in DM channels.")
 
         return True
 
-    async def cog_before_invoke(self, ctx: commands.Context):
+    async def cog_before_invoke(self, ctx):
         ctx.voice_state = self.get_voice_state(ctx)
 
-    async def cog_command_error(self, ctx: commands.Context, error: commands.CommandError):
+    async def cog_command_error(self, ctx, error: commands.CommandError):
         await ctx.send(f"Oops: {str(error)}")
         print(str(error))
 
-    async def votes(self, ctx, cmd: str, func, param = None):
+    async def votes(self, ctx, cmd: str, func, param=None):
         async def run_func():
             if param:
                 await func(param)
@@ -476,8 +475,8 @@ class Music(commands.Cog, name = ":notes: Music"):
         else:
             await ctx.send(f"You have already voted to {cmd}.")
 
-    @commands.command(name="join", description = "Joins a voice channel.",
-    aliases = ["connect"], invoke_without_subcommand=True)
+    @commands.command(name="join", description="Joins a voice channel.",
+                      aliases=["connect"], invoke_without_subcommand=True)
     async def _join(self, ctx: commands.Context):
 
         destination = ctx.author.voice.channel
@@ -489,8 +488,8 @@ class Music(commands.Cog, name = ":notes: Music"):
 
     @commands.command(
         name="summon",
-        description = "Summons the bot to a voice channel. \
-        If no channel was specified, it joins your channel."
+        description="Summons the bot to a voice channel. \
+            If no channel was specified, it joins your channel."
     )
     @is_dj()
     async def _summon(self, ctx, *, channel: discord.VoiceChannel = None):
@@ -507,7 +506,7 @@ class Music(commands.Cog, name = ":notes: Music"):
 
     @commands.command(
         name="leave",
-        description = "Clears the queue and leaves the voice channel.",
+        description="Clears the queue and leaves the voice channel.",
         aliases=["disconnect"]
     )
     @is_dj()
@@ -529,15 +528,15 @@ class Music(commands.Cog, name = ":notes: Music"):
         else:
             return ":sound:"
 
-    @commands.command(name="volume", description = "Sets the volume of the player.")
+    @commands.command(name="volume", description="Sets the volume of the player.")
     async def _volume(self, ctx, *, volume: int = None):
         return await ctx.send("To change the volume:\nRight click on me in the voice channel, \
         and adjust the `User Volume` slider.")
 
         if not volume:
             volume = ctx.voice_state.volume * 100
-            return await ctx.send(f"**{self.get_volume_emoji(volume)} Volume:** `{volume}%`")
-
+            emoji = self.get_volume_emoji(volume)
+            return await ctx.send(f"**{emoji} Volume:** `{volume}%`")
 
         if not ctx.voice_state.is_playing:
             return await ctx.send("Nothing is being played at the moment.")
@@ -550,7 +549,7 @@ class Music(commands.Cog, name = ":notes: Music"):
 
     @commands.command(
         name="now",
-        description = "Displays the currently playing song.",
+        description="Displays the currently playing song.",
         aliases=["current", "playing", "np"]
     )
     async def _now(self, ctx):
@@ -563,23 +562,25 @@ class Music(commands.Cog, name = ":notes: Music"):
 
         await ctx.send(embed=em)
 
-    @commands.command(name="pause", description = "Pauses the currently playing song.")
+    @commands.command(name="pause", description="Pauses the currently playing song.")
     @is_dj()
     async def _pause(self, ctx):
 
         if ctx.voice_state.is_playing and ctx.voice_state.voice.is_playing():
             ctx.voice_state.voice.pause()
-            await ctx.send(f"**:pause_button: Paused** `{ctx.voice_state.current.source.title}`")
+            song = ctx.voice_state.current.source.title
+            await ctx.send(f"**:pause_button: Paused** `{song}`")
 
-    @commands.command(name="resume", description = "Resumes a currently paused song.")
+    @commands.command(name="resume", description="Resumes a currently paused song.")
     @is_dj()
     async def _resume(self, ctx):
 
         if ctx.voice_state.is_playing and ctx.voice_state.voice.is_paused():
             ctx.voice_state.voice.resume()
-            await ctx.send(f"**:arrow_forward: Resuming** `{ctx.voice_state.current.source.title}`")
+            song = ctx.voice_state.current.source.title
+            await ctx.send(f"**:arrow_forward: Resuming** `{song}`")
 
-    @commands.command(name="stop", description = "Stops playing song and clears the queue.")
+    @commands.command(name="stop", description="Stops playing song and clears the queue.")
     @is_dj()
     async def _stop(self, ctx):
 
@@ -591,8 +592,8 @@ class Music(commands.Cog, name = ":notes: Music"):
 
     @commands.command(
         name="skip",
-        description = "Vote to skip a song. The requester can automatically skip.",
-        aliases = ["next"]
+        description="Vote to skip a song. The requester can automatically skip.",
+        aliases=["next"]
     )
     async def _skip(self, ctx):
         async def skip_song():
@@ -606,9 +607,9 @@ class Music(commands.Cog, name = ":notes: Music"):
 
     @commands.command(
         name="queue",
-        description = "Shows the player's queue. You can optionally select the page.",
-        usage = "<page #>",
-        aliases = ["playlist"]
+        description="Shows the player's queue. You can optionally select the page.",
+        usage="<page #>",
+        aliases=["playlist"]
     )
     async def _queue(self, ctx, *, page: int = 1):
 
@@ -646,8 +647,8 @@ class Music(commands.Cog, name = ":notes: Music"):
 
     @commands.command(
         name="remove",
-        description = "Removes a song from the queue at a given index.",
-        usage = "[song #]"
+        description="Removes a song from the queue at a given index.",
+        usage="[song #]"
     )
     async def _remove(self, ctx, index: int):
         async def remove_song(index):
@@ -660,7 +661,11 @@ class Music(commands.Cog, name = ":notes: Music"):
 
         await self.votes(ctx, "remove", remove_song, index)
 
-    @commands.group(name="loop", description = "Loops/unloops the currently playing song.", invoke_without_command = True)
+    @commands.group(
+        name="loop",
+        description="Loops/unloops the currently playing song.",
+        invoke_without_command=True
+    )
     async def _loop(self, ctx):
 
         return await ctx.send(":warning: :( Sorry, this feature is \
@@ -679,13 +684,16 @@ class Music(commands.Cog, name = ":notes: Music"):
             await ctx.send(f"**:repeat_one: :x: No longer looping** \
             `{ctx.voice_state.current.source.title}`")
 
-    @_loop.command(name = "playlist", description = "Loop the entire playlist.", aliases = ["queue"])
+    @_loop.command(
+        name="playlist",
+        description="Loop the entire playlist.",
+        aliases=["queue"]
+    )
     async def _loop_queue(self, ctx):
         if not ctx.voice_state.is_playing:
             return await ctx.send("Nothing being played at the moment.")
         if len(ctx.voice_state.songs) == 0:
             return await ctx.send("The queue is empty. Nothing to loop!")
-
 
         ctx.voice_state.loop_queue = not ctx.voice_state.loop_queue
         ctx.voice_state.loop = False
@@ -699,7 +707,7 @@ class Music(commands.Cog, name = ":notes: Music"):
         if ".com" in url:
             args = url.split(".com/")
             args.insert(1, ".com/raw/")
-        elif ".io" in url: # Pastie.io in particular
+        elif ".io" in url:  # Pastie.io in particular
             args = url.split(".io/")
             args.insert(1, ".io/raw/")
         else:
