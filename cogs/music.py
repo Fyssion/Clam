@@ -695,7 +695,6 @@ class Music(commands.Cog, name = ":notes: Music"):
         else:
             await ctx.send(f"**:repeat_one: :x: No longer looping queue**")
 
-
     async def get_haste(self, url="https://hastebin.com"):
         if ".com" in url:
             args = url.split(".com/")
@@ -761,7 +760,6 @@ class Music(commands.Cog, name = ":notes: Music"):
         icon_url = self.bot.user.avatar_url)
         await ctx.send(embed = em)
 
-
     async def fetch_yt_playlist(self, ctx, url):
         try:
             playlist = await YTDLSource.get_playlist(ctx, url, loop=self.bot.loop)
@@ -788,7 +786,6 @@ class Music(commands.Cog, name = ":notes: Music"):
             em.set_footer(text = f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
             icon_url = self.bot.user.avatar_url)
             await ctx.send(embed = em)
-
 
     @commands.command(
         name="play",
