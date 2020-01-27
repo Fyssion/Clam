@@ -311,11 +311,10 @@ class VoiceState:
     @loop_queue.setter
     def loop_queue(self, value: bool):
         self._loop_queue = value
-        if self._loop_queue is True:
+        if self._loop_queue:
             self.saved_queue = self.songs
         else:
             self.saved_queue = SongQueue()
-            self.saved_queue = None
 
     @property
     def volume(self):
@@ -350,6 +349,8 @@ class VoiceState:
                 if len(self.songs) == 0:
                     print("Passed songs")
                     self.songs = self.saved_queue
+                    print("Passed songs 2")
+                    print(self.songs == self.saved_queue)
 
             if not self.loop:
 
