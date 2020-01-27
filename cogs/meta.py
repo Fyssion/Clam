@@ -7,6 +7,7 @@ import traceback
 
 from .utils.utils import wait_for_deletion
 from .utils import db
+from .utils.utils import hover_link
 
 
 def strfdelta(tdelta, fmt):
@@ -37,11 +38,6 @@ class Meta(commands.Cog, name=":gear: Meta"):
                                    f"use: **`{self.bot.defaultPrefix}help [category]`‍**")
         self.more_info_cmd = ("For **more info** on a **specific command**, "
                               f"use: **`{self.bot.defaultPrefix}help [command]`‍**")
-
-    def hover_link(self, ctx, msg):
-        return ("[`?`](https://www.discordapp.com/"
-                f"channels/{ctx.guild.id}/{ctx.channel.id} "
-                f""""{msg}") to get more info """)
 
     @commands.group(
         name="help",

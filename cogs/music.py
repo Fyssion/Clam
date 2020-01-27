@@ -3,7 +3,6 @@ import discord
 
 import asyncio
 import youtube_dl
-
 import functools
 import itertools
 import math
@@ -11,6 +10,8 @@ import random
 from async_timeout import timeout
 import re
 from datetime import datetime as d
+
+from .utils.utils import hover_link
 
 
 # Silence useless bug reports messages
@@ -310,11 +311,10 @@ class VoiceState:
     @loop_queue.setter
     def loop_queue(self, value: bool):
         self._loop_queue = value
-        if self._loop_queue is True:
+        if self._loop_queue:
             self.saved_queue = self.songs
         else:
             self.saved_queue = SongQueue()
-            self.saved_queue = None
 
     @property
     def volume(self):
@@ -331,8 +331,8 @@ class VoiceState:
                 # The player is techincally in
                 # the middle of playing a song
                 return True
-            return self.voice.is_playing() is True and \
-                self.current is not None
+            return (self.voice.is_playing() is True and
+                    self.current is not None)
         return self.voice is not None and self.current is not None
 
     @property
@@ -349,6 +349,8 @@ class VoiceState:
                 if len(self.songs) == 0:
                     print("Passed songs")
                     self.songs = self.saved_queue
+                    print("Passed songs 2")
+                    print(self.songs == self.saved_queue)
 
             if not self.loop:
 
@@ -395,17 +397,17 @@ class VoiceState:
 def is_dj():
     def predicate(ctx):
         author = ctx.author
-        role_cap = discord.utils.get(ctx.guild.roles, name="DJ")
-        role_lower = discord.utils.get(ctx.guild.roles, name="dj")
-        return (author.guild_permissions.manage_guild
-                or role_cap in author.roles
-                or role_lower in author.roles)
+        upper = discord.utils.get(ctx.guild.roles, name="DJ")
+        lower = discord.utils.get(ctx.guild.roles, name="dj")
+        return (author.guild_permissions.manage_guild or
+                upper in author.roles or
+                lower in author.roles)
     return commands.check(predicate)
 
 
 class Music(commands.Cog, name=":notes: Music"):
     """Listen to music in any voice channel!\nUse `r.play` to play a song."""
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot):
         self.bot = bot
         self.voice_states = {}
 
@@ -445,9 +447,9 @@ class Music(commands.Cog, name=":notes: Music"):
         if_is_requester = (voter == ctx.voice_state.current.requester)
         if_has_perms = voter.guild_permissions.manage_guild
 
-        role_cap = discord.utils.get(ctx.guild.roles, name="DJ")
-        role_lower = discord.utils.get(ctx.guild.roles, name="dj")
-        if_is_dj = role_cap in voter.roles or role_lower in voter.roles
+        upper = discord.utils.get(ctx.guild.roles, name="DJ")
+        lower = discord.utils.get(ctx.guild.roles, name="dj")
+        if_is_dj = upper in voter.roles or lower in voter.roles
 
         if len(ctx.voice_state.voice.channel.members) < 5:
             if len(ctx.voice_state.voice.channel.members) < 3:
@@ -469,15 +471,15 @@ class Music(commands.Cog, name=":notes: Music"):
                 ctx.voice_state._votes[cmd].clear()
                 await run_func()
             else:
-                await ctx.send(f"{cmd.capitalize()} vote added, \
-                currently at `{total_votes}/{required_votes}`")
+                await ctx.send(f"{cmd.capitalize()} vote added, "
+                               f"currently at `{total_votes}/{required_votes}`")
 
         else:
             await ctx.send(f"You have already voted to {cmd}.")
 
     @commands.command(name="join", description="Joins a voice channel.",
                       aliases=["connect"], invoke_without_subcommand=True)
-    async def _join(self, ctx: commands.Context):
+    async def _join(self, ctx):
 
         destination = ctx.author.voice.channel
         if ctx.voice_state.voice:
@@ -530,8 +532,9 @@ class Music(commands.Cog, name=":notes: Music"):
 
     @commands.command(name="volume", description="Sets the volume of the player.")
     async def _volume(self, ctx, *, volume: int = None):
-        return await ctx.send("To change the volume:\nRight click on me in the voice channel, \
-        and adjust the `User Volume` slider.")
+        return await ctx.send("To change the volume:\n"
+                              "Right click on me in the voice channel, "
+                              "and adjust the `User Volume` slider.")
 
         if not volume:
             volume = ctx.voice_state.volume * 100
@@ -622,7 +625,8 @@ class Music(commands.Cog, name=":notes: Music"):
         start = (page - 1) * items_per_page
         end = start + items_per_page
 
-        queue = "`#` [Song](https://www.youtube.com) `Duration` @Requester\n\n"
+        hover = hover_link(ctx, "Song Title", text="Song")
+        queue = f"`#` {hover} `Duration` @Requester\n\n"
         for i, song in enumerate(ctx.voice_state.songs[start:end], start=start):
             queue += f"`{i+1}.` [{song.source.title}]({song.source.url}) `{song.source.duration}` {song.source.requester.mention}\n"
 
