@@ -6,6 +6,7 @@ from string import Formatter
 import traceback
 
 from .utils.utils import wait_for_deletion
+from .utils import db
 
 
 def strfdelta(tdelta, fmt):
@@ -297,9 +298,9 @@ class Meta(commands.Cog, name=":gear: Meta"):
         await msg.edit(f"Pong!\nOne message round-trip took {ping}ms.")
 
     @commands.command(
-        name = "uptime",
-        description = "Uptime command; replies with the uptime",
-        aliases = ['up']
+        name="uptime",
+        description="Uptime command; replies with the uptime",
+        aliases=['up']
     )
     async def uptime(self, ctx):
         up = d.now() - self.bot.startup_time
@@ -318,6 +319,21 @@ class Meta(commands.Cog, name=":gear: Meta"):
         invite = "https://discordapp.com/api/oauth2/authorize?client_id=639234650782564362&permissions=470150358&scope=bot"
         await ctx.send(f"Invite:\n{invite}")
         self.log.info(f"{str(ctx.author)} used the invite command")
+
+    @commands.group(name="prefix", description="Prefix settings.",
+                    invoke_without_subcommand=True)
+    async def _prefix(self, ctx):
+        # TODO Make command
+        # prefixes = db.fetch("prefixes.db")
+        msg = "Prefixes:\n"
+        for i, prefix in enumerate(prefixes):
+            msg += f"`{i+1}` {prefix}"
+        await ctx.send(msg)
+
+    @_prefix.command(name="add", description="Add a prefix.", usage="[prefix]")
+    async def _add_prefix(self, ctx, prefix):
+        # TODO Make command
+        pass
 
     @commands.command(
         name="reload",

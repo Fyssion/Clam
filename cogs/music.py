@@ -403,7 +403,7 @@ def is_dj():
     return commands.check(predicate)
 
 
-class Music(commands.Cog, name = ":notes: Music"):
+class Music(commands.Cog, name=":notes: Music"):
     """Listen to music in any voice channel!\nUse `r.play` to play a song."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
