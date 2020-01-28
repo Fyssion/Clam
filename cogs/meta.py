@@ -316,9 +316,9 @@ class Meta(commands.Cog, name=":gear: Meta"):
         await ctx.send(f"Invite:\n{invite}")
         self.log.info(f"{str(ctx.author)} used the invite command")
 
-    @commands.group(name="prefix", description="Prefix settings.",
+    @commands.group(description="Prefix settings.",
                     invoke_without_subcommand=True)
-    async def _prefix(self, ctx):
+    async def prefix(self, ctx):
         # TODO Make command
         # prefixes = db.fetch("prefixes.db")
         msg = "Prefixes:\n"
@@ -326,7 +326,7 @@ class Meta(commands.Cog, name=":gear: Meta"):
             msg += f"`{i+1}` {prefix}"
         await ctx.send(msg)
 
-    @_prefix.command(name="add", description="Add a prefix.", usage="[prefix]")
+    @prefix.command(name="add", description="Add a prefix.", usage="[prefix]")
     async def _add_prefix(self, ctx, prefix):
         # TODO Make command
         pass

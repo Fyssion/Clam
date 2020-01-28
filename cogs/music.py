@@ -80,7 +80,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
     @classmethod
     async def create_source(cls, ctx: commands.Context,
-    search: str, *, loop: asyncio.BaseEventLoop = None):
+                            search: str, *, loop: asyncio.BaseEventLoop = None):
         loop = loop or asyncio.get_event_loop()
 
         partial = functools.partial(cls.ytdl.extract_info, search, download=False, process=False)
@@ -127,7 +127,6 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
             return cls(ctx, discord.FFmpegPCMAudio(info["url"], **cls.FFMPEG_OPTIONS), data=info)
 
-
     @classmethod
     async def get_playlist(cls, ctx: commands.Context, search: str, *, loop: asyncio.BaseEventLoop = None):
         loop = loop or asyncio.get_event_loop()
@@ -145,7 +144,6 @@ class YTDLSource(discord.PCMVolumeTransformer):
             for entry in unproccessed["entries"]:
                 if entry:
                     data_list.append(entry)
-
 
             if len(data_list) == 0:
                 raise YTDLError("Playlist is empty")
@@ -175,7 +173,6 @@ class YTDLSource(discord.PCMVolumeTransformer):
                             await ctx.send(f"Couldn't retrieve any matches for `{webpage_url}`")
                 source = cls(ctx, discord.FFmpegPCMAudio(info["url"], **cls.FFMPEG_OPTIONS), data=info)
                 playlist.append(source)
-
 
         return playlist
 
@@ -750,9 +747,9 @@ class Music(commands.Cog, name=":notes: Music"):
                 if source:
                     playlist.append(source)
         em = discord.Embed(
-            title = "**:page_facing_up: Enqueued:**",
-            timestamp = d.utcnow(),
-            color = discord.Color.blurple()
+            title="**:page_facing_up: Enqueued:**",
+            timestamp=d.utcnow(),
+            color=discord.Color.blurple()
         )
         description = ""
         total_duration = 0
@@ -768,9 +765,9 @@ class Music(commands.Cog, name=":notes: Music"):
         total_duration = YTDLSource.parse_duration(total_duration)
         description += f"\nTotal duration: {total_duration}"
         em.description = description
-        em.set_footer(text = f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
-        icon_url = self.bot.user.avatar_url)
-        await ctx.send(embed = em)
+        em.set_footer(text=f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
+                      icon_url=self.bot.user.avatar_url)
+        await ctx.send(embed=em)
 
     async def fetch_yt_playlist(self, ctx, url):
         try:
@@ -778,7 +775,7 @@ class Music(commands.Cog, name=":notes: Music"):
         except YTDLError as e:
             await ctx.send(f"An error occurred while processing this request: ```py {str(e)}```")
         else:
-            em = discord.Embed(title = "**:page_facing_up: Enqueued:**", timestamp = d.utcnow(), color = 0xFF0000)
+            em = discord.Embed(title="**:page_facing_up: Enqueued:**", timestamp=d.utcnow(), color=0xFF0000)
             description = ""
             total_duration = 0
             for i, source in enumerate(playlist):
@@ -795,15 +792,15 @@ class Music(commands.Cog, name=":notes: Music"):
             total_duration = YTDLSource.parse_duration(total_duration)
             description += f"\nTotal duration: {total_duration}"
             em.description = description
-            em.set_footer(text = f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
-            icon_url = self.bot.user.avatar_url)
+            em.set_footer(text=f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
+            icon_url=self.bot.user.avatar_url)
             await ctx.send(embed = em)
 
     @commands.command(
         name="play",
-        description = "Search for a song and play it.",
-        aliases = ["p", "yt"],
-        usage = "[song]"
+        description="Search for a song and play it.",
+        aliases=["p", "yt"],
+        usage="[song]"
     )
     async def _play(self, ctx, *, search: str = None):
 
@@ -827,6 +824,8 @@ class Music(commands.Cog, name=":notes: Music"):
 
                     await self.fetch_yt_playlist(ctx, search)
                     return
+            if "soundcloud" in url:
+                pass
             else:
                 await ctx.send(f"**:globe_with_meridians: Fetching from bin** \
                 `{search}`\nThis make take awhile depending on amount of videos.")

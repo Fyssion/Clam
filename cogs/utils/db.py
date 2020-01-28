@@ -59,13 +59,6 @@ def create_task(conn, task):
     return cur.lastrowid
 
 
-def prefixes_table(database):
-    prefixes_table = """CREATE TABLE IF NOT EXISTS prefixes (
-                                        id integer PRIMARY KEY,
-                                        prefixes text
-                                    ); """
-
-
 def projects_and_tasks(database):
 
     projects_table = """ CREATE TABLE IF NOT EXISTS projects (
@@ -116,6 +109,44 @@ def add_data_to_projects(database):
         # create tasks
         create_task(conn, task_1)
         create_task(conn, task_2)
+
+
+def create_prefix(conn, prefix):
+    """
+    Create a new project into the projects table
+    :param conn:
+    :param project:
+    :return: project id
+    """
+    sql = ''' INSERT INTO projects(name,begin_date,end_date)
+              VALUES(?,?,?) '''
+    cur = conn.cursor()
+    cur.execute(sql, prefix)
+    return cur.lastrowid
+
+
+def prefixes_table(database):
+    prefixes_table = """CREATE TABLE IF NOT EXISTS prefixes (
+                                        id integer PRIMARY KEY,
+                                        prefixes text
+                                    ); """
+
+    conn = create_connection(database)
+
+    # create tables
+    if conn is not None:
+        # create projects table
+        create_table(conn, prefixes_table)
+    else:
+        print("Error! cannot create the database connection.")
+
+
+def add_data_to_prefixes(database, sql):
+    conn = create_connection(database)
+    with conn:
+        # create a new project
+        guild = ("")
+        create_prefix(conn, guild)
 
 
 if __name__ == '__main__':
