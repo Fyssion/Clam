@@ -10,6 +10,7 @@ import random
 from async_timeout import timeout
 import re
 from datetime import datetime as d
+from urllib.parse import urlparse
 
 from .utils.utils import hover_link
 
@@ -705,15 +706,13 @@ class Music(commands.Cog, name=":notes: Music"):
             await ctx.send(f"**:repeat_one: :x: No longer looping queue**")
 
     async def get_haste(self, url="https://hastebin.com"):
-        if ".com" in url:
-            args = url.split(".com/")
-            args.insert(1, ".com/raw/")
-        elif ".io" in url:  # Pastie.io in particular
-            args = url.split(".io/")
-            args.insert(1, ".io/raw/")
-        else:
-            url += "/raw"
-        url = "".join(args)
+        parsed = urlparse(url)
+        newpath = "/raw" + parsed.path
+        url = (parsed.scheme +
+            "://" +
+            parsed.netloc +
+            newpath)
+
         try:
             async with timeout(10):
                 async with self.bot.session.get(url) as resp:
