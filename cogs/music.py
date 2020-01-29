@@ -52,8 +52,8 @@ class YTDLSource(discord.PCMVolumeTransformer):
     ytdl = youtube_dl.YoutubeDL(YTDL_OPTIONS)
 
     def __init__(self, ctx: commands.Context,
-    source: discord.FFmpegPCMAudio, *, data: dict,
-    volume: float = 0.5):
+                 source: discord.FFmpegPCMAudio, *, data: dict,
+                 volume: float = 0.5):
         super().__init__(source, volume)
 
         self.requester = ctx.author
@@ -81,14 +81,16 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
     @classmethod
     async def create_source(cls, ctx: commands.Context,
-                            search: str, *, loop: asyncio.BaseEventLoop = None):
+                            search: str, *, loop: asyncio.BaseEventLoop = None,
+                            send_errors=True):
         loop = loop or asyncio.get_event_loop()
 
         partial = functools.partial(cls.ytdl.extract_info, search, download=False, process=False)
         try:
             data = await loop.run_in_executor(None, partial)
         except youtube_dl.DownloadError:
-            await ctx.send(f"**:x: Error while searching for** `{search}`")
+            if send_errors:
+                await ctx.send(f"**:x: Error while searching for** `{search}`")
             return
 
         if data is None:
@@ -111,7 +113,8 @@ class YTDLSource(discord.PCMVolumeTransformer):
         try:
             processed_info = await loop.run_in_executor(None, partial)
         except youtube_dl.DownloadError:
-            await ctx.send(f"**:x: Error while downloading** `{webpage_url}`")
+            if send_errors:
+                await ctx.send(f"**:x: Error while downloading** `{webpage_url}`")
         else:
             if processed_info is None:
                 raise YTDLError("Couldn't fetch `{}`".format(webpage_url))
@@ -150,6 +153,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
                 raise YTDLError("Playlist is empty")
 
         playlist = []
+        counter = 0
         for video in data_list:
             print(str(video))
             webpage_url = video["url"]
@@ -157,7 +161,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
             try:
                 data = await loop.run_in_executor(None, full)
             except youtube_dl.DownloadError:
-                pass
+                counter += 1
             else:
 
                 if data is None:
@@ -175,7 +179,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
                 source = cls(ctx, discord.FFmpegPCMAudio(info["url"], **cls.FFMPEG_OPTIONS), data=info)
                 playlist.append(source)
 
-        return playlist
+        return playlist, counter
 
 
     @staticmethod
@@ -229,7 +233,7 @@ class Song:
         )
         em.add_field(name="Duration", value=src.duration)
         em.add_field(name="Requested by",
-        value=self.requester.mention)
+                     value=self.requester.mention)
         em.add_field(
             name="Uploader",
             value=f"[{src.uploader}]({src.uploader_url})"
@@ -737,14 +741,18 @@ class Music(commands.Cog, name=":notes: Music"):
             return await ctx.send(":warning: There are no YouTube URLS in this bin.")
         videos = output.splitlines()
         playlist = []
+        failed_songs = 0
         for video in videos:
             try:
-                source = await YTDLSource.create_source(ctx, video, loop=self.bot.loop)
+                source = await YTDLSource.create_source(ctx, video, loop=self.bot.loop, send_errors=False)
             except YTDLError as e:
                 await ctx.send(f"An error occurred while processing this request: ```py {str(e)}```")
             else:
                 if source:
                     playlist.append(source)
+                else:
+                    failed_songs += 1
+
         em = discord.Embed(
             title="**:page_facing_up: Enqueued:**",
             timestamp=d.utcnow(),
@@ -752,17 +760,23 @@ class Music(commands.Cog, name=":notes: Music"):
         )
         description = ""
         total_duration = 0
+
         for i, src in enumerate(playlist):
             song = Song(src)
             total_duration += int(source.data.get("duration"))
             await ctx.voice_state.songs.put(song)
+
             if i < 9:
                 description += f"\n• [{src.title}]({src.url}) `{src.duration}`"
             elif i == 9 and len(playlist) > 10:
                 songs_left = len(playlist) - (i + 1)
                 description += f"\n• [{src.title}]({src.url}) `{src.duration}`\n...and {songs_left} more song(s)"
+
         total_duration = YTDLSource.parse_duration(total_duration)
         description += f"\nTotal duration: {total_duration}"
+        if failed_songs > 0:
+            description += f"\n:warning: Sorry, {failed_songs} song(s) failed to download."
+
         em.description = description
         em.set_footer(text=f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
                       icon_url=self.bot.user.avatar_url)
@@ -770,11 +784,12 @@ class Music(commands.Cog, name=":notes: Music"):
 
     async def fetch_yt_playlist(self, ctx, url):
         try:
-            playlist = await YTDLSource.get_playlist(ctx, url, loop=self.bot.loop)
+            playlist, failed_songs = await YTDLSource.get_playlist(ctx, url, loop=self.bot.loop)
         except YTDLError as e:
             await ctx.send(f"An error occurred while processing this request: ```py {str(e)}```")
         else:
-            em = discord.Embed(title="**:page_facing_up: Enqueued:**", timestamp=d.utcnow(), color=0xFF0000)
+            em = discord.Embed(title="**:page_facing_up: Enqueued:**",
+                               timestamp=d.utcnow(), color=0xFF0000)
             description = ""
             total_duration = 0
             for i, source in enumerate(playlist):
@@ -788,12 +803,16 @@ class Music(commands.Cog, name=":notes: Music"):
                     songs_left = len(playlist) - (i + 1)
                     description += f"\n• [{source.title}]({source.url}) \
                     `{source.duration}`\n...and {songs_left} more song(s)"
+
             total_duration = YTDLSource.parse_duration(total_duration)
             description += f"\nTotal duration: {total_duration}"
+            if failed_songs > 0:
+                description += f"\n:warning: Sorry, {failed_songs} song(s) failed to download."
+
             em.description = description
             em.set_footer(text=f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
-            icon_url=self.bot.user.avatar_url)
-            await ctx.send(embed = em)
+                          icon_url=self.bot.user.avatar_url)
+            await ctx.send(embed=em)
 
     @commands.command(
         name="play",
@@ -823,11 +842,11 @@ class Music(commands.Cog, name=":notes: Music"):
 
                     await self.fetch_yt_playlist(ctx, search)
                     return
-            if "soundcloud" in search:
+            elif "soundcloud" in search:
                 pass
             else:
-                await ctx.send(f"**:globe_with_meridians: Fetching from bin** \
-                `{search}`\nThis make take awhile depending on amount of videos.")
+                await ctx.send("**:globe_with_meridians: Fetching from bin** "
+                               f"`{search}`\nThis make take awhile depending on amount of videos.")
                 await self.hastebin_playlist(ctx, search)
                 return
 
