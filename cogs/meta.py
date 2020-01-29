@@ -58,10 +58,10 @@ class Meta(commands.Cog, name=":gear: Meta"):
             color=0xFF95B0,
             timestamp=d.utcnow()
         )
-        if ctx.guild:
-            hover = self.hover_link(ctx, "More info here")
-            em.description += (f"Hover over {hover} to get more info """
-                               "(sorry mobile users).\n")
+        # if ctx.guild:
+        #     hover = hover_link(ctx, "More info here")
+        #     em.description += (f"Hover over {hover} to get more info """
+        #                        "(sorry mobile users).\n")
         em.set_thumbnail(
             url=self.bot.user.avatar_url
         )
@@ -91,8 +91,8 @@ class Meta(commands.Cog, name=":gear: Meta"):
                 else:
 
                     all_categories += f"\n{cog}"
-                    if cog_docstring and ctx.guild:
-                        all_categories += self.hover_link(ctx, cog_docstring)
+                    # if cog_docstring and ctx.guild:
+                    #     all_categories += hover_link(ctx, cog_docstring)
             em.add_field(
                 name="Categories",
                 value=all_categories,
