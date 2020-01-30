@@ -29,7 +29,7 @@ class RoboClam(commands.Bot):
         )
         # self.session = aiohttp.ClientSession(loop=self.loop)
 
-        self.add_listener(self.my_message, 'on_message')
+        self.add_listener(self.on_mention_msg, 'on_message')
 
         self.log = logging.getLogger(__name__)
         coloredlogs.install(level='DEBUG', logger=self.log,
@@ -55,7 +55,7 @@ class RoboClam(commands.Bot):
         self.cogsToLoad = ['cogs.meta', 'cogs.tools', 'cogs.reddit',
                            'cogs.fun', 'cogs.moderation', 'cogs.music']
 
-    async def my_message(self, message):
+    async def on_mention_msg(self, message):
         if message.content == f"<@{self.user.id}>":
             await message.channel.send("Hey there! I'm a bot. :robot:\n"
                                        "To find out more about me, type:"
