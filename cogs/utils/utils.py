@@ -113,7 +113,7 @@ async def wait_for_deletion(
     bot = client or message.guild.me
 
     if attach_emojis:
-        
+
         await message.add_reaction(deletion_emoji)
 
     def check(reaction: Reaction, user: Member) -> bool:
@@ -128,14 +128,14 @@ async def wait_for_deletion(
     #     await bot.wait_for('reaction_add', check=check, timeout=timeout)
         # for emoji in deletion_emojis:
         #     await message.add_reaction(emoji)
-        #await message.delete()
+        # await message.delete()
     try:
         await bot.wait_for('reaction_add', check=check, timeout=timeout)
         await message.delete()
     except asyncio.TimeoutError:
-        
+
         await message.remove_reaction(deletion_emoji, discord.Object(bot.user.id))
-    
+
 
 def hover_link(ctx, msg, text="`?`"):
     return (f"[{text}](https://www.discordapp.com/"
