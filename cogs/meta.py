@@ -4,6 +4,9 @@ import discord
 from datetime import datetime as d
 from string import Formatter
 import traceback
+import codecs
+import os
+import pathlib
 
 from .utils.utils import wait_for_deletion
 from .utils import db
@@ -255,6 +258,21 @@ class Meta(commands.Cog, name=":gear: Meta"):
             wait_for_deletion(bot_message, user_ids=(ctx.author.id,), client=self.bot)
         )
 
+    async def get_lines_of_code(self):
+        total = 0
+        file_amount = 0
+        for path, subdirs, files in os.walk('.'):
+            for name in files:
+                if name.endswith('.py'):
+                    file_amount += 1
+                    with codecs.open('./' + str(pathlib.PurePath(path, name)), 'r', 'utf-8') as f:
+                        for i, l in enumerate(f):
+                            if l.strip().startswith('#') or len(l.strip()) is 0:  # skip commented lines.
+                                pass
+                            else:
+                                total += 1
+        return f'I am made of {total:,} lines of Python, spread across {file_amount:,} files!'
+
     @commands.command(
         name="stats",
         description="Display statistics about the bot",
@@ -273,12 +291,13 @@ class Meta(commands.Cog, name=":gear: Meta"):
         )
 
         dev = self.bot.get_user(224513210471022592)
-        up = d.now - self.bot.startup_time
+        up = d.now() - self.bot.startup_time
         em.add_field(name=":gear: Developer", value=dev.mention)
         em.add_field(name=":adult: User Count", value=len(self.bot.users))
         em.add_field(name=":family: Server Count", value=len(self.bot.guilds))
         em.add_field(name=":speech_balloon: Channel Count", value=len(list(self.bot.get_all_channels())))
         em.add_field(name="<:online:649270802088460299> Uptime", value=strfdelta(up, '`{D}D {H}H {M}M {S}S`'))
+        em.add_field(name=":page_facing_up: Code", value=await self.get_lines_of_code())
 
         await ctx.send(embed=em)
 
