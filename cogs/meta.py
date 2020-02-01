@@ -291,7 +291,7 @@ class Meta(commands.Cog, name=":gear: Meta"):
         msg = await ctx.send("Pinging")
 
         ping = (d.timestamp(d.now()) - start) * 1000
-        await msg.edit(f"Pong!\nOne message round-trip took {ping}ms.")
+        await msg.edit(content=f"Pong!\nOne message round-trip took {ping}ms.")
 
     @commands.command(
         name="uptime",
