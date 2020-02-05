@@ -81,28 +81,31 @@ class Tools(commands.Cog, name=":tools: Tools"):
         if member.nick:
             author += f" ({member.nick})"
         author += f" - {str(user.id)}"
-
-        self.em = discord.Embed(description=desc, timestamp=d.utcnow())
+        em = discord.Embed(description=desc, timestamp=d.utcnow())
         if user.color.value:
-            self.em.color = user.color
-
-        self.em.set_thumbnail(url=user.avatar_url)
-        self.em.set_author(name=author, icon_url=user.avatar_url)
-        self.em.set_footer(text=f"Requested by {str(ctx.author)}",
+            em.color = user.color
+        em.set_thumbnail(url=user.avatar_url)
+        em.set_author(name=author, icon_url=user.avatar_url)
+        em.set_footer(text=f"Requested by {str(ctx.author)}",
                            icon_url=self.bot.user.avatar_url)
-        self.em.add_field(name=":clock1: Account Created",
+        em.add_field(name=":clock1: Account Created",
                           value=snowstamp(user.id),
                           inline=True)
-        self.em.add_field(
+        em.add_field(
             name="<:join:649722959958638643> Joined Server",
             value=member.joined_at.strftime('%b %d, %Y at %#I:%M %p'),
             inline=True)
+        members = ctx.guild.members
+        members.sort(key=lambda x: x.joined_at)
+        position = members.index(member)
+        em.add_field(name=":family: Join Position",
+                          value=position + 1)
         if member.roles[1:]:
             roles = ""
             for role in member.roles[1:]:
                 roles += f"{role.mention} "
-            self.em.add_field(name="Roles", value=roles, inline=False)
-        await ctx.send(embed=self.em)
+            em.add_field(name="Roles", value=roles, inline=False)
+        await ctx.send(embed=em)
 
     @commands.command(name="serverinfo",
                       description="Get information about the current server",
@@ -233,6 +236,63 @@ class Tools(commands.Cog, name=":tools: Tools"):
         # Check for permission here
 
         # while hasPermissionToSend == False:
+
+    @commands.group(description="Search for things in a server.",
+                    aliases=["find"], invoke_without_command=True)
+    async def search(self, ctx):
+        dp = self.bot.default_prefix
+        await ctx.send("You can use:\n"
+                       f"`{dp}search username [username]`\n"
+                       f"`{dp}search nickname [nickname]`\n"
+                       f"`{dp}search discriminator [discriminator]`")
+
+    def compile_list(self, list):
+        msg = f"Found **{len(list)}** {'matches' if len(list) > 1 else 'match'}! ```ini\n"
+        for i, member in enumerate(list):
+            if member.nick:
+                nick = f"{member.nick} - "
+            else:
+                nick = ""
+            msg += f"\n[{i+1}] {nick}{member.name}#{member.discriminator} ({member.id})"
+        msg += "\n```"
+        return msg
+
+    @search.command(name="username",
+                    description="Search server for a specified username",
+                    usage="[username]", aliases=["user"])
+    async def search_username(self, ctx, username: str):
+        matches = []
+        for member in ctx.guild.members:
+            if username.lower() in member.name.lower():
+                matches.append(member)
+        if matches:
+            return await ctx.send(self.compile_list(matches))
+        await ctx.send("No matches found.")
+
+    @search.command(name="nickname",
+                    description="Search server for a specified username",
+                    usage="[nickname]", aliases=["nick"])
+    async def search_nickname(self, ctx, nickname: str):
+        matches = []
+        for member in ctx.guild.members:
+            if member.nick:
+                if nickname.lower() in member.nick.lower():
+                    matches.append(member)
+        if matches:
+            return await ctx.send(self.compile_list(matches))
+        await ctx.send("No matches found.")
+
+    @search.command(name="discriminator",
+                    description="Search server for a specified username",
+                    usage="[discriminator]", aliases=["number"])
+    async def search_discriminator(self, ctx, discriminator: int):
+        matches = []
+        for member in ctx.guild.members:
+            if discriminator == int(member.discriminator):
+                matches.append(member)
+        if matches:
+            return await ctx.send(self.compile_list(matches))
+        await ctx.send("No matches found.")
 
     def parse_object_inv(self, stream, url):
         # key: URL
