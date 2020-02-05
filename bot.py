@@ -50,7 +50,7 @@ class RoboClam(commands.Bot):
         self.reddit_id = self.data['reddit-id']
         self.reddit_secret = self.data['reddit-secret']
         self.prefixes = " ".join(['`r.`', 'or when mentioned'])
-        self.defaultPrefix = "r."
+        self.default_prefix = "r."
 
         self.cogsToLoad = ['cogs.meta', 'cogs.tools', 'cogs.reddit',
                            'cogs.fun', 'cogs.moderation', 'cogs.music']
@@ -59,7 +59,7 @@ class RoboClam(commands.Bot):
         if message.content == f"<@{self.user.id}>":
             await message.channel.send("Hey there! I'm a bot. :robot:\n"
                                        "To find out more about me, type:"
-                                       f" `{self.defaultPrefix}help`")
+                                       f" `{self.default_prefix}help`")
 
     async def on_ready(self):
 

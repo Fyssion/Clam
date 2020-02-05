@@ -38,9 +38,9 @@ class Meta(commands.Cog, name=":gear: Meta"):
         self.bot = bot
         self.log = self.bot.log
         self.more_info_category = ("For **more info** on a **specific category**, "
-                                   f"use: **`{self.bot.defaultPrefix}help [category]`‍**")
+                                   f"use: **`{self.bot.default_prefix}help [category]`‍**")
         self.more_info_cmd = ("For **more info** on a **specific command**, "
-                              f"use: **`{self.bot.defaultPrefix}help [command]`‍**")
+                              f"use: **`{self.bot.default_prefix}help [command]`‍**")
 
     @commands.group(
         name="help",
@@ -55,7 +55,7 @@ class Meta(commands.Cog, name=":gear: Meta"):
             title=f"Help for {self.bot.user.name}",
             description=(f"{self.bot.description}\n\n"
                          f"**Prefix:** {self.bot.prefixes}. "
-                         f"Ex: `{self.bot.defaultPrefix}help`\n"
+                         f"Ex: `{self.bot.default_prefix}help`\n"
                          f"{self.more_info_category}\n"),
             # color = 0x15DFEA,
             color=0xFF95B0,
@@ -130,12 +130,12 @@ class Meta(commands.Cog, name=":gear: Meta"):
                         command_usage = (" " + command.usage
                                          if command.usage is not None
                                          else '')
-                        help_text += (f"**`{self.bot.defaultPrefix}"
+                        help_text += (f"**`{self.bot.default_prefix}"
                                       f"{command.name}{command_usage}`** - "
                                       f"{command.description}\n")
 
                         if len(command.aliases) > 0:
-                            prefix_aliases = [f"`{self.bot.defaultPrefix}{a}`"
+                            prefix_aliases = [f"`{self.bot.default_prefix}{a}`"
                                               for a in command.aliases]
                             help_text += (f"Aliases : "
                                           f"{', '.join(prefix_aliases)}\n")
@@ -152,15 +152,15 @@ class Meta(commands.Cog, name=":gear: Meta"):
                     return await ctx.send("That command is hidden!")
 
                 em.description = (f"**{command.name.capitalize()}**\n{command.description}\n\n"
-                                  f"Format: `{self.bot.defaultPrefix}{command.name}"
+                                  f"Format: `{self.bot.default_prefix}{command.name}"
                                   f"{' ' + command.usage if command.usage is not None else ''}`\n")
                 if len(command.aliases) > 0:
-                    prefix_aliases = [f"`{self.bot.defaultPrefix}{a}`" for a in command.aliases]
+                    prefix_aliases = [f"`{self.bot.default_prefix}{a}`" for a in command.aliases]
                     em.description += f"Aliases : {', '.join(prefix_aliases)}\n"
 
             else:
                 return await ctx.send("Invalid category/command specified.\n"
-                                      f"Use `{self.bot.defaultPrefix}help` "
+                                      f"Use `{self.bot.default_prefix}help` "
                                       "to view list of all categories and commands.")
 
         bot_message = await ctx.send(embed = em)
@@ -181,7 +181,7 @@ class Meta(commands.Cog, name=":gear: Meta"):
             title=f"Admin Help For {self.bot.user.name}",
             description=f"{self.bot.description}\n\n**Prefixes:** {self.bot.prefixes}\
                         \nFor **more info** on a **specific command**, \
-                        use: **`{self.bot.defaultPrefix}help admin [command]`‍**\n‍",
+                        use: **`{self.bot.default_prefix}help admin [command]`‍**\n‍",
             color=0xFF95B0,
             timestamp=d.utcnow()
         )
