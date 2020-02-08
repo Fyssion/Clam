@@ -39,7 +39,7 @@ class RoboClam(commands.Bot):
         # Config.yml load
         with open("config.yml", 'r') as config:
             try:
-                self.data = yaml.safe_load(config)
+                self.config = yaml.safe_load(config)
 
             except yaml.YAMLError as exc:
                 self.log.critical("Could not load config.yml")
@@ -47,13 +47,20 @@ class RoboClam(commands.Bot):
                 import sys
                 sys.exit()
 
-        self.reddit_id = self.data['reddit-id']
-        self.reddit_secret = self.data['reddit-secret']
+        self.reddit_id = self.config['reddit-id']
+        self.reddit_secret = self.config['reddit-secret']
         self.prefixes = " ".join(['`r.`', 'or when mentioned'])
         self.default_prefix = "r."
 
-        self.cogsToLoad = ['cogs.meta', 'cogs.tools', 'cogs.reddit',
-                           'cogs.fun', 'cogs.moderation', 'cogs.music']
+        self.cogs_to_load = ['cogs.meta', 'cogs.tools', 'cogs.reddit',
+                             'cogs.fun', 'cogs.moderation', 'cogs.music',
+                             'cogs.mathematics']
+
+        self.remove_command('help')
+
+        for cog in self.cogs_to_load:
+            self.load_extension(cog)
+        self.load_extension("jishaku")
 
     async def on_mention_msg(self, message):
         if message.content == f"<@{self.user.id}>":
@@ -67,18 +74,12 @@ class RoboClam(commands.Bot):
 
         self.startup_time = d.now()
 
-        self.remove_command('help')
-
-        for cog in self.cogsToLoad:
-            self.load_extension(cog)
-        self.load_extension("jishaku")
-
         self.ordered_cogs = [c for c in self.cogs.keys()]
 
         self.session = aiohttp.ClientSession(loop=self.loop)
 
     def run(self):
-        super().run(self.data['bot-token'], reconnect=True, bot=True)
+        super().run(self.config['bot-token'], reconnect=True, bot=True)
 
 
 bot = RoboClam()

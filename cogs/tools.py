@@ -87,10 +87,10 @@ class Tools(commands.Cog, name=":tools: Tools"):
         em.set_thumbnail(url=user.avatar_url)
         em.set_author(name=author, icon_url=user.avatar_url)
         em.set_footer(text=f"Requested by {str(ctx.author)}",
-                           icon_url=self.bot.user.avatar_url)
+                      icon_url=self.bot.user.avatar_url)
         em.add_field(name=":clock1: Account Created",
-                          value=snowstamp(user.id),
-                          inline=True)
+                     value=snowstamp(user.id),
+                     inline=True)
         em.add_field(
             name="<:join:649722959958638643> Joined Server",
             value=member.joined_at.strftime('%b %d, %Y at %#I:%M %p'),
@@ -99,7 +99,7 @@ class Tools(commands.Cog, name=":tools: Tools"):
         members.sort(key=lambda x: x.joined_at)
         position = members.index(member)
         em.add_field(name=":family: Join Position",
-                          value=position + 1)
+                     value=position + 1)
         if member.roles[1:]:
             roles = ""
             for role in member.roles[1:]:
