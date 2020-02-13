@@ -408,7 +408,7 @@ def is_dj():
 
 
 class Music(commands.Cog, name=":notes: Music"):
-    """Listen to music in any voice channel!\nUse `r.play` to play a song."""
+    """Listen to music in any voice channel!\nUse `c.play` to play a song."""
     def __init__(self, bot):
         self.bot = bot
         self.voice_states = {}

@@ -4,6 +4,7 @@ from discord.ext import commands
 import math
 import matplotlib
 
+
 class Math(commands.Cog, name=":triangular_ruler: Math"):
 
     def __init__(self, bot):

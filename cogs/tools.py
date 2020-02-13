@@ -398,7 +398,7 @@ class Tools(commands.Cog, name=":tools: Tools"):
         def transform(tup):
             return tup[0]
 
-        matches = fuzzy.finder(obj, cache, key=lambda t: t[0], lazy=False)[:8]
+        matches = fuzzy.finder(obj, cache, key=lambda t: t[0], lazy=False)[:7]
 
         em = discord.Embed(colour=discord.Colour.blurple())
         if len(matches) == 0:

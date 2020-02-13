@@ -41,7 +41,7 @@ class Fun(commands.Cog, name=":tada: Fun"):
 
     @commands.group(
         description=("Roll a die or two. "
-                     "Also see `r.rolldice sides [# of sides]`"),
+                     "Also see `c.rolldice sides [# of sides]`"),
         usage="<# of dice>", aliases=['diceroll'],
         invoke_without_command=True)
     async def rolldice(self, ctx, dice: int = 1):
@@ -91,7 +91,7 @@ class Fun(commands.Cog, name=":tada: Fun"):
     async def birthday_command(self, ctx, user=None, name=None, age=None):
         if user is None or name is None or age is None:
             return await ctx.send("Please enter in the required values.\n"
-                                  "Ex: `r.birthday [mentioned user] "
+                                  "Ex: `c.birthday [mentioned user] "
                                   "[IRL Name ('None' to mention them)] [age]`")
 
         ageToGrowOn = str(int(age) + 1)
@@ -203,8 +203,8 @@ class Fun(commands.Cog, name=":tada: Fun"):
                 inline=False
             )
             em.add_field(
-                name="I don't believe my message deserved a downvote. \
-                      Can you un-downvote it?",
+                name=("I don't believe my message deserved a downvote. "
+                      "Can you un-downvote it?"),
                 value="Sure, mistakes happen. But only in exceedingly rare \
                        circumstances will I undo a downvote. \
                        If you would like to issue an appeal, \
@@ -223,13 +223,12 @@ class Fun(commands.Cog, name=":tada: Fun"):
                          I will continue to issue downvotes until you \
                          improve your conduct. Remember: Discord is \
                          a privilege, not a right.\n\n\
-                         [What's this?](https://www.reddit.com/r/copypasta\
-                         /comments/dfcuzs/i_just_downvoted_your_comment/)",
+                         [What's this?](https://www.reddit.com/r/copypasta/comments/dfcuzs/i_just_downvoted_your_comment/)",
                 inline=False
             )
             em.set_footer(
                     text=f"Requested by {str(ctx.author)}",
-                    value=self.bot.user.avatar_url
+                    icon_url=self.bot.user.avatar_url
                     )
 
             await ctx.send(embed=em)
