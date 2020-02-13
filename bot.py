@@ -1,3 +1,4 @@
+import discord
 from discord.ext import commands
 
 import coloredlogs
@@ -5,11 +6,12 @@ import logging
 import yaml
 from datetime import datetime as d
 import aiohttp
+import traceback
 
 
 def get_prefix(client, message):
 
-    prefixes = ['r.']
+    prefixes = ['c.']
 
     if message.guild.id in [454469821376102410]:  # My coding server
         prefixes.append("!")
@@ -22,7 +24,7 @@ class RoboClam(commands.Bot):
     def __init__(self):
         super().__init__(
             command_prefix=get_prefix,
-            description="Robotic Clam: A general purpose Discord bot.",
+            description="Clam's personal Discord bot. Does bot things.",
             owner_id=224513210471022592,
             case_insensitive=True,
             # activity = discord.Activity(name="for robo.help", type = 3)
@@ -49,8 +51,9 @@ class RoboClam(commands.Bot):
 
         self.reddit_id = self.config['reddit-id']
         self.reddit_secret = self.config['reddit-secret']
-        self.prefixes = " ".join(['`r.`', 'or when mentioned'])
-        self.default_prefix = "r."
+        self.prefixes = " ".join(['`c.`', 'or when mentioned'])
+        self.default_prefix = "c."
+        self.dev = self.get_user(224513210471022592)
 
         self.cogs_to_load = ['cogs.meta', 'cogs.tools', 'cogs.reddit',
                              'cogs.fun', 'cogs.moderation', 'cogs.music',
@@ -61,6 +64,27 @@ class RoboClam(commands.Bot):
         for cog in self.cogs_to_load:
             self.load_extension(cog)
         self.load_extension("jishaku")
+
+    async def on_command_error(self, ctx, e: commands.CommandError):
+        error = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
+        print(error)
+        if isinstance(e, commands.errors.CommandNotFound):
+            return
+        if isinstance(e, commands.errors.BadArgument):
+            return await ctx.send("**:x: You provided a bad argument.** "
+                                  "Make sure you are using the command correctly!")
+        if isinstance(e, commands.errors.MissingRequiredArgument):
+            return await ctx.send("**:x: Missing a required argument.** "
+                                  "Make sure you are using the command correctly!")
+        em = discord.Embed(title=":warning: Unexpected Error",
+                           color=discord.Color.gold(),
+                           timestamp=d.utcnow())
+        description = ("An unexpected error has occured:"
+                       f"```py\n{e}```\n The developer has been notified.")
+        em.description = description
+        em.set_footer(icon_url=self.user.avatar_url)
+        await ctx.send(embed=em)
+        # await self.dev.send("Error occured on one of your commands.")
 
     async def on_mention_msg(self, message):
         if message.content == f"<@{self.user.id}>":
