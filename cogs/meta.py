@@ -341,7 +341,7 @@ class Meta(commands.Cog, name=":gear: Meta"):
         # TODO Make command
         # prefixes = db.fetch("prefixes.db")
         msg = "Prefixes:\n"
-        for i, prefix in enumerate(prefixes):
+        for i, prefix in enumerate(self.bot.prefixes):
             msg += f"`{i+1}` {prefix}"
         await ctx.send(msg)
 

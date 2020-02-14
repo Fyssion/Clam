@@ -1,7 +1,9 @@
+# from .. import asqlite3
+import aiosqlite3
 import sqlite3
 
 
-def create_connection(db_file):
+async def create_connection(db_file):
     """ create a database connection to the SQLite database
         specified by db_file
     :param db_file: database file
@@ -9,7 +11,7 @@ def create_connection(db_file):
     """
     conn = None
     try:
-        conn = sqlite3.connect(db_file)
+        conn = await asqlite3.connect(db_file)
         return conn
     except sqlite3.Error as e:
         print(e)
@@ -17,20 +19,20 @@ def create_connection(db_file):
     return conn
 
 
-def create_table(conn, sql_code):
+async def create_table(conn, sql_code):
     """ create a table from the sql_code statement
     :param conn: Connection object
     :param sql_code: a CREATE TABLE statement
     :return:
     """
     try:
-        c = conn.cursor()
-        c.execute(sql_code)
+        c = await conn.cursor()
+        await c.execute(sql_code)
     except sqlite3.Error as e:
         print(e)
 
 
-def create_project(conn, project):
+async def create_project(conn, project):
     """
     Create a new project into the projects table
     :param conn:
@@ -39,12 +41,12 @@ def create_project(conn, project):
     """
     sql = ''' INSERT INTO projects(name,begin_date,end_date)
               VALUES(?,?,?) '''
-    cur = conn.cursor()
-    cur.execute(sql, project)
+    cur = await conn.cursor()
+    await cur.execute(sql, project)
     return cur.lastrowid
 
 
-def create_task(conn, task):
+async def create_task(conn, task):
     """
     Create a new task
     :param conn:
@@ -54,12 +56,12 @@ def create_task(conn, task):
 
     sql = ''' INSERT INTO tasks(name,priority,status_id,project_id,begin_date,end_date)
               VALUES(?,?,?,?,?,?) '''
-    cur = conn.cursor()
-    cur.execute(sql, task)
+    cur = await conn.cursor()
+    await cur.execute(sql, task)
     return cur.lastrowid
 
 
-def projects_and_tasks(database):
+async def projects_and_tasks(database):
 
     projects_table = """ CREATE TABLE IF NOT EXISTS projects (
                                         id integer PRIMARY KEY,
@@ -79,22 +81,22 @@ def projects_and_tasks(database):
                                     FOREIGN KEY (project_id) REFERENCES projects (id));"""
 
     # create a database connection
-    conn = create_connection(database)
+    conn = await create_connection(database)
 
     # create tables
     if conn is not None:
         # create projects table
-        create_table(conn, projects_table)
+        await create_table(conn, projects_table)
 
         # create tasks table
-        create_table(conn, tasks_table)
+        await create_table(conn, tasks_table)
     else:
         print("Error! cannot create the database connection.")
 
 
-def add_data_to_projects(database):
+async def add_data_to_projects(database):
     # create a database connection
-    conn = create_connection(database)
+    conn = await create_connection(database)
     with conn:
         # create a new project
         project = ('Cool App with SQLite & Python', '2020-01-01', '2020-01-30')
@@ -107,11 +109,11 @@ def add_data_to_projects(database):
                   project_id, '2020-01-03', '2020-01-05')
 
         # create tasks
-        create_task(conn, task_1)
-        create_task(conn, task_2)
+        await create_task(conn, task_1)
+        await create_task(conn, task_2)
 
 
-def create_prefix(conn, prefix):
+async def create_prefix(conn, prefix):
     """
     Create a new project into the projects table
     :param conn:
@@ -120,36 +122,36 @@ def create_prefix(conn, prefix):
     """
     sql = ''' INSERT INTO projects(name,begin_date,end_date)
               VALUES(?,?,?) '''
-    cur = conn.cursor()
-    cur.execute(sql, prefix)
+    cur = await conn.cursor()
+    await cur.execute(sql, prefix)
     return cur.lastrowid
 
 
-def prefixes_table(database):
-    prefixes_table = """CREATE TABLE IF NOT EXISTS prefixes (
+async def prefixes_table(database):
+    prefixes_tablesql = """CREATE TABLE IF NOT EXISTS prefixes (
                                         id integer PRIMARY KEY,
                                         prefixes text
                                     ); """
 
-    conn = create_connection(database)
+    conn = await create_connection(database)
 
     # create tables
     if conn is not None:
         # create projects table
-        create_table(conn, prefixes_table)
+        await create_table(conn, prefixes_tablesql)
     else:
         print("Error! cannot create the database connection.")
 
 
-def add_data_to_prefixes(database, sql):
-    conn = create_connection(database)
+async def add_data_to_prefixes(database, sql):
+    conn = await create_connection(database)
     with conn:
         # create a new project
         guild = ("")
-        create_prefix(conn, guild)
+        await create_prefix(conn, guild)
 
 
 if __name__ == '__main__':
-    database = "database.db"
-    # projects_and_tasks(database)
-    add_data_to_projects(database)
+    import asyncio
+    database = "prefixes.db"
+    asyncio.run(prefixes_table(database))
