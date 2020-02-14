@@ -19,7 +19,7 @@ def get_prefix(client, message):
     return commands.when_mentioned_or(*prefixes)(client, message)
 
 
-class RoboClam(commands.Bot):
+class RobotClam(commands.Bot):
 
     def __init__(self):
         super().__init__(
@@ -106,5 +106,5 @@ class RoboClam(commands.Bot):
         super().run(self.config['bot-token'], reconnect=True, bot=True)
 
 
-bot = RoboClam()
+bot = RobotClam()
 bot.run()
