@@ -24,7 +24,7 @@ class RobotClam(commands.Bot):
     def __init__(self):
         super().__init__(
             command_prefix=get_prefix,
-            description="Clam's personal Discord bot. Does bot things.",
+            description="Fyssion's personal Discord bot. Does bot things.",
             owner_id=224513210471022592,
             case_insensitive=True,
             # activity = discord.Activity(name="for robo.help", type = discord.ActivityType.playing)

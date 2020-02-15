@@ -276,7 +276,7 @@ class Meta(commands.Cog, name=":gear: Meta"):
     @commands.command(
         name="stats",
         description="Display statistics about the bot",
-        aliases=["statistics", "about"]
+        aliases=["statistics", "about", "info"]
     )
     async def stats(self, ctx):
         em = discord.Embed(
