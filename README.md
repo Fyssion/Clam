@@ -1,4 +1,4 @@
-# Robot Clam
+# Clam
 
 Personal Discord bot project.
 
