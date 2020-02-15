@@ -1,0 +1,7 @@
+discord.py==1.3.1
+praw
+coloredlogs
+pyyaml
+aiosqlite3
+sqlite3
+matplotlib
