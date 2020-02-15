@@ -24,26 +24,13 @@ class Tools(commands.Cog, name=":tools: Tools"):
         self.bot = bot
         self.log = self.bot.log
 
-
     @commands.command(
         name="userinfo",
         description="Get information about a user",
-        aliases=["memberinfo"],
+        aliases=["memberinfo", "ui"],
         usage="[user]"
     )
-    async def userinfo_command(self, ctx, *, user=None):
-
-        if user and len(ctx.message.mentions) == 0:
-            user = ctx.guild.get_member_named(user)
-            if not user:
-                self.log.info(f"{str(ctx.author)} unsuccessfully used the "
-                              "userinfo command on a nonexistent user")
-                return await ctx.send(":warning: Member not found! "
-                                      "Search for members with their "
-                                      "username or nickname.")
-        elif user:
-            user = ctx.message.mentions[0]
-
+    async def userinfo_command(self, ctx, *, user: discord.Member = None):
         user = user or ctx.author
 
         if user == ctx.author:
@@ -465,7 +452,6 @@ class Tools(commands.Cog, name=":tools: Tools"):
     @commands.command(
         name = "eval",
         description = "Evaluates python code.",
-        aliases = ["e"],
         usage = "[code]",
         hidden = True
         )

@@ -27,7 +27,7 @@ class RobotClam(commands.Bot):
             description="Clam's personal Discord bot. Does bot things.",
             owner_id=224513210471022592,
             case_insensitive=True,
-            # activity = discord.Activity(name="for robo.help", type = 3)
+            # activity = discord.Activity(name="for robo.help", type = discord.ActivityType.playing)
         )
         # self.session = aiohttp.ClientSession(loop=self.loop)
 
@@ -54,6 +54,7 @@ class RobotClam(commands.Bot):
         self.prefixes = " ".join(['`c.`', 'or when mentioned'])
         self.default_prefix = "c."
         self.dev = self.get_user(224513210471022592)
+        self.previous_error = None
 
         self.cogs_to_load = ['cogs.meta', 'cogs.tools', 'cogs.reddit',
                              'cogs.fun', 'cogs.moderation', 'cogs.music',
@@ -68,6 +69,7 @@ class RobotClam(commands.Bot):
     async def on_command_error(self, ctx, e: commands.CommandError):
         error = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
         print(error)
+        self.previous_error = e
         if isinstance(e, commands.errors.CommandNotFound):
             return
         if isinstance(e, commands.errors.BadArgument):

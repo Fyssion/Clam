@@ -276,11 +276,11 @@ class Meta(commands.Cog, name=":gear: Meta"):
     @commands.command(
         name="stats",
         description="Display statistics about the bot",
-        aliases=["statistics"]
+        aliases=["statistics", "about"]
     )
     async def stats(self, ctx):
         em = discord.Embed(
-            title="Robot Clam Statistics",
+            title="Statistics",
             color=0xFF95B0,
             timestamp=d.utcnow()
         )
@@ -362,7 +362,7 @@ class Meta(commands.Cog, name=":gear: Meta"):
         if cog == "all":
             msg = ""
 
-            for ext in self.bot.cogsToLoad:
+            for ext in self.bot.cogs_to_load:
                 try:
                     self.bot.reload_extension(ext)
                     msg += f"**:repeat: Reloaded** `{ext}`\n\n"
@@ -384,6 +384,19 @@ class Meta(commands.Cog, name=":gear: Meta"):
             traceback_data = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
             await ctx.send(f"**:warning: Extension `{cog.lower()}` not loaded.**\n```py\n{traceback_data}```")
             self.log.warning(f"Extension 'cogs.{cog.lower()}' not loaded.\n{traceback_data}")
+
+    @commands.group(name="error", hidden=True, aliases=["e"])
+    @commands.is_owner()
+    async def _error(self, ctx):
+        pass
+
+    @_error.command()
+    async def previous(self, ctx):
+        if not self.bot.previous_error:
+            return await ctx.send("No previous error cached.")
+        e = self.bot.previous_error
+        error = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
+        await ctx.send(f"```py\n{error}```")
 
     @commands.command(
         name="logout",

@@ -88,16 +88,15 @@ class Fun(commands.Cog, name=":tada: Fun"):
         aliases=["bday"],
         usage="[mentioned user] [IRL Name ('None' to mention them)] [age]"
     )
-    async def birthday_command(self, ctx, user=None, name=None, age=None):
+    async def birthday_command(self, ctx, user: discord.Member=None, name=None, age=None):
         if user is None or name is None or age is None:
             return await ctx.send("Please enter in the required values.\n"
-                                  "Ex: `c.birthday [mentioned user] "
+                                  "Ex: `c.birthday [user] "
                                   "[IRL Name ('None' to mention them)] [age]`")
 
         ageToGrowOn = str(int(age) + 1)
 
-        recipientID = ctx.message.mentions[0].id
-        recipient = self.bot.get_user(recipientID)
+        recipient = user
 
         if name.lower() == "none":
             mention = recipient.mention
