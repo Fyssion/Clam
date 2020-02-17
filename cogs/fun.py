@@ -7,6 +7,8 @@ import random
 import functools
 import importlib
 
+from random import choice
+
 from .utils import aioxkcd
 from .utils.utils import thesaurize
 
@@ -288,17 +290,28 @@ class Fun(commands.Cog, name=":tada: Fun"):
         em.set_footer(text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url)
         await ctx.send(embed=em)
 
+    async def do_thethaurize(self, sentence):
+        words = sentence.split(" ")
+        final_words = []
+        for word in words:
+            if not random.choice([True, False]):
+                final_words.append(word)
+                continue
+            data = self.oxford.get_synonyms(word).json()
+            synonyms = data['results'][0]['lexicalEntries'][0]['entries'][0]['senses'][0]['synonyms']
+            new_word = synonyms[0]
+            final_words.append(new_word)
+        return " ".join(final_words)
+
+
     @commands.command(
-        name="thesaurize",
-        description="Thesaurize any sentence",
+        description="Thesaurize any sentence CURRENTLY BROKEN",
         usage="[sentence]",
         aliases=["thethis", "tt"],
         hidden=True
     )
-    async def thesaurize_command(self, ctx, *, sentence=None):
-        if not sentence:
-            return await ctx.send("Please include a sentence.")
-        await ctx.send(await thesaurize(sentence))
+    async def thesaurize(self, ctx, *, sentence):
+        await ctx.send(await self.do_thethaurize(sentence))
 
 
 def setup(bot):
