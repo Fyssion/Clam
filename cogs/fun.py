@@ -4,7 +4,10 @@ import discord
 from datetime import datetime as d
 import math
 import random
+import functools
+import importlib
 
+from .utils import aioxkcd
 from .utils.utils import thesaurize
 
 num2words1 = {1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five',
@@ -244,6 +247,54 @@ class Fun(commands.Cog, name=":tada: Fun"):
                 await ctx.send("This feature is in development.\n~~:warning: "
                                "Message not found! "
                                "Please use a vaild message ID.~~")
+
+    # def get_xkcd_date(self, comic):
+    #     months = ["January", "Febuary", "March", "April", "May", "June", "uly",
+    #               "August", "September", "November", "October", "December"]
+    #     month = months[int(comic.xkcdData["month"]) - 1]
+    #     day = comic.xkcdData["day"]
+    #     year = comic.xkcdData["year"]
+    #     return f"{month} {day}, {year}"
+
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def reload_xkcd(self, ctx):
+        importlib.reload(aioxkcd)
+        await ctx.send("It has been done.")
+
+    @commands.group(name="xkcd", description="Fetch an xdcd comic",
+                    usage="<comic> (random if left blank)", invoke_without_command=True)
+    async def _xkcd(self, ctx, number: int = None):
+        if not number:
+            return await self._random_xkcd(ctx)
+        try:
+            comic = await aioxkcd.get_comic(number)
+        except aioxkcd.XkcdError:
+            await ctx.send("That comic does not exist!")
+        em = discord.Embed(title=comic.title, description=f"Comic #{comic.number} - {comic.alt_text}",
+                           color=discord.Color.blurple())
+        em.set_image(url=comic.image_url)
+        em.set_footer(text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url)
+        await ctx.send(embed=em)
+
+    @_xkcd.command(name="random", description="Fetch a random xdcd comic",
+                   aliases=["r"])
+    async def _random_xkcd(self, ctx):
+        comic = await aioxkcd.get_random_comic()
+        em = discord.Embed(title=comic.title, description=f"Comic #{comic.number} - {comic.alt_text}",
+                           color=discord.Color.blurple())
+        em.set_image(url=comic.image_url)
+        em.set_footer(text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url)
+        await ctx.send(embed=em)
+
+    @_xkcd.command(name="latest", description="Fetch the latest xkcd comic")
+    async def _latest_xkcd(self, ctx):
+        comic = await aioxkcd.get_latest_comic()
+        em = discord.Embed(title=comic.title, description=f"Comic #{comic.number} - {comic.alt_text}",
+                           color=discord.Color.blurple())
+        em.set_image(url=comic.image_url)
+        em.set_footer(text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url)
+        await ctx.send(embed=em)
 
     @commands.command(
         name="thesaurize",
