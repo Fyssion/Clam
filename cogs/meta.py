@@ -7,10 +7,14 @@ import traceback
 import codecs
 import os
 import pathlib
+import json
+import sys
+import asyncio
 
 from .utils.utils import wait_for_deletion
 from .utils import db
 from .utils.utils import hover_link
+from .utils.checks import has_manage_guild
 
 
 def strfdelta(tdelta, fmt):
@@ -37,10 +41,63 @@ class Meta(commands.Cog, name=":gear: Meta"):
     def __init__(self, bot):
         self.bot = bot
         self.log = self.bot.log
-        self.more_info_category = ("For **more info** on a **specific category**, "
-                                   f"use: **`{self.bot.default_prefix}help [category]`‍**")
-        self.more_info_cmd = ("For **more info** on a **specific command**, "
-                              f"use: **`{self.bot.default_prefix}help [command]`‍**")
+
+        with open("prefixes.json", "r") as f:
+            self.bot.guild_prefixes = json.load(f)
+
+    def i_category(self, ctx):
+        return ("For **more info** on a **specific category**, "
+                f"use: **`{self.bot.guild_prefix(ctx.guild.id)}help [category]`‍**")
+
+    def i_cmd(self, ctx):
+        return ("For **more info** on a **specific command**, "
+                f"use: **`{self.bot.guild_prefix(ctx.guild.id)}help [command]`‍**")
+
+    @commands.Cog.listener("on_message")
+    async def on_mention_msg(self, message):
+        content = message.content
+        id = self.bot.user.id
+        if content == f"<@{id}>" or content == f"<@!{id}>":
+            await message.channel.send("Hey there! I'm a bot. :robot:\n"
+                                       "To find out more about me, type:"
+                                       f" `{self.bot.guild_prefix(message.guild.id)}help`")
+
+    @commands.Cog.listener("on_command_error")
+    async def _send_error(self, ctx, e: commands.CommandError):
+        error = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
+        print('Ignoring exception in command {}:'.format(ctx.command), file=sys.stderr)
+        traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
+        self.bot.previous_error = e
+        if isinstance(e, commands.errors.CommandNotFound):
+            return
+        if isinstance(e, commands.errors.MissingPermissions):
+            return
+        if isinstance(e, commands.errors.CheckFailure):
+            return
+        if isinstance(e, commands.errors.NotOwner):
+            return
+        if isinstance(e, commands.errors.BadArgument):
+            return await ctx.send("**:x: You provided a bad argument.** "
+                                  "Make sure you are using the command correctly!")
+        if isinstance(e, commands.errors.MissingRequiredArgument):
+            return await ctx.send("**:x: Missing a required argument.** "
+                                  "Make sure you are using the command correctly!")
+        em = discord.Embed(title=":warning: Unexpected Error",
+                           color=discord.Color.gold(),
+                           timestamp=d.utcnow())
+        description = ("An unexpected error has occured:"
+                       f"```py\n{e}```\n The developer has been notified.")
+        em.description = description
+        em.set_footer(icon_url=self.bot.user.avatar_url)
+        await ctx.send(embed=em)
+        # await self.dev.send("Error occured on one of your commands.")
+
+    def get_guild_prefixes(self, guild):
+        if str(guild) in self.bot.guild_prefixes.keys():
+            prefixes = [f"`{p}`" for p in self.bot.guild_prefixes.get(str(guild))]
+            prefixes.append("or when mentioned")
+            return ", ".join(prefixes)
+        return " ".join(self.bot.prefixes)
 
     @commands.group(
         name="help",
@@ -54,9 +111,10 @@ class Meta(commands.Cog, name=":gear: Meta"):
         em = discord.Embed(
             title=f"Help for {self.bot.user.name}",
             description=(f"{self.bot.description}\n\n"
-                         f"**Prefix:** {self.bot.prefixes}. "
-                         f"Ex: `{self.bot.default_prefix}help`\n"
-                         f"{self.more_info_category}\n"),
+                         f"**Default Prefix: `{self.bot.guild_prefix(ctx.guild.id)}`** "
+                         f"Ex: `{self.bot.guild_prefix(ctx.guild.id)}help`\n"
+                         f"Use `{self.bot.guild_prefix(ctx.guild.id)}prefixes` to view all prefixes for this server.\n"
+                         f"{self.i_category(ctx)}\n"),
             # color = 0x15DFEA,
             color=0xFF95B0,
             timestamp=d.utcnow()
@@ -119,7 +177,9 @@ class Meta(commands.Cog, name=":gear: Meta"):
                     cog_names[cog_search_lowered.index(search)])
 
                 commands_list = cog_called.get_commands()
-
+                for command in commands_list:
+                    if isinstance(command, commands.Group):
+                        commands_list.extend(command.commands)
                 help_text = f"**{cog_called.qualified_name}**\n"
                 help_text += (cog_called.description + "\n\n"
                               if cog_called.description is not None
@@ -130,17 +190,17 @@ class Meta(commands.Cog, name=":gear: Meta"):
                         command_usage = (" " + command.usage
                                          if command.usage is not None
                                          else '')
-                        help_text += (f"**`{self.bot.default_prefix}"
+                        help_text += (f"**`{self.bot.guild_prefix(ctx.guild.id)}"
                                       f"{command.name}{command_usage}`** - "
                                       f"{command.description}\n")
 
                         if len(command.aliases) > 0:
-                            prefix_aliases = [f"`{self.bot.default_prefix}{a}`"
+                            prefix_aliases = [f"`{self.bot.guild_prefix(ctx.guild.id)}{a}`"
                                               for a in command.aliases]
                             help_text += (f"Aliases : "
                                           f"{', '.join(prefix_aliases)}\n")
 
-                help_text += f"\n{self.more_info_cmd}"
+                help_text += f"\n{self.i_cmd(ctx)}"
 
                 em.description = help_text
 
@@ -152,15 +212,33 @@ class Meta(commands.Cog, name=":gear: Meta"):
                     return await ctx.send("That command is hidden!")
 
                 em.description = (f"**{command.name.capitalize()}**\n{command.description}\n\n"
-                                  f"Format: `{self.bot.default_prefix}{command.name}"
+                                  f"Format: `{self.bot.guild_prefix(ctx.guild.id)}{command.name}"
                                   f"{' ' + command.usage if command.usage is not None else ''}`\n")
                 if len(command.aliases) > 0:
-                    prefix_aliases = [f"`{self.bot.default_prefix}{a}`" for a in command.aliases]
+                    prefix_aliases = [f"`{self.bot.guild_prefix(ctx.guild.id)}{a}`" for a in command.aliases]
                     em.description += f"Aliases : {', '.join(prefix_aliases)}\n"
+
+                if isinstance(command, commands.Group):
+                    subcommands = ""
+                    for cmd in command.commands:
+                        if not cmd.hidden:
+                            command_usage = (" " + cmd.usage
+                                             if cmd.usage is not None
+                                             else '')
+                            subcommands += (f"**`{self.bot.guild_prefix(ctx.guild.id)}"
+                                            f"{command.name} {cmd.name}{command_usage}`** - "
+                                            f"{cmd.description}\n")
+                            if len(cmd.aliases) > 0:
+                                prefix_aliases = [f"`{self.bot.guild_prefix(ctx.guild.id)}{a}`"
+                                                  for a in cmd.aliases]
+                                subcommands += (f"Aliases : "
+                                                f"{', '.join(prefix_aliases)}\n")
+                    if subcommands:
+                        em.add_field(name="Subcommands", value=subcommands)
 
             else:
                 return await ctx.send("Invalid category/command specified.\n"
-                                      f"Use `{self.bot.default_prefix}help` "
+                                      f"Use `{self.bot.guild_prefix(ctx.guild.id)}help` "
                                       "to view list of all categories and commands.")
 
         bot_message = await ctx.send(embed = em)
@@ -181,7 +259,7 @@ class Meta(commands.Cog, name=":gear: Meta"):
             title=f"Admin Help For {self.bot.user.name}",
             description=f"{self.bot.description}\n\n**Prefixes:** {self.bot.prefixes}\
                         \nFor **more info** on a **specific command**, \
-                        use: **`{self.bot.default_prefix}help admin [command]`‍**\n‍",
+                        use: **`{self.bot.guild_prefix(ctx.guild.id)}help admin [command]`‍**\n‍",
             color=0xFF95B0,
             timestamp=d.utcnow()
         )
@@ -267,7 +345,7 @@ class Meta(commands.Cog, name=":gear: Meta"):
                     file_amount += 1
                     with codecs.open('./' + str(pathlib.PurePath(path, name)), 'r', 'utf-8') as f:
                         for i, l in enumerate(f):
-                            if l.strip().startswith('#') or len(l.strip()) is 0:  # skip commented lines.
+                            if l.strip().startswith('#') or len(l.strip()) == 0:  # skip commented lines.
                                 pass
                             else:
                                 total += 1
@@ -335,20 +413,134 @@ class Meta(commands.Cog, name=":gear: Meta"):
         await ctx.send(f"Invite:\n{invite}")
         self.log.info(f"{str(ctx.author)} used the invite command")
 
-    @commands.group(description="Prefix settings.",
-                    invoke_without_subcommand=True)
+    @commands.group(description="View your prefixes.",
+                    invoke_without_command=True, aliases=["prefixes"])
+    @commands.guild_only()
     async def prefix(self, ctx):
-        # TODO Make command
-        # prefixes = db.fetch("prefixes.db")
-        msg = "Prefixes:\n"
-        for i, prefix in enumerate(self.bot.prefixes):
-            msg += f"`{i+1}` {prefix}"
+        if str(ctx.guild.id) not in self.bot.guild_prefixes.keys():
+            return await ctx.send("Prefix:\n`c.`")
+        prefixes = self.bot.guild_prefixes[str(ctx.guild.id)]
+        msg = "Prefixes:"
+        for i, prefix in enumerate(prefixes):
+            msg += f"\n`{i+1}.` {prefix}"
         await ctx.send(msg)
 
     @prefix.command(name="add", description="Add a prefix.", usage="[prefix]")
-    async def _add_prefix(self, ctx, prefix):
-        # TODO Make command
-        pass
+    @commands.guild_only()
+    @has_manage_guild()
+    async def _add_prefix(self, ctx, prefix: str):
+        if str(ctx.guild.id) not in self.bot.guild_prefixes.keys():
+            prefixes = ["c."]
+        else:
+            prefixes = self.bot.guild_prefixes[str(ctx.guild.id)]
+        if prefix in prefixes:
+            return await ctx.send("You already have that prefix registered.")
+        prefixes.append(prefix)
+        self.bot.guild_prefixes[str(ctx.guild.id)] = prefixes
+        with open("prefixes.json", "w") as f:
+            json.dump(self.bot.guild_prefixes, f, sort_keys=True, indent=4, separators=(',', ': '))
+        await ctx.send("Added prefix.")
+
+    @prefix.command(name="remove", description="Remove a prefix.", usage="[prefix]")
+    @commands.guild_only()
+    @has_manage_guild()
+    async def _remove_prefix(self, ctx, prefix):
+        if str(ctx.guild.id) not in self.bot.guild_prefixes.keys():
+            prefixes = ["c."]
+        else:
+            prefixes = self.bot.guild_prefixes[str(ctx.guild.id)]
+        try:
+            prefix_num = int(prefix)
+        except ValueError:
+            prefix_num = 100
+        if prefix not in prefixes and prefix_num > len(prefixes):
+            return await ctx.send("You don't have that prefix registered.")
+        try:
+            int(prefix)
+            prefixes.pop(int(prefix)-1)
+        except ValueError:
+            prefixes.remove(prefix)
+        self.bot.guild_prefixes[str(ctx.guild.id)] = prefixes
+        with open("prefixes.json", "w") as f:
+            json.dump(self.bot.guild_prefixes, f, sort_keys=True, indent=4, separators=(',', ': '))
+        await ctx.send("Removed prefix.")
+
+
+    @prefix.command(name="default", description="Set a default prefix.", usage="[prefix]")
+    @commands.guild_only()
+    @has_manage_guild()
+    async def _default_prefix(self, ctx, prefix):
+        if str(ctx.guild.id) not in self.bot.guild_prefixes.keys():
+            prefixes = ["c."]
+        else:
+            prefixes = self.bot.guild_prefixes[str(ctx.guild.id)]
+        try:
+            prefix_num = int(prefix)
+        except ValueError:
+            prefix_num = 100
+        if prefix not in prefixes and prefix_num > len(prefixes):
+            prefixes_ = [prefix]
+            prefixes_.extend(prefixes)
+            prefixes = prefixes_
+            self.bot.guild_prefixes[str(ctx.guild.id)] = prefixes
+            with open("prefixes.json", "w") as f:
+                json.dump(self.bot.guild_prefixes, f, sort_keys=True, indent=4, separators=(',', ': '))
+            await ctx.send(f"Set default prefix to `{prefix}`")
+        try:
+            int(prefix)
+            prefixes.pop(int(prefix)-1)
+            prefixes_ = [prefix]
+            prefixes_.extend(prefixes)
+            prefixes = prefixes_
+        except ValueError:
+            prefixes.remove(prefix)
+            prefixes_ = [prefix]
+            prefixes_.extend(prefixes)
+            prefixes = prefixes_
+        self.bot.guild_prefixes[str(ctx.guild.id)] = prefixes
+        with open("prefixes.json", "w") as f:
+            json.dump(self.bot.guild_prefixes, f, sort_keys=True, indent=4, separators=(',', ': '))
+        await ctx.send(f"Set default prefix to `{prefix}`")
+
+    @prefix.command(name="reset", description="Reset prefixes to default.", usage="[prefix]")
+    @commands.guild_only()
+    @has_manage_guild()
+    async def _reset_prefix(self, ctx):
+        def check(reaction, user):
+            return (
+                reaction.message.id == bot_message.id
+                and reaction.emoji in ["✅", "❌"]
+                and user.id == ctx.author.id
+            )
+        if str(ctx.guild.id) not in self.bot.guild_prefixes.keys():
+            return await ctx.send("This server is already using the default prefixes.")
+
+        bot_message = await ctx.send("Are you sure you want to reset your server's prefixes?\n"
+                                     "**This change is irreversible.**")
+
+        await bot_message.add_reaction("✅")
+        await bot_message.add_reaction("❌")
+
+        try:
+            reaction, user = await self.bot.wait_for("reaction_add", check=check, timeout=120.0)
+
+            if reaction.emoji == "✅":
+                self.bot.guild_prefixes[str(ctx.guild.id)].pop()
+                with open("prefixes.json", "w") as f:
+                    json.dump(self.bot.guild_prefixes, f, sort_keys=True, indent=4, separators=(',', ': '))
+                await bot_message.edit(content="**Reset prefixes**")
+                await bot_message.remove_reaction("✅", ctx.guild.me)
+                await bot_message.remove_reaction("❌", ctx.guild.me)
+                return
+
+            await bot_message.edit(content="**Canceled**")
+            await bot_message.remove_reaction("✅", ctx.guild.me)
+            await bot_message.remove_reaction("❌", ctx.guild.me)
+
+        except asyncio.TimeoutError:
+            await bot_message.edit(content="**Canceled**")
+            await bot_message.remove_reaction("✅", ctx.guild.me)
+            await bot_message.remove_reaction("❌", ctx.guild.me)
 
     @commands.command(
         name="reload",
