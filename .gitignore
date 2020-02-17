@@ -5,3 +5,4 @@
 ffmpeg.exe
 *.db
 *.yml
+*.json
