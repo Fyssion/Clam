@@ -291,9 +291,9 @@ class Fun(commands.Cog, name=":tada: Fun"):
     async def _latest_xkcd(self, ctx):
         comic = await aioxkcd.get_latest_comic()
         em = discord.Embed(title=comic.title, description=f"Comic #{comic.number} - {comic.alt_text}",
-                           color=discord.Color.blurple())
+                           color=discord.Color.blurple(), timestamp=comic.publish_date)
         em.set_image(url=comic.image_url)
-        em.set_footer(text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url)
+        em.set_footer(text=f"Comic published", icon_url=self.bot.user.avatar_url)
         await ctx.send(embed=em)
 
     @commands.command(
