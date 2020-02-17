@@ -227,7 +227,7 @@ class Tools(commands.Cog, name=":tools: Tools"):
     @commands.group(description="Search for things in a server.",
                     aliases=["find"], invoke_without_command=True)
     async def search(self, ctx):
-        dp = self.bot.default_prefix
+        dp = self.bot.guild_prefix(ctx.guild.id)
         await ctx.send("You can use:\n"
                        f"`{dp}search username [username]`\n"
                        f"`{dp}search nickname [nickname]`\n"
