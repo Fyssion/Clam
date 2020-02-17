@@ -248,14 +248,6 @@ class Fun(commands.Cog, name=":tada: Fun"):
                                "Message not found! "
                                "Please use a vaild message ID.~~")
 
-    # def get_xkcd_date(self, comic):
-    #     months = ["January", "Febuary", "March", "April", "May", "June", "uly",
-    #               "August", "September", "November", "October", "December"]
-    #     month = months[int(comic.xkcdData["month"]) - 1]
-    #     day = comic.xkcdData["day"]
-    #     year = comic.xkcdData["year"]
-    #     return f"{month} {day}, {year}"
-
     @commands.command(hidden=True)
     @commands.is_owner()
     async def reload_xkcd(self, ctx):
@@ -271,8 +263,8 @@ class Fun(commands.Cog, name=":tada: Fun"):
             comic = await aioxkcd.get_comic(number)
         except aioxkcd.XkcdError:
             await ctx.send("That comic does not exist!")
-        em = discord.Embed(title=comic.title, description=f"Comic #{comic.number} - {comic.alt_text}",
-                           color=discord.Color.blurple())
+        em = discord.Embed(title=f"#{comic.number} - {comic.title}", description=comic.alt_text,
+                           color=discord.Color.blurple(), url=comic.url)
         em.set_image(url=comic.image_url)
         em.set_footer(text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url)
         await ctx.send(embed=em)
@@ -281,8 +273,8 @@ class Fun(commands.Cog, name=":tada: Fun"):
                    aliases=["r"])
     async def _random_xkcd(self, ctx):
         comic = await aioxkcd.get_random_comic()
-        em = discord.Embed(title=comic.title, description=f"Comic #{comic.number} - {comic.alt_text}",
-                           color=discord.Color.blurple())
+        em = discord.Embed(title=f"#{comic.number} - {comic.title}", description=comic.alt_text,
+                           color=discord.Color.blurple(), url=comic.url)
         em.set_image(url=comic.image_url)
         em.set_footer(text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url)
         await ctx.send(embed=em)
@@ -290,10 +282,10 @@ class Fun(commands.Cog, name=":tada: Fun"):
     @_xkcd.command(name="latest", description="Fetch the latest xkcd comic")
     async def _latest_xkcd(self, ctx):
         comic = await aioxkcd.get_latest_comic()
-        em = discord.Embed(title=comic.title, description=f"Comic #{comic.number} - {comic.alt_text}",
-                           color=discord.Color.blurple(), timestamp=comic.publish_date)
+        em = discord.Embed(title=f"#{comic.number} - {comic.title}", description=comic.alt_text,
+                           color=discord.Color.blurple(), url=comic.url)
         em.set_image(url=comic.image_url)
-        em.set_footer(text=f"Comic published", icon_url=self.bot.user.avatar_url)
+        em.set_footer(text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url)
         await ctx.send(embed=em)
 
     @commands.command(
