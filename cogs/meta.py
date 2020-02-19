@@ -177,9 +177,6 @@ class Meta(commands.Cog, name=":gear: Meta"):
                     cog_names[cog_search_lowered.index(search)])
 
                 commands_list = cog_called.get_commands()
-                for command in commands_list:
-                    if isinstance(command, commands.Group):
-                        commands_list.extend(command.commands)
                 help_text = f"**{cog_called.qualified_name}**\n"
                 help_text += (cog_called.description + "\n\n"
                               if cog_called.description is not None
@@ -199,6 +196,22 @@ class Meta(commands.Cog, name=":gear: Meta"):
                                               for a in command.aliases]
                             help_text += (f"Aliases : "
                                           f"{', '.join(prefix_aliases)}\n")
+
+                        if isinstance(command, commands.Group):
+                            for cmd in command.commands:
+                                if cmd.hidden:
+                                    continue
+                                command_usage = (" " + cmd.usage
+                                                 if cmd.usage is not None
+                                                 else '')
+                                help_text += (f"**`{self.bot.guild_prefix(ctx.guild.id)}"
+                                              f"{command.name} {cmd.name}{command_usage}`** - "
+                                              f"{cmd.description}\n")
+                                if len(cmd.aliases) > 0:
+                                    prefix_aliases = [f"`{self.bot.guild_prefix(ctx.guild.id)}{command.name} {a}`"
+                                                      for a in cmd.aliases]
+                                    help_text += (f"Aliases : "
+                                                  f"{', '.join(prefix_aliases)}\n")
 
                 help_text += f"\n{self.i_cmd(ctx)}"
 

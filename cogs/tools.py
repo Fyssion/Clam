@@ -27,7 +27,7 @@ class Tools(commands.Cog, name=":tools: Tools"):
     @commands.command(
         name="userinfo",
         description="Get information about a user",
-        aliases=["memberinfo", "ui"],
+        aliases=["memberinfo", "ui", "whois"],
         usage="[user]"
     )
     async def userinfo_command(self, ctx, *, user: discord.Member = None):
@@ -335,7 +335,6 @@ class Tools(commands.Cog, name=":tools: Tools"):
             result[f'{prefix}{key}'] = os.path.join(url, location)
 
         return result
-
 
     async def build_rtfm_lookup_table(self, page_types):
         cache = {}
