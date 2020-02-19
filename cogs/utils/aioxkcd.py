@@ -9,24 +9,28 @@ class XkcdError(Exception):
 
 
 class Comic:
-    """
+    """An xkcd comic.
+
     INSTANCES SHOULD ONLY BE CREATED VIA THE fetch_comic() CLASSMETHOD.
 
+    Parameters:
+        data: The data to be parsed and decoded
+        number (int): The number of the comic
+        url (str): The url of the comic
+
     Attributes:
-
-    data - The decoded and parsed JSON data
-
-    url - The permaurl for the comic
-    number - The comic's number
-    title - Title of the comic
-    alt_text - The text you get when hovering over the image
-    desciption - Alias for alt_text
-    image_url - URL to the image
-    year - The year the comic was published
-    month - The month the comic was published
-    day - The day the comic was published
-    publish_date - The datetime object taken from the year, month, and day
-    date_str - Formatted datetime ({month} {day}, {year})
+        data (dict): The decoded and parsed JSON data
+        url (str): The permaurl for the comic
+        number (int): The comic's number
+        title (str): Title of the comic
+        alt_text (str): The text you get when hovering over the image
+        desciption (str): Alias for alt_text
+        image_url (str): URL to the image
+        year (int): The year the comic was published
+        month (int): The month the comic was published
+        day (int): The day of the month the comic was published
+        publish_date (datetime): The datetime object taken from the year, month, and day
+        date_str (str): Formatted datetime ({month} {day}, {year})
 
     """
     __slots__ = ["number", "url", "_unparsed_data", "data",
@@ -36,7 +40,7 @@ class Comic:
     XKCD_URL = "https://www.xkcd.com/"
     IMAGE_URL = "https://imgs.xkcd.com/comics/"
 
-    def __init__(self, data, number, url):
+    def __init__(self, data, number: int, url: str):
         self.number = number
         self.url = url
         self._unparsed_data = data
@@ -55,47 +59,78 @@ class Comic:
         return self.title
 
     @classmethod
-    async def fetch_comic(cls, number):
-        """Fetches a comic and returns an instance of the Comic class"""
-        if type(number) is str and number.isdigit():
-            number = int(number)
-        number
+    async def fetch_comic(cls, number: int):
+        """Fetches a comic and returns an instance of the Comic class.
+
+        Parameters:
+            number (int): The comic number
+
+        Returns:
+            Comic: A comic object
+
+        Raises:
+            XkcdError -- The comic does not exist
+        """
         if number <= 0:
             raise XkcdError("That comic does not exist.")
 
         url = cls.XKCD_URL + str(number)
         xkcd_json = url + "/info.0.json"
 
-        async with aiohttp.ClientSession().get(xkcd_json) as resp:
-            unparsed_data = await resp.read()
+        async with aiohttp.ClientSession() as session:
+            async with session.get(xkcd_json) as resp:
+                unparsed_data = await resp.read()
 
         return cls(unparsed_data, number, url)
 
 
-async def get_latest_comic_num():
-    """Fetches and returns the number of the latest comic."""
-    async with aiohttp.ClientSession().get("https://xkcd.com/info.0.json") as resp:
-        unparsed = await resp.read()
+async def get_latest_comic_num() -> int:
+    """Fetches and returns the number of the latest comic.
+
+    Returns:
+        number (int): The latest comic number
+    """
+    async with aiohttp.ClientSession() as session:
+        async with session.get("https://xkcd.com/info.0.json") as resp:
+            unparsed = await resp.read()
     data = json.loads(unparsed.decode())
     number = data['num']
     return int(number)
 
 
-async def get_latest_comic():
-    """Gets the latest comic and returns a Comic object"""
+async def get_latest_comic() -> Comic:
+    """Gets the latest comic and returns a Comic object
+
+    Returns:
+        Comic: A comic object
+    """
     latest = await get_latest_comic_num()
     return await Comic.fetch_comic(latest)
 
 
-async def get_random_comic():
-    """Gets a random comic and returns a Comic object"""
+async def get_random_comic() -> Comic:
+    """Gets a random comic and returns a Comic object
+
+    Returns:
+        Comic: A comic object
+    """
     latest = await get_latest_comic_num()
     number = randint(1, latest)
     return await Comic.fetch_comic(number)
 
 
-async def get_comic(number: int):
-    """Gets a comic and returns and returns a Comic object"""
+async def get_comic(number: int) -> Comic:
+    """Gets a comic and returns and returns a Comic object
+
+    Parameters:
+        number (int): The comic number to get
+
+    Returns:
+        Comic: A comic object
+
+    Raises:
+        XkcdError -- The number is higher than the latest comic number
+    """
     latest = await get_latest_comic_num()
     if number > latest:
         raise XkcdError("That comic does not exist. Number is too high.")
