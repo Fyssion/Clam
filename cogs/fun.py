@@ -264,7 +264,7 @@ class Fun(commands.Cog, name=":tada: Fun"):
         try:
             comic = await aioxkcd.get_comic(number)
         except aioxkcd.XkcdError:
-            await ctx.send("That comic does not exist!")
+            return await ctx.send("That comic does not exist!")
         em = discord.Embed(title=f"#{comic.number} - {comic.title}", description=comic.alt_text,
                            color=discord.Color.blurple(), url=comic.url)
         em.set_image(url=comic.image_url)
