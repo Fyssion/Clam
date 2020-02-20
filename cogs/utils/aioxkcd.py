@@ -64,7 +64,7 @@ class Comic:
             number (int): The comic number
 
         Returns:
-            Comic: A comic object
+            Comic: The specified xkcd comic
 
         Raises:
             XkcdError -- The comic does not exist
