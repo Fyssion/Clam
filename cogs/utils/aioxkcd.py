@@ -14,7 +14,7 @@ class Comic:
     INSTANCES SHOULD ONLY BE CREATED VIA THE fetch_comic() CLASSMETHOD.
 
     Parameters:
-        data: The data to be parsed and decoded
+        unparsed_data: The data to be parsed and decoded
         number (int): The number of the comic
         url (str): The url of the comic
 
@@ -23,13 +23,12 @@ class Comic:
         url (str): The permaurl for the comic
         number (int): The comic's number
         title (str): Title of the comic
-        alt_text (str): The text you get when hovering over the image
-        desciption (str): Alias for alt_text
+        alt_text (str): The hover text (alt text)
         image_url (str): URL to the image
         year (int): The year the comic was published
         month (int): The month the comic was published
         day (int): The day of the month the comic was published
-        publish_date (datetime): The datetime object taken from the year, month, and day
+        publish_date (datetime): datetime from year, month, and day
         date_str (str): Formatted datetime ({month} {day}, {year})
 
     """
@@ -40,14 +39,13 @@ class Comic:
     XKCD_URL = "https://www.xkcd.com/"
     IMAGE_URL = "https://imgs.xkcd.com/comics/"
 
-    def __init__(self, data, number: int, url: str):
+    def __init__(self, unparsed_data: bytes, number: int, url: str):
+        self._unparsed_data = unparsed_data
         self.number = number
         self.url = url
-        self._unparsed_data = data
         self.data = json.loads(self._unparsed_data.decode())
         self.title = self.data['safe_title']
         self.alt_text = self.data['alt']
-        self.description = self.alt_text
         self.image_url = self.data['img']
         self.year = int(self.data["year"])
         self.month = int(self.data["month"])
@@ -60,7 +58,7 @@ class Comic:
 
     @classmethod
     async def fetch_comic(cls, number: int):
-        """Fetches a comic and returns an instance of the Comic class.
+        """Fetches an xkcd comic and returns an instance of the Comic class.
 
         Parameters:
             number (int): The comic number
@@ -85,7 +83,7 @@ class Comic:
 
 
 async def get_latest_comic_num() -> int:
-    """Fetches and returns the number of the latest comic.
+    """Fetches the number of the latest xkcd comic.
 
     Returns:
         number (int): The latest comic number
@@ -99,20 +97,20 @@ async def get_latest_comic_num() -> int:
 
 
 async def get_latest_comic() -> Comic:
-    """Gets the latest comic and returns a Comic object
+    """Gets the latest xkcd comic
 
     Returns:
-        Comic: A comic object
+        Comic: The latest xkcd comic
     """
     latest = await get_latest_comic_num()
     return await Comic.fetch_comic(latest)
 
 
 async def get_random_comic() -> Comic:
-    """Gets a random comic and returns a Comic object
+    """Gets a random xkcd comic
 
     Returns:
-        Comic: A comic object
+        Comic: A random xkcd comic
     """
     latest = await get_latest_comic_num()
     number = randint(1, latest)
@@ -120,13 +118,13 @@ async def get_random_comic() -> Comic:
 
 
 async def get_comic(number: int) -> Comic:
-    """Gets a comic and returns and returns a Comic object
+    """Gets an xkcd comic
 
     Parameters:
-        number (int): The comic number to get
+        number (int): The number of the comic to get
 
     Returns:
-        Comic: A comic object
+        Comic: The specified xkcd comic
 
     Raises:
         XkcdError -- The number is higher than the latest comic number
