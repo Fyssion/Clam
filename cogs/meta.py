@@ -47,11 +47,11 @@ class Meta(commands.Cog, name=":gear: Meta"):
 
     def i_category(self, ctx):
         return ("For **more info** on a **specific category**, "
-                f"use: **`{self.bot.guild_prefix(ctx.guild.id)}help [category]`‍**")
+                f"use: **`{self.bot.guild_prefix(ctx.guild)}help [category]`‍**")
 
     def i_cmd(self, ctx):
         return ("For **more info** on a **specific command**, "
-                f"use: **`{self.bot.guild_prefix(ctx.guild.id)}help [command]`‍**")
+                f"use: **`{self.bot.guild_prefix(ctx.guild)}help [command]`‍**")
 
     @commands.Cog.listener("on_message")
     async def on_mention_msg(self, message):
@@ -93,6 +93,9 @@ class Meta(commands.Cog, name=":gear: Meta"):
         # await self.dev.send("Error occured on one of your commands.")
 
     def get_guild_prefixes(self, guild):
+        if not guild:
+            return "`c.` or when mentioned"
+        guild = guild.id
         if str(guild) in self.bot.guild_prefixes.keys():
             prefixes = [f"`{p}`" for p in self.bot.guild_prefixes.get(str(guild))]
             prefixes.append("or when mentioned")
@@ -111,9 +114,9 @@ class Meta(commands.Cog, name=":gear: Meta"):
         em = discord.Embed(
             title=f"Help for {self.bot.user.name}",
             description=(f"{self.bot.description}\n\n"
-                         f"**Default Prefix: `{self.bot.guild_prefix(ctx.guild.id)}`** "
-                         f"Ex: `{self.bot.guild_prefix(ctx.guild.id)}help`\n"
-                         f"Use `{self.bot.guild_prefix(ctx.guild.id)}prefixes` to view all prefixes for this server.\n"
+                         f"**Default Prefix: `{self.bot.guild_prefix(ctx.guild)}`** "
+                         f"Ex: `{self.bot.guild_prefix(ctx.guild)}help`\n"
+                         f"Use `{self.bot.guild_prefix(ctx.guild)}prefixes` to view all prefixes for this server.\n"
                          f"{self.i_category(ctx)}\n"),
             # color = 0x15DFEA,
             color=0xFF95B0,
@@ -147,7 +150,7 @@ class Meta(commands.Cog, name=":gear: Meta"):
             for cog in self.bot.ordered_cogs:
                 cog_docstring = self.bot.get_cog(cog).__doc__
 
-                if cog == "Jishaku":
+                if cog in ["Jishaku", "Admin"]:
                     pass
                 else:
 
@@ -187,12 +190,12 @@ class Meta(commands.Cog, name=":gear: Meta"):
                         command_usage = (" " + command.usage
                                          if command.usage is not None
                                          else '')
-                        help_text += (f"**`{self.bot.guild_prefix(ctx.guild.id)}"
+                        help_text += (f"**`{self.bot.guild_prefix(ctx.guild)}"
                                       f"{command.name}{command_usage}`** - "
                                       f"{command.description}\n")
 
                         if len(command.aliases) > 0:
-                            prefix_aliases = [f"`{self.bot.guild_prefix(ctx.guild.id)}{a}`"
+                            prefix_aliases = [f"`{self.bot.guild_prefix(ctx.guild)}{a}`"
                                               for a in command.aliases]
                             help_text += (f"Aliases : "
                                           f"{', '.join(prefix_aliases)}\n")
@@ -204,11 +207,11 @@ class Meta(commands.Cog, name=":gear: Meta"):
                                 command_usage = (" " + cmd.usage
                                                  if cmd.usage is not None
                                                  else '')
-                                help_text += (f"**`{self.bot.guild_prefix(ctx.guild.id)}"
+                                help_text += (f"**`{self.bot.guild_prefix(ctx.guild)}"
                                               f"{command.name} {cmd.name}{command_usage}`** - "
                                               f"{cmd.description}\n")
                                 if len(cmd.aliases) > 0:
-                                    prefix_aliases = [f"`{self.bot.guild_prefix(ctx.guild.id)}{command.name} {a}`"
+                                    prefix_aliases = [f"`{self.bot.guild_prefix(ctx.guild)}{command.name} {a}`"
                                                       for a in cmd.aliases]
                                     help_text += (f"Aliases : "
                                                   f"{', '.join(prefix_aliases)}\n")
@@ -225,10 +228,10 @@ class Meta(commands.Cog, name=":gear: Meta"):
                     return await ctx.send("That command is hidden!")
 
                 em.description = (f"**{command.name.capitalize()}**\n{command.description}\n\n"
-                                  f"Format: `{self.bot.guild_prefix(ctx.guild.id)}{command.name}"
+                                  f"Format: `{self.bot.guild_prefix(ctx.guild)}{command.name}"
                                   f"{' ' + command.usage if command.usage is not None else ''}`\n")
                 if len(command.aliases) > 0:
-                    prefix_aliases = [f"`{self.bot.guild_prefix(ctx.guild.id)}{a}`" for a in command.aliases]
+                    prefix_aliases = [f"`{self.bot.guild_prefix(ctx.guild)}{a}`" for a in command.aliases]
                     em.description += f"Aliases : {', '.join(prefix_aliases)}\n"
 
                 if isinstance(command, commands.Group):
@@ -238,11 +241,11 @@ class Meta(commands.Cog, name=":gear: Meta"):
                             command_usage = (" " + cmd.usage
                                              if cmd.usage is not None
                                              else '')
-                            subcommands += (f"**`{self.bot.guild_prefix(ctx.guild.id)}"
+                            subcommands += (f"**`{self.bot.guild_prefix(ctx.guild)}"
                                             f"{command.name} {cmd.name}{command_usage}`** - "
                                             f"{cmd.description}\n")
                             if len(cmd.aliases) > 0:
-                                prefix_aliases = [f"`{self.bot.guild_prefix(ctx.guild.id)}{a}`"
+                                prefix_aliases = [f"`{self.bot.guild_prefix(ctx.guild)}{a}`"
                                                   for a in cmd.aliases]
                                 subcommands += (f"Aliases : "
                                                 f"{', '.join(prefix_aliases)}\n")
@@ -251,7 +254,7 @@ class Meta(commands.Cog, name=":gear: Meta"):
 
             else:
                 return await ctx.send("Invalid category/command specified.\n"
-                                      f"Use `{self.bot.guild_prefix(ctx.guild.id)}help` "
+                                      f"Use `{self.bot.guild_prefix(ctx.guild)}help` "
                                       "to view list of all categories and commands.")
 
         bot_message = await ctx.send(embed = em)
@@ -272,7 +275,7 @@ class Meta(commands.Cog, name=":gear: Meta"):
             title=f"Admin Help For {self.bot.user.name}",
             description=f"{self.bot.description}\n\n**Prefixes:** {self.bot.prefixes}\
                         \nFor **more info** on a **specific command**, \
-                        use: **`{self.bot.guild_prefix(ctx.guild.id)}help admin [command]`‍**\n‍",
+                        use: **`{self.bot.guild_prefix(ctx.guild)}help admin [command]`‍**\n‍",
             color=0xFF95B0,
             timestamp=d.utcnow()
         )
@@ -286,19 +289,40 @@ class Meta(commands.Cog, name=":gear: Meta"):
         if commd == "all":
             for cog in cogs:
                 cog_commands = self.bot.get_cog(cog).get_commands()
-
-                hidden_counter = 0
-                for comm in cog_commands:
-                    if comm.hidden == True:
-                        hidden_counter += 1
-                if hidden_counter != 0:
-                    commands_list = ""
-                    # cmd_list = [c if c.hidden for c in cog_commands]
+                if cog != "Admin":
+                    hidden_counter = 0
                     for comm in cog_commands:
                         if comm.hidden == True:
-                            commands_list += f"**`{comm.name}`** - {comm.description}\n"
+                            hidden_counter += 1
+                    if hidden_counter <= 0:
+                        continue
+                commands_list = ""
+                # cmd_list = [c if c.hidden for c in cog_commands]
+                for comm in cog_commands:
+                    if comm.hidden == True or comm.cog_name == "Admin":
+                        commands_list += f"**`{comm.name}`** - {comm.description}\n"
+                        if len(comm.aliases) > 0:
+                            prefix_aliases = [f"`{a}`"
+                                                for a in comm.aliases]
+                            commands_list += (f"Aliases : "
+                                            f"{', '.join(prefix_aliases)}\n")
+                        if isinstance(comm, commands.Group):
+                            for cmd in comm.commands:
+                                if cmd.hidden:
+                                    continue
+                                command_usage = (" " + cmd.usage
+                                                 if cmd.usage is not None
+                                                 else '')
+                                commands_list += (f"**`"
+                                              f"{comm.name} {cmd.name}{command_usage}`** - "
+                                              f"{cmd.description}\n")
+                                if len(cmd.aliases) > 0:
+                                    prefix_aliases = [f"`{comm.name} {a}`"
+                                                      for a in cmd.aliases]
+                                    commands_list += (f"Aliases : "
+                                                  f"{', '.join(prefix_aliases)}\n")
 
-                    em.add_field(name=cog, value=commands_list, inline=False)
+                em.add_field(name=cog, value=commands_list, inline=False)
 
             dev = self.bot.get_user(224513210471022592)
             em.add_field(
@@ -554,66 +578,6 @@ class Meta(commands.Cog, name=":gear: Meta"):
             await bot_message.edit(content="**Canceled**")
             await bot_message.remove_reaction("✅", ctx.guild.me)
             await bot_message.remove_reaction("❌", ctx.guild.me)
-
-    @commands.command(
-        name="reload",
-        description="Reload an extension",
-        aliases=['load'],
-        usage="[cog]",
-        hidden=True
-    )
-    @commands.is_owner()
-    async def _reload(self, ctx, cog="all"):
-        if cog == "all":
-            msg = ""
-
-            for ext in self.bot.cogs_to_load:
-                try:
-                    self.bot.reload_extension(ext)
-                    msg += f"**:repeat: Reloaded** `{ext}`\n\n"
-                    self.log.info(f"Extension '{cog.lower()}' successfully reloaded.")
-
-                except Exception as e:
-                    traceback_data = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
-                    msg += (f"**:warning: Extension `{ext}` not loaded.**\n"
-                            f"```py\n{traceback_data}```\n\n")
-                    self.log.warning(f"Extension 'cogs.{cog.lower()}' not loaded.\n"
-                                     f"{traceback_data}")
-            return await ctx.send(msg)
-
-        try:
-            self.bot.reload_extension(cog.lower())
-            await ctx.send(f"**:repeat: Reloaded** `{cog.lower()}`")
-            self.log.info(f"Extension '{cog.lower()}' successfully reloaded.")
-        except Exception as e:
-            traceback_data = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
-            await ctx.send(f"**:warning: Extension `{cog.lower()}` not loaded.**\n```py\n{traceback_data}```")
-            self.log.warning(f"Extension 'cogs.{cog.lower()}' not loaded.\n{traceback_data}")
-
-    @commands.group(name="error", hidden=True, aliases=["e"])
-    @commands.is_owner()
-    async def _error(self, ctx):
-        pass
-
-    @_error.command()
-    async def previous(self, ctx):
-        if not self.bot.previous_error:
-            return await ctx.send("No previous error cached.")
-        e = self.bot.previous_error
-        error = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
-        await ctx.send(f"```py\n{error}```")
-
-    @commands.command(
-        name="logout",
-        description="Logs out and shuts down bot",
-        hidden=True
-    )
-    @commands.is_owner()
-    async def logout_command(self, ctx):
-        self.log.info("Logging out of Discord.")
-        await ctx.send("Logging out :wave:")
-        await self.bot.session.close()
-        await self.bot.logout()
 
 
 def setup(bot):

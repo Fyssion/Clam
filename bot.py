@@ -11,12 +11,14 @@ import json
 
 from cogs.utils import backup
 
+
 def get_prefix(client, message):
 
     prefixes = ['c.']
 
-    if str(message.guild.id) in client.guild_prefixes.keys():
-        prefixes = client.guild_prefixes[str(message.guild.id)]
+    if not isinstance(message.channel, discord.DMChannel):
+        if str(message.guild.id) in client.guild_prefixes.keys():
+            prefixes = client.guild_prefixes[str(message.guild.id)]
 
     return commands.when_mentioned_or(*prefixes)(client, message)
 
@@ -61,7 +63,7 @@ class Clam(commands.Bot):
 
         self.cogs_to_load = ['cogs.meta', 'cogs.tools', 'cogs.reddit',
                              'cogs.fun', 'cogs.moderation', 'cogs.music',
-                             'cogs.mathematics']
+                             'cogs.mathematics', 'cogs.admin']
 
         self.remove_command('help')
 
@@ -70,6 +72,9 @@ class Clam(commands.Bot):
         self.load_extension("jishaku")
 
     def guild_prefix(self, guild):
+        if not guild:
+            return "c."
+        guild = guild.id
         if str(guild) in self.guild_prefixes:
             return self.guild_prefixes[str(guild)][0]
         return "c."
