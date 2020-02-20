@@ -14,7 +14,7 @@ class Comic:
     INSTANCES SHOULD ONLY BE CREATED VIA THE fetch_comic() CLASSMETHOD.
 
     Parameters:
-        unparsed_data: The data to be parsed and decoded
+        unparsed_data (bytes): The data to be parsed and decoded
         number (int): The number of the comic
         url (str): The url of the comic
 
