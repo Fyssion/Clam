@@ -245,7 +245,7 @@ class Meta(commands.Cog, name=":gear: Meta"):
                                             f"{command.name} {cmd.name}{command_usage}`** - "
                                             f"{cmd.description}\n")
                             if len(cmd.aliases) > 0:
-                                prefix_aliases = [f"`{self.bot.guild_prefix(ctx.guild)}{a}`"
+                                prefix_aliases = [f"`{self.bot.guild_prefix(ctx.guild)}{command.name} {a}`"
                                                   for a in cmd.aliases]
                                 subcommands += (f"Aliases : "
                                                 f"{', '.join(prefix_aliases)}\n")

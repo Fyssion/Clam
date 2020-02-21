@@ -257,7 +257,7 @@ class Tools(commands.Cog, name=":tools: Tools"):
         await ctx.send("No matches found.")
 
     @search.command(name="nickname",
-                    description="Search server for a specified username",
+                    description="Search server for a specified nickname",
                     usage="[nickname]", aliases=["nick"])
     async def search_nickname(self, ctx, nickname: str):
         matches = []
@@ -270,7 +270,7 @@ class Tools(commands.Cog, name=":tools: Tools"):
         await ctx.send("No matches found.")
 
     @search.command(name="discriminator",
-                    description="Search server for a specified username",
+                    description="Search server for a specified descrininator",
                     usage="[discriminator]", aliases=["number"])
     async def search_discriminator(self, ctx, discriminator: int):
         matches = []
