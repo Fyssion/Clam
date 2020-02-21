@@ -15,6 +15,8 @@ async def create_connection(db_file):
         return conn
     # except sqlite3.Error as e:
     #     print(e)
+    except:
+        pass
 
     return conn
 
