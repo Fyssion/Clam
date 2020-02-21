@@ -32,6 +32,8 @@ async def create_table(conn, sql_code):
         await c.execute(sql_code)
     # except sqlite3.Error as e:
     #     print(e)
+    except:
+        pass
 
 
 async def create_project(conn, project):
