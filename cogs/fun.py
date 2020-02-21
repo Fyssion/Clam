@@ -303,7 +303,6 @@ class Fun(commands.Cog, name=":tada: Fun"):
             final_words.append(new_word)
         return " ".join(final_words)
 
-
     @commands.command(
         description="Thesaurize any sentence CURRENTLY BROKEN",
         usage="[sentence]",

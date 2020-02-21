@@ -3,5 +3,5 @@ praw
 coloredlogs
 pyyaml
 aiosqlite3
-sqlite3
+pysqlite
 matplotlib
