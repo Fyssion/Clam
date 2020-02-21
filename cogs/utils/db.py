@@ -1,6 +1,6 @@
 # from .. import asqlite3
 import aiosqlite3
-import sqlite3
+# import sqlite3
 
 
 async def create_connection(db_file):
@@ -11,10 +11,10 @@ async def create_connection(db_file):
     """
     conn = None
     try:
-        conn = await asqlite3.connect(db_file)
+        conn = await aiosqlite3.connect(db_file)
         return conn
-    except sqlite3.Error as e:
-        print(e)
+    # except sqlite3.Error as e:
+    #     print(e)
 
     return conn
 
@@ -28,8 +28,8 @@ async def create_table(conn, sql_code):
     try:
         c = await conn.cursor()
         await c.execute(sql_code)
-    except sqlite3.Error as e:
-        print(e)
+    # except sqlite3.Error as e:
+    #     print(e)
 
 
 async def create_project(conn, project):
