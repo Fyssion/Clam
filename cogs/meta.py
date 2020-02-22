@@ -62,12 +62,12 @@ class Meta(commands.Cog, name=":gear: Meta"):
                                        "To find out more about me, type:"
                                        f" `{self.bot.guild_prefix(message.guild)}help`")
 
-    @commands.Cog.listener("on_error")
-    async def _dm_dev(self, event):
-        e = sys.exc_info()
-        full =''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
-        owner = self.bot.get_user(self.bot.owner_id)
-        await owner.send(f"Error in {event}:```py\n{full}```")
+    # @commands.Cog.listener("on_error")
+    # async def _dm_dev(self, event):
+    #     e = sys.exc_info()
+    #     full =''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
+    #     owner = self.bot.get_user(self.bot.owner_id)
+    #     await owner.send(f"Error in {event}:```py\n{full}```")
 
     @commands.Cog.listener("on_command_error")
     async def _send_error(self, ctx, e: commands.CommandError):
