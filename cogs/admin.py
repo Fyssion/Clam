@@ -55,11 +55,12 @@ class Admin(commands.Cog):
     @commands.group(name="process", hidden=True, aliases=["computer", "comp", "cpu", "ram"])
     @commands.is_owner()
     async def _process(self, ctx):
-        em = discord.Embed(title="Current Process Stats", color=discord.Color.teal,
+        em = discord.Embed(title="Current Process Stats", color=discord.Color.teal(),
                            timestamp=d.utcnow())
         em.add_field(name="CPU", value=f"{psutil.cpu_percent()}%")
         mem = psutil.virtual_memory()
         em.add_field(name="Virtual Memory", value=f"{mem.percent}%\n{mem.used}/{mem.available}")
+        await ctx.send(embed=em)
 
     @commands.group(name="error", hidden=True, aliases=["e"])
     @commands.is_owner()
