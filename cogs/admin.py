@@ -4,6 +4,7 @@ from discord.ext import commands
 from datetime import datetime as d
 import traceback
 import json
+import psutil
 
 
 class Admin(commands.Cog):
@@ -50,6 +51,15 @@ class Admin(commands.Cog):
             traceback_data = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
             await ctx.send(f"**:warning: Extension `{cog.lower()}` not loaded.**\n```py\n{traceback_data}```")
             self.log.warning(f"Extension 'cogs.{cog.lower()}' not loaded.\n{traceback_data}")
+
+    @commands.group(name="process", hidden=True, aliases=["computer", "comp", "cpu", "ram"])
+    @commands.is_owner()
+    async def _process(self, ctx):
+        em = discord.Embed(title="Current Process Stats", color=discord.Color.teal,
+                           timestamp=d.utcnow())
+        em.add_field(name="CPU", value=f"{psutil.cpu_percent()}%")
+        mem = psutil.virtual_memory()
+        em.add_field(name="Virtual Memory", value=f"{mem.percent}%\n{mem.used}/{mem.available}")
 
     @commands.group(name="error", hidden=True, aliases=["e"])
     @commands.is_owner()
