@@ -116,6 +116,26 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         em.add_field(name="After", value=f">>> {after.content}")
         await log.send(embed=em)
 
+    @commands.Cog.listener("on_member_join")
+    async def _join_message(self, member):
+        log = self.get_log(member.guild.id)
+        if not log:
+            return
+        em = discord.Embed(title="Member Join", description=f"**{member.mention} joined the server!**",
+                           color=discord.Color.green(), timestamp=d.utcnow())
+        em.set_thumbnail(url=member.avatar_url)
+        await log.send(embed=em)
+
+    @commands.Cog.listener("on_member_remove")
+    async def _remove_message(self, user):
+        log = self.get_log(user.guild.id)
+        if not log:
+            return
+        em = discord.Embed(title="Member Left", description=f"**{user.mention} left the server**",
+                           color=discord.Color.red(), timestamp=d.utcnow())
+        em.set_thumbnail(url=user.avatar_url)
+        await log.send(embed=em)
+
 
 def setup(bot):
     bot.add_cog(Moderation(bot))
