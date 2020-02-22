@@ -52,14 +52,30 @@ class Admin(commands.Cog):
             await ctx.send(f"**:warning: Extension `{cog.lower()}` not loaded.**\n```py\n{traceback_data}```")
             self.log.warning(f"Extension 'cogs.{cog.lower()}' not loaded.\n{traceback_data}")
 
+    def readable(self, value):
+        gigs = round(value // 1000000000)
+        if gigs <= 0:
+            megs = round(value // 1000000)
+            return f"{megs}mb"
+        return f"{gigs}gb"
+
     @commands.group(name="process", hidden=True, aliases=["computer", "comp", "cpu", "ram"])
     @commands.is_owner()
     async def _process(self, ctx):
         em = discord.Embed(title="Current Process Stats", color=discord.Color.teal(),
                            timestamp=d.utcnow())
-        em.add_field(name="CPU", value=f"{psutil.cpu_percent()}%")
+        em.add_field(name="CPU", value=f"{psutil.cpu_percent()}% used with {psutil.cpu_count()} CPU(s)")
         mem = psutil.virtual_memory()
-        em.add_field(name="Virtual Memory", value=f"{mem.percent}%\n{mem.used}/{mem.available}")
+        em.add_field(
+            name="Virtual Memory",
+            value=f"{mem.percent}% used\n{self.readable(mem.used)}/{self.readable(mem.total)}"
+        )
+        disk = psutil.disk_usage('/')
+        em.add_field(
+            name="Disk",
+            value=f"{disk.percent}% used\n{self.readable(disk.used)}/{self.readable(disk.total)}"
+        )
+
         await ctx.send(embed=em)
 
     @commands.group(name="error", hidden=True, aliases=["e"])
