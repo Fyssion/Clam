@@ -579,6 +579,35 @@ class Meta(commands.Cog, name=":gear: Meta"):
             await bot_message.remove_reaction("✅", ctx.guild.me)
             await bot_message.remove_reaction("❌", ctx.guild.me)
 
+    @commands.command(name="backup_reload")
+    @commands.is_owner()
+    async def _reload(self, ctx, cog="all"):
+        if cog == "all":
+            msg = ""
+
+            for ext in self.bot.cogs_to_load:
+                try:
+                    self.bot.reload_extension(ext)
+                    msg += f"**:repeat: Reloaded** `{ext}`\n\n"
+                    self.log.info(f"Extension '{cog.lower()}' successfully reloaded.")
+
+                except Exception as e:
+                    traceback_data = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
+                    msg += (f"**:warning: Extension `{ext}` not loaded.**\n"
+                            f"```py\n{traceback_data}```\n\n")
+                    self.log.warning(f"Extension 'cogs.{cog.lower()}' not loaded.\n"
+                                     f"{traceback_data}")
+            return await ctx.send(msg)
+
+        try:
+            self.bot.reload_extension(cog.lower())
+            await ctx.send(f"**:repeat: Reloaded** `{cog.lower()}`")
+            self.log.info(f"Extension '{cog.lower()}' successfully reloaded.")
+        except Exception as e:
+            traceback_data = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
+            await ctx.send(f"**:warning: Extension `{cog.lower()}` not loaded.**\n```py\n{traceback_data}```")
+            self.log.warning(f"Extension 'cogs.{cog.lower()}' not loaded.\n{traceback_data}")
+
 
 def setup(bot):
     bot.add_cog(Meta(bot))
