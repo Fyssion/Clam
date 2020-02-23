@@ -466,7 +466,7 @@ class Meta(commands.Cog, name=":gear: Meta"):
         prefixes = self.bot.guild_prefixes[str(ctx.guild.id)]
         msg = "Prefixes:"
         for i, prefix in enumerate(prefixes):
-            msg += f"\n`{i+1}.` {prefix}"
+            msg += f"\n{i+1}. **`{prefix}`**"
         await ctx.send(msg)
 
     @prefix.command(name="add", description="Add a prefix.", usage="[prefix]")
