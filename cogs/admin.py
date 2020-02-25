@@ -54,7 +54,7 @@ class Admin(commands.Cog):
 
     @commands.group(name="cog")
     @commands.is_owner()
-    async def _cog(self, bot):
+    async def _cog(self, ctx):
         pass
 
     @_cog.command(name="reload")
