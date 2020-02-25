@@ -14,7 +14,7 @@ from cogs.utils import backup
 
 def get_prefix(client, message):
 
-    prefixes = ['c.']
+    prefixes = ["c."]
 
     if not isinstance(message.channel, discord.DMChannel):
         if str(message.guild.id) in client.guild_prefixes.keys():
@@ -36,12 +36,12 @@ class Clam(commands.Bot):
         # self.session = aiohttp.ClientSession(loop=self.loop)
 
         self.log = logging.getLogger(__name__)
-        coloredlogs.install(level='DEBUG', logger=self.log,
-                            fmt='(%(asctime)s) %(levelname)s %(message)s',
-                            datefmt='%m/%d/%y - %H:%M:%S %Z')
+        coloredlogs.install(level="DEBUG", logger=self.log,
+                            fmt="(%(asctime)s) %(levelname)s %(message)s",
+                            datefmt="%m/%d/%y - %H:%M:%S %Z")
 
         # Config.yml load
-        with open("config.yml", 'r') as config:
+        with open("config.yml", "r") as config:
             try:
                 self.config = yaml.safe_load(config)
 
@@ -54,18 +54,18 @@ class Clam(commands.Bot):
         with open("prefixes.json", "r") as f:
             self.guild_prefixes = json.load(f)
 
-        self.reddit_id = self.config['reddit-id']
-        self.reddit_secret = self.config['reddit-secret']
-        self.prefixes = ['`c.`', 'or when mentioned']
+        self.reddit_id = self.config["reddit-id"]
+        self.reddit_secret = self.config["reddit-secret"]
+        self.prefixes = ["`c.`", "or when mentioned"]
         self.default_prefix = "c."
         self.dev = self.get_user(224513210471022592)
         self.previous_error = None
 
-        self.cogs_to_load = ['cogs.meta', 'cogs.tools', 'cogs.reddit',
-                             'cogs.fun', 'cogs.moderation', 'cogs.music',
-                             'cogs.mathematics', 'cogs.admin']
+        self.cogs_to_load = ["cogs.meta", "cogs.tools", "cogs.reddit",
+                             "cogs.fun", "cogs.moderation", "cogs.music",
+                             "cogs.mathematics", "cogs.admin", "cogs.tags"]
 
-        self.remove_command('help')
+        self.remove_command("help")
 
         for cog in self.cogs_to_load:
             self.load_extension(cog)
@@ -81,7 +81,7 @@ class Clam(commands.Bot):
 
     async def on_ready(self):
 
-        self.log.info(f'Logged in as {self.user.name} - {self.user.id}')
+        self.log.info(f"Logged in as {self.user.name} - {self.user.id}")
 
         self.startup_time = d.now()
 
@@ -90,7 +90,7 @@ class Clam(commands.Bot):
         self.session = aiohttp.ClientSession(loop=self.loop)
 
     def run(self):
-        super().run(self.config['bot-token'], reconnect=True, bot=True)
+        super().run(self.config["bot-token"], reconnect=True, bot=True)
 
 
 bot = Clam()

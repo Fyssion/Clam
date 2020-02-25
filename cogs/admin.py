@@ -52,6 +52,19 @@ class Admin(commands.Cog):
             await ctx.send(f"**:warning: Extension `{cog.lower()}` not loaded.**\n```py\n{traceback_data}```")
             self.log.warning(f"Extension 'cogs.{cog.lower()}' not loaded.\n{traceback_data}")
 
+    @commands.group(name="cog")
+    @commands.is_owner()
+    async def _cog(self, bot):
+        pass
+
+    @_cog.command(name="reload")
+    @commands.is_owner()
+    async def _add_cog(self, ctx, cog):
+        self.bot.add_cog(cog)
+        self.bot.cogs_to_load.append(cog)
+        self.bot.ordered_cogs.append(self.bot.cogs.keys()[-1])
+        return await ctx.send("Cog added.")
+
     def readable(self, value):
         gigs = round(value // 1000000000)
         if gigs <= 0:
