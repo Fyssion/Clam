@@ -425,7 +425,8 @@ class Player:
 
     async def stop(self):
         filenames = [s.source.filename for s in self.songs._queue]
-        filenames.insert(0, self.current.source.filename)
+        if self.current:
+            filenames.insert(0, self.current.source.filename)
         self.songs.clear()
         if self.voice:
             await self.voice.disconnect()
