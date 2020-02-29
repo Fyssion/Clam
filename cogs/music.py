@@ -501,10 +501,9 @@ class Music(commands.Cog, name=":notes: Music"):
 
     @commands.command()
     @commands.is_owner()
-    async def _reload_module(self, ctx, module):
-        to_reload = sys.modules[module]
-        importlib.reload(to_reload)
-        await ctx.send(f"Reloaded {module}")
+    async def _reload_hover_link(self, ctx, module):
+        importlib.reload(hover_link)
+        await ctx.send(f"Reloaded hover_link")
 
     @commands.command(name="join", description="Joins a voice channel.",
                       aliases=["connect"], invoke_without_subcommand=True)
