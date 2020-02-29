@@ -1016,6 +1016,8 @@ class Music(commands.Cog, name=":notes: Music"):
             traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
             error = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
             return await ctx.send(f"Could not connect to YouTube!```py\n{error}```")
+        if not data:
+            return await ctx.send("YouTube did not return any data.")
         await ctx.send("Successfully connected to YouTube with youtube_dl")
 
     @_join.before_invoke
