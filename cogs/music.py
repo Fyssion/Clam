@@ -703,11 +703,12 @@ class Music(commands.Cog, name=":notes: Music"):
 
         await self.votes(ctx, "skip", skip_song)
 
-    @commands.command(
+    @commands.group(
         name="queue",
         description="Shows the player's queue. You can optionally select the page.",
         usage="<page #>",
-        aliases=["playlist"]
+        aliases=["playlist"],
+        invoke_without_command=True
     )
     async def _queue(self, ctx, *, page: int = 1):
 
@@ -731,6 +732,19 @@ class Music(commands.Cog, name=":notes: Music"):
         )
         embed.set_footer(text=f"Page {page} of {pages}")
         await ctx.send(embed=embed)
+
+    @_queue.command(name="save", description="Save the queue to hastebin!",
+                    aliases=["upload"])
+    async def _save_queue(self, ctx):
+        if len(ctx.player.songs) == 0:
+            return await ctx.send("Queue is empty! Nothing to save.")
+        songs = ctx.player.songs.to_list()
+        songs = [s.source.url for s in songs]
+        songs.insert(0, ctx.player.current.source.url)
+        url = await self.post("\n".join(songs))
+        if url is None:
+            return await ctx.send("Sorry, I couldn't save your queue.")
+        await ctx.send(f"**Current queue: {url}**")
 
     @commands.command(name="shuffle", description = "Shuffles the queue.")
     async def _shuffle(self, ctx):
