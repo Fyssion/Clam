@@ -458,6 +458,41 @@ class Music(commands.Cog, name=":notes: Music"):
         await ctx.send(f"Oops: {str(error)}")
         print(str(error))
 
+    @commands.Cog.listener("on_voice_state_update")
+    async def on_voice_leave(self, member, before, after):
+        def check(mem, bf, af):
+            if mem.bot:
+                return False
+            if af.channel:
+                return True
+        if member.bot:
+            return
+        player = self.players.get(member.guild.id)
+        if not player:
+            return
+        if len(player.voice.channel.members) == 1:
+            player.voice.pause()
+            print("PAUSED")
+            try:
+                await self.bot.wait_for("voice_state_update", timeout=120, check=check)
+            except asyncio.TimeoutError:
+                if len(player.songs) > 0:
+                    songs = player.songs.to_list()
+                    songs = [s.source.url for s in songs]
+                    songs.insert(0, player.current.source.url)
+                else:
+                    songs = None
+                await player.stop()
+                del self.players[member.guild.id]
+                if songs:
+                    url = await self.post("\n".join(songs))
+                    if url is None:
+                        return await player.text_channel.send("Sorry, I couldn't save your queue.")
+                    await player.text_channel.send("**I saved your queue!**\n"
+                                f"To resume where you left off, use this link with the `play` command: **{url}**")
+            print("Resuming!")
+            player.voice.resume()
+
     async def votes(self, ctx, cmd: str, func, param=None):
         async def run_func():
             if param:
