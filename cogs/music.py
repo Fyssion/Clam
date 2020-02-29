@@ -12,6 +12,7 @@ import re
 from datetime import datetime as d
 from urllib.parse import urlparse
 import importlib
+import sys
 
 from .utils.utils import hover_link
 
@@ -501,7 +502,7 @@ class Music(commands.Cog, name=":notes: Music"):
     @commands.command()
     @commands.is_owner()
     async def _reload_module(self, ctx, module):
-        to_reload = importlib.import_module(module)
+        to_reload = sys.modules[module]
         importlib.reload(to_reload)
         await ctx.send(f"Reloaded {module}")
 
