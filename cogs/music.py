@@ -13,6 +13,7 @@ from datetime import datetime as d
 from urllib.parse import urlparse
 import importlib
 import sys
+import os
 
 from .utils import utils
 
@@ -46,16 +47,20 @@ class YTDLSource(discord.PCMVolumeTransformer):
         "source_address": "0.0.0.0",
     }
 
+    # FFMPEG_OPTIONS = {
+    #     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+    #     "options": "-vn",
+    # }
     FFMPEG_OPTIONS = {
-        "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-        "options": "-vn",
+        "before_options": None,
+        "options": None,
     }
 
     ytdl = youtube_dl.YoutubeDL(YTDL_OPTIONS)
 
     def __init__(self, ctx: commands.Context,
                  source: discord.FFmpegPCMAudio, *, data: dict,
-                 volume: float = 0.5):
+                 volume: float = 0.5, filename = None):
         super().__init__(source, volume)
 
         self.ytdl_source = source
@@ -64,6 +69,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self.requester = ctx.author
         self.channel = ctx.channel
         self.data = data
+        self.filename = filename
 
         self.uploader = data.get("uploader")
         self.uploader_url = data.get("uploader_url")
@@ -85,7 +91,8 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return f"`{self.title}`"
 
     def remake_source(self):
-        return YTDLSource(self.ctx, discord.FFmpegPCMAudio(self.data["url"], **self.FFMPEG_OPTIONS), data=self.data)
+        print(self.filename)
+        return YTDLSource(self.ctx, discord.FFmpegPCMAudio(self.filename, **self.FFMPEG_OPTIONS), data=self.data, filename=self.filename)
 
     @classmethod
     async def create_source(cls, ctx: commands.Context,
@@ -96,7 +103,8 @@ class YTDLSource(discord.PCMVolumeTransformer):
         partial = functools.partial(cls.ytdl.extract_info, search, download=False, process=False)
         try:
             data = await loop.run_in_executor(None, partial)
-        except youtube_dl.DownloadError:
+        except youtube_dl.DownloadError as e:
+            print(e)
             if send_errors:
                 await ctx.send(f"**:x: Error while searching for** `{search}`")
             return
@@ -117,10 +125,18 @@ class YTDLSource(discord.PCMVolumeTransformer):
                 raise YTDLError("Couldn't find anything that matches `{}`".format(search))
 
         webpage_url = process_info["webpage_url"]
-        partial = functools.partial(cls.ytdl.extract_info, webpage_url, download=False)
+        filename = cls.ytdl.prepare_filename(process_info)[:-3] + ".webm"
+        print(filename)
+        if os.path.isfile(filename):
+            print("not downloading")
+            download = False
+        else:
+            download = True
+        partial = functools.partial(cls.ytdl.extract_info, webpage_url, download=download)
         try:
             processed_info = await loop.run_in_executor(None, partial)
-        except youtube_dl.DownloadError:
+        except youtube_dl.DownloadError as e:
+            print(e)
             if send_errors:
                 await ctx.send(f"**:x: Error while downloading** `{webpage_url}`")
         else:
@@ -134,10 +150,11 @@ class YTDLSource(discord.PCMVolumeTransformer):
                 while info is None:
                     try:
                         info = processed_info["entries"].pop(0)
-                    except IndexError:
+                    except IndexError as e:
+                        print(e)
                         raise YTDLError("Couldn't retrieve any matches for `{}`".format(webpage_url))
-
-            return cls(ctx, discord.FFmpegPCMAudio(info["url"], **cls.FFMPEG_OPTIONS), data=info)
+            filename = cls.ytdl.prepare_filename(info)
+            return cls(ctx, discord.FFmpegPCMAudio(filename, **cls.FFMPEG_OPTIONS), data=info, filename=filename)
 
     @classmethod
     async def get_playlist(cls, ctx: commands.Context, search: str, *, loop: asyncio.BaseEventLoop = None):
@@ -165,7 +182,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         for video in data_list:
             print(str(video))
             webpage_url = video["url"]
-            full = functools.partial(cls.ytdl.extract_info, webpage_url, download=False)
+            full = functools.partial(cls.ytdl.extract_info, webpage_url, download=True)
             try:
                 data = await loop.run_in_executor(None, full)
             except youtube_dl.DownloadError:
@@ -182,9 +199,11 @@ class YTDLSource(discord.PCMVolumeTransformer):
                     while info is None:
                         try:
                             info = data["entries"].pop(0)
-                        except IndexError:
+                        except IndexError as e:
+                            print(e)
                             await ctx.send(f"Couldn't retrieve any matches for `{webpage_url}`")
-                source = cls(ctx, discord.FFmpegPCMAudio(info["url"], **cls.FFMPEG_OPTIONS), data=info)
+                filename = cls.ytdl.prepare_filename(info)
+                source = cls(ctx, discord.FFmpegPCMAudio(filename, **cls.FFMPEG_OPTIONS), data=info, filename=filename)
                 playlist.append(source)
 
         return playlist, counter
@@ -361,29 +380,25 @@ class Player:
             self.next.clear()
 
             if self.loop_queue:
-                print("Before remake q")
                 self.current.source = self.current.source.remake_source()
-                print("After remake q")
                 await self.songs.put(self.current)
             if self.loop:
-                print(self.current.source.original)
-                print("Before remake")
+                self.current.source = self.current.source.remake_source()
+            print(1)
+            if not self.loop and not self.loop_queue and self.current:
+                os.remove(self.current.source.filename)
+            print(2)
+            if not self.loop:
                 try:
-                    self.current.source = self.current.source.remake_source()
-                except Exception as e:
-                    print(e)
-                print("After remake")
-                self.songs._queue.appendleft(self.current) # this is rather sketch
-
-            try:
-                async with timeout(180):  # 3 minutes
-                    self.current = await self.songs.get()
-            except asyncio.TimeoutError:
-                self.bot.loop.create_task(self.stop())
-                return
-
+                    async with timeout(180):  # 3 minutes
+                        self.current = await self.songs.get()
+                except asyncio.TimeoutError:
+                    self.bot.loop.create_task(self.stop())
+                    return
+            print(3)
             self.current.source.volume = self._volume
             self.voice.play(self.current.source, after=self.play_next_song)
+            print(4)
             if not self.loop:
                 await self.text_channel.send(self.current.create_message())
             # else:
@@ -409,11 +424,16 @@ class Player:
             self.voice.stop()
 
     async def stop(self):
+        filenames = [s.source.filename for s in self.songs._queue]
+        filenames.insert(0, self.current.source.filename)
         self.songs.clear()
-
         if self.voice:
             await self.voice.disconnect()
             self.voice = None
+        for filename in filenames:
+            print(filename)
+            if os.path.isfile(filename):
+                os.remove(filename)
 
 
 def is_dj():
@@ -436,7 +456,10 @@ class Music(commands.Cog, name=":notes: Music"):
     def get_player(self, ctx: commands.Context):
         state = self.players.get(ctx.guild.id)
         if not state:
-            state = Player(self.bot, ctx)
+            try:
+                state = Player(self.bot, ctx)
+            except Exception as e:
+                print(e)
             self.players[ctx.guild.id] = state
 
         return state
@@ -543,7 +566,6 @@ class Music(commands.Cog, name=":notes: Music"):
     @commands.command(name="join", description="Joins a voice channel.",
                       aliases=["connect"], invoke_without_subcommand=True)
     async def _join(self, ctx):
-
         destination = ctx.author.voice.channel
         ctx.player.text_channel = ctx.channel
         if ctx.player.voice:
@@ -561,7 +583,6 @@ class Music(commands.Cog, name=":notes: Music"):
     )
     @is_dj()
     async def _summon(self, ctx, *, channel: discord.VoiceChannel = None):
-
         if not channel and not ctx.author.voice:
             raise VoiceError("You are neither connected to a voice channel nor specified a channel to join.")
 
@@ -674,12 +695,17 @@ class Music(commands.Cog, name=":notes: Music"):
                 songs.insert(0, ctx.player.current.source.url)
         else:
             songs = None
+        if ctx.player.is_playing:
+            ctx.player.voice.stop()
+        filenames = [s.source.filename for s in ctx.player.songs._queue]
+        filenames.insert(0, ctx.player.current.source.filename)
         ctx.player.songs.clear()
         ctx.player.loop = False
         ctx.player.loop_queue = False
+        for filename in filenames:
+            if os.path.isfile(filename):
+                os.remove(filename)
 
-        if ctx.player.is_playing:
-            ctx.player.voice.stop()
         await ctx.send("**:stop_button: Song stopped and queue cleared.**")
         if songs:
             url = await self.post("\n".join(songs))
@@ -897,6 +923,7 @@ class Music(commands.Cog, name=":notes: Music"):
         try:
             playlist, failed_songs = await YTDLSource.get_playlist(ctx, url, loop=self.bot.loop)
         except YTDLError as e:
+            print(e)
             await ctx.send(f"An error occurred while processing this request: ```py {str(e)}```")
         else:
             em = discord.Embed(title="**:page_facing_up: Enqueued:**",
@@ -967,6 +994,7 @@ class Music(commands.Cog, name=":notes: Music"):
             try:
                 source = await YTDLSource.create_source(ctx, search, loop=self.bot.loop)
             except YTDLError as e:
+                print(e)
                 await ctx.send(f"An error occurred while processing this request: ```py {str(e)}```")
             else:
                 song = Song(source)
