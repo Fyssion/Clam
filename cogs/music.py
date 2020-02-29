@@ -276,6 +276,12 @@ class SongQueue(asyncio.Queue):
     def remove(self, index: int):
         del self._queue[index]
 
+    def to_list(self):
+        output = []
+        for item in self._queue:
+            output.append(item)
+        return output
+
 
 class Player:
     def __init__(self, bot: commands.Bot, ctx: commands.Context):
@@ -526,6 +532,10 @@ class Music(commands.Cog, name=":notes: Music"):
         t_emote = "<:text_channel:661798072384225307>"
         await ctx.send(f"**Connected to ** {v_emote}`{destination}` and **bound to** {t_emote}`{ctx.channel}`")
 
+    async def post(self, content, url='https://hastebin.com'):
+        async with self.bot.session.post(f'{url}/documents', data=content.encode('utf-8')) as post:
+            return url + '/' + (await post.json())['key']
+
     @commands.command(
         name="leave",
         description="Clears the queue and leaves the voice channel.",
@@ -533,16 +543,25 @@ class Music(commands.Cog, name=":notes: Music"):
     )
     @is_dj()
     async def _leave(self, ctx):
-
-
         if not ctx.player.voice:
             if ctx.voice_client:
                 ctx.player.voice = ctx.voice_client
             else:
                 return await ctx.send("Not connected to any voice channel.")
-
+        if len(ctx.player.songs) > 0:
+            songs = ctx.player.songs.to_list()
+            songs = [s.source.url for s in songs]
+            songs.insert(0, ctx.player.current.source.url)
+        else:
+            songs = None
         await ctx.player.stop()
         del self.players[ctx.guild.id]
+        if songs:
+            url = await self.post("\n".join(songs))
+            if url is None:
+                return await ctx.send("Sorry, I couldn't save your queue.")
+            await ctx.send("**I saved your queue!**\n"
+                           f"To resume where you left off, use this link with the `play` command: **{url}**")
 
     def get_volume_emoji(self, volume):
         if volume >= 50:
@@ -606,14 +625,25 @@ class Music(commands.Cog, name=":notes: Music"):
     @commands.command(name="stop", description="Stops playing song and clears the queue.")
     @is_dj()
     async def _stop(self, ctx):
-
+        if len(ctx.player.songs) > 0:
+                songs = ctx.player.songs.to_list()
+                songs = [s.source.url for s in songs]
+                songs.insert(0, ctx.player.current.source.url)
+        else:
+            songs = None
         ctx.player.songs.clear()
         ctx.player.loop = False
         ctx.player.loop_queue = False
 
         if ctx.player.is_playing:
             ctx.player.voice.stop()
-            await ctx.send("**:stop_button: Song stopped and queue cleared.**")
+        await ctx.send("**:stop_button: Song stopped and queue cleared.**")
+        if songs:
+            url = await self.post("\n".join(songs))
+            if url is None:
+                return await ctx.send("Sorry, I couldn't save your queue.")
+            await ctx.send("**I saved your queue!**\n"
+                           f"To resume where you left off, use this link with the `play` command: **{url}**")
 
     @commands.command(
         name="skip",
