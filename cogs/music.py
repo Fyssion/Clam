@@ -738,7 +738,7 @@ class Music(commands.Cog, name=":notes: Music"):
 
     @_queue.command(name="save", description="Save the queue to hastebin!",
                     aliases=["upload"])
-    @commands.cooldown(seconds=10)
+    @commands.cooldown(1, 10)
     async def _save_queue(self, ctx):
         if len(ctx.player.songs) == 0:
             return await ctx.send("Queue is empty! Nothing to save.")
