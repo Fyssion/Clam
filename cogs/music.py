@@ -726,15 +726,19 @@ class Music(commands.Cog, name=":notes: Music"):
         for i, song in enumerate(ctx.player.songs[start:end], start=start):
             queue += f"`{i+1}.` [{song.source.title}]({song.source.url}) `{song.source.duration}` {song.source.requester.mention}\n"
 
-        embed = discord.Embed(
+        em = discord.Embed(
             title = "**:page_facing_up: Queue**",
             description=f"**{len(ctx.player.songs)} Song(s):**\n{queue}"
         )
-        embed.set_footer(text=f"Page {page} of {pages}")
-        await ctx.send(embed=embed)
+        if ctx.player.loop_queue:
+            em.title += " (:repeat: looping)"
+            em.description = "**:repeat: Loop queue is on\n**" + em.description
+        em.set_footer(text=f"Page {page} of {pages}")
+        await ctx.send(embed=em)
 
     @_queue.command(name="save", description="Save the queue to hastebin!",
                     aliases=["upload"])
+    @commands.cooldown(seconds=10)
     async def _save_queue(self, ctx):
         if len(ctx.player.songs) == 0:
             return await ctx.send("Queue is empty! Nothing to save.")
@@ -812,9 +816,9 @@ class Music(commands.Cog, name=":notes: Music"):
         ctx.player.loop = False
 
         if ctx.player.loop_queue:
-            await ctx.send(f"**:repeat_one: Now looping queue**")
+            await ctx.send(f"**:repeat: Now looping queue**")
         else:
-            await ctx.send(f"**:repeat_one: :x: No longer looping queue**")
+            await ctx.send(f"**:repeat: :x: No longer looping queue**")
 
     async def get_haste(self, url="https://hastebin.com"):
         parsed = urlparse(url)
