@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 import importlib
 import sys
 import os
+import traceback
 
 from .utils import utils
 
@@ -1008,7 +1009,13 @@ class Music(commands.Cog, name=":notes: Music"):
     @commands.is_owner()
     async def _ytdl_test(self, ctx):
         partial = functools.partial(YTDLSource.ytdl.extract_info, "test", download=False, process=False)
-        data = await self.bot.loop.run_in_executor(None, partial)
+        try:
+            data = await self.bot.loop.run_in_executor(None, partial)
+        except youtube_dl.DownloadError as e:
+            print("Could not connect to YouTube")
+            traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
+            error = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
+            return await ctx.send(f"Could not connect to YouTube!```py\n{error}```")
         await ctx.send("Successfully connected to YouTube with youtube_dl")
 
     @_join.before_invoke
