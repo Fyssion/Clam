@@ -11,6 +11,7 @@ from async_timeout import timeout
 import re
 from datetime import datetime as d
 from urllib.parse import urlparse
+import importlib
 
 from .utils.utils import hover_link
 
@@ -496,6 +497,13 @@ class Music(commands.Cog, name=":notes: Music"):
 
         else:
             await ctx.send(f"You have already voted to {cmd}.")
+
+    @commands.command()
+    @commands.is_owner()
+    async def _reload_module(self, ctx, module):
+        to_reload = importlib.import_module(module)
+        importlib.reload(to_reload)
+        await ctx.send(f"Reloaded {module}")
 
     @commands.command(name="join", description="Joins a voice channel.",
                       aliases=["connect"], invoke_without_subcommand=True)
