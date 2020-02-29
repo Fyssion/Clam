@@ -140,4 +140,4 @@ async def wait_for_deletion(
 def hover_link(ctx, msg, text="`?`"):
     return (f"[{text}](https://www.discordapp.com/"
             f"channels/{ctx.guild.id}/{ctx.channel.id} "
-            f""""{msg}") to get more info """)
+            f""""{msg}")""")

@@ -284,6 +284,7 @@ class Player:
 
         self.current = None
         self.voice = None
+        self.text_channel = ctx.channel
         self.next = asyncio.Event()
         self.songs = SongQueue()
         self.saved_queue = SongQueue()
@@ -376,7 +377,7 @@ class Player:
             self.current.source.volume = self._volume
             self.voice.play(self.current.source, after=self.play_next_song)
             if not self.loop:
-                await self.current.source.channel.send(self.current.create_message())
+                await self.text_channel.send(self.current.create_message())
             # else:
             #     await self.current.source.channel.send("Looping...")
 
@@ -495,11 +496,14 @@ class Music(commands.Cog, name=":notes: Music"):
     async def _join(self, ctx):
 
         destination = ctx.author.voice.channel
+        ctx.player.text_channel = ctx.channel
         if ctx.player.voice:
             await ctx.player.voice.move_to(destination)
-            return
-
-        ctx.player.voice = await destination.connect()
+        else:
+            ctx.player.voice = await destination.connect()
+        v_emote = "<:voice_channel:665577300552843294>"
+        t_emote = "<:text_channel:661798072384225307>"
+        await ctx.send(f"**Connected to ** {v_emote}`{destination}` and **bound to** {t_emote}`{ctx.channel}`")
 
     @commands.command(
         name="summon",
@@ -513,11 +517,14 @@ class Music(commands.Cog, name=":notes: Music"):
             raise VoiceError("You are neither connected to a voice channel nor specified a channel to join.")
 
         destination = channel or ctx.author.voice.channel
+        ctx.player.text_channel = ctx.channel
         if ctx.player.voice:
             await ctx.player.voice.move_to(destination)
-            return
-
-        ctx.player.voice = await destination.connect()
+        else:
+            ctx.player.voice = await destination.connect()
+        v_emote = "<:voice_channel:665577300552843294>"
+        t_emote = "<:text_channel:661798072384225307>"
+        await ctx.send(f"**Connected to ** {v_emote}`{destination}` and **bound to** {t_emote}`{ctx.channel}`")
 
     @commands.command(
         name="leave",
