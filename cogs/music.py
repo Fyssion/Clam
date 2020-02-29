@@ -558,7 +558,7 @@ class Music(commands.Cog, name=":notes: Music"):
         else:
             await ctx.send(f"You have already voted to {cmd}.")
 
-    @commands.command()
+    @commands.command(hidden=True)
     @commands.is_owner()
     async def _reload_hover_link(self, ctx):
         importlib.reload(utils)
@@ -1003,6 +1003,13 @@ class Music(commands.Cog, name=":notes: Music"):
                 await ctx.player.songs.put(song)
                 if ctx.player.is_playing:
                     await ctx.send(f"**:page_facing_up: Enqueued** {str(source)}")
+
+    @commands.command(name="ytdl", description="Test YTDL to see if it works", hidden=True)
+    @commands.is_owner()
+    async def _ytdl_test(self, ctx):
+        partial = functools.partial(YTDLSource.ytdl.extract_info, "test", download=False, process=False)
+        data = await self.bot.loop.run_in_executor(None, partial)
+        await ctx.send("Successfully connected to YouTube with youtube_dl")
 
     @_join.before_invoke
     @_play.before_invoke
