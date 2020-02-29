@@ -601,6 +601,8 @@ class Music(commands.Cog, name=":notes: Music"):
     async def _stop(self, ctx):
 
         ctx.player.songs.clear()
+        ctx.player.loop = False
+        ctx.player.loop_queue = False
 
         if ctx.player.is_playing:
             ctx.player.voice.stop()
@@ -688,7 +690,7 @@ class Music(commands.Cog, name=":notes: Music"):
         # return await ctx.send(":warning: :( Sorry, this feature is \
         # currently under maintenance. Check back later.")
 
-        if not ctx.player.is_playing:
+        if not ctx.player.is_playing and not ctx.player.loop:
             return await ctx.send("Nothing being played at the moment.")
 
         # Inverse boolean value to loop and unloop.
@@ -707,9 +709,9 @@ class Music(commands.Cog, name=":notes: Music"):
         aliases=["queue"]
     )
     async def _loop_queue(self, ctx):
-        if not ctx.player.is_playing:
+        if not ctx.player.is_playing and not ctx.player.loop_queue:
             return await ctx.send("Nothing being played at the moment.")
-        if len(ctx.player.songs) == 0:
+        if len(ctx.player.songs) == 0 and not ctx.player.loop_queue:
             return await ctx.send("The queue is empty. Nothing to loop!")
 
         ctx.player.loop_queue = not ctx.player.loop_queue
