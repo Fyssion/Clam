@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 import importlib
 import sys
 
-from .utils.utils import hover_link
+from .utils import utils
 
 
 # Silence useless bug reports messages
@@ -501,9 +501,9 @@ class Music(commands.Cog, name=":notes: Music"):
 
     @commands.command()
     @commands.is_owner()
-    async def _reload_hover_link(self, ctx, module):
-        importlib.reload(hover_link)
-        await ctx.send(f"Reloaded hover_link")
+    async def _reload_hover_link(self, ctx):
+        importlib.reload(utils)
+        await ctx.send(f"Reloaded utils")
 
     @commands.command(name="join", description="Joins a voice channel.",
                       aliases=["connect"], invoke_without_subcommand=True)
@@ -685,7 +685,7 @@ class Music(commands.Cog, name=":notes: Music"):
         start = (page - 1) * items_per_page
         end = start + items_per_page
 
-        hover = hover_link(ctx, "Song Title", text="Song")
+        hover = utils.hover_link(ctx, "Song Title", text="Song")
         queue = f"`#` {hover} `Duration` @Requester\n\n"
         for i, song in enumerate(ctx.player.songs[start:end], start=start):
             queue += f"`{i+1}.` [{song.source.title}]({song.source.url}) `{song.source.duration}` {song.source.requester.mention}\n"
