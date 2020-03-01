@@ -529,7 +529,7 @@ class Meta(commands.Cog, name=":gear: Meta"):
             self.bot.guild_prefixes[str(ctx.guild.id)] = prefixes
             with open("prefixes.json", "w") as f:
                 json.dump(self.bot.guild_prefixes, f, sort_keys=True, indent=4, separators=(',', ': '))
-            await ctx.send(f"Set default prefix to `{prefix}`")
+            return await ctx.send(f"Set default prefix to `{prefix}`")
         try:
             int(prefix)
             prefixes.pop(int(prefix)-1)
