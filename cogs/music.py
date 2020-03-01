@@ -933,6 +933,9 @@ class Music(commands.Cog, name=":notes: Music"):
             description = ""
             total_duration = 0
             for i, source in enumerate(playlist):
+                if not source:
+                    failed_songs += 1
+                    continue
                 song = Song(source)
 
                 await ctx.player.songs.put(song)
@@ -1001,6 +1004,9 @@ class Music(commands.Cog, name=":notes: Music"):
             else:
                 song = Song(source)
 
+                if not song:
+                    return await ctx.send("Sorry. I couldn't fetch that song. Possibly being ratelimited.")
+
                 await ctx.player.songs.put(song)
                 if ctx.player.is_playing:
                     await ctx.send(f"**:page_facing_up: Enqueued** {str(source)}")
@@ -1008,7 +1014,7 @@ class Music(commands.Cog, name=":notes: Music"):
     @commands.command(name="ytdl", description="Test YTDL to see if it works", hidden=True)
     @commands.is_owner()
     async def _ytdl_test(self, ctx):
-        partial = functools.partial(YTDLSource.ytdl.extract_info, "test", download=False, process=False)
+        partial = functools.partial(YTDLSource.ytdl.extract_info, "hat kid electro", download=False, process=False)
         try:
             data = await self.bot.loop.run_in_executor(None, partial)
         except youtube_dl.DownloadError as e:
