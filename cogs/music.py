@@ -17,6 +17,7 @@ import os
 import traceback
 
 from .utils import utils
+from .utils import stopwatch
 
 
 # Silence useless bug reports messages
@@ -252,14 +253,20 @@ class Song:
         self.source = source
         self.requester = source.requester
 
-    def create_embed(self, title = "Now playing"):
+    def create_embed(self, title="Now playing", duration=None):
         src = self.source
         em = discord.Embed(
             title=title,
             description=f"```css\n{src.title}\n```",
             color=discord.Color.blurple()
         )
-        em.add_field(name="Duration", value=src.duration)
+        if not duration:
+            em.add_field(name="Duration", value=src.duration)
+        else:
+            duration = duration.total_seconds()
+            formatted = YTDLSource.timestamp_duration(int(duration))
+            print(formatted)
+            em.add_field(name="Duration", value=f"{formatted}/{src.duration}")
         em.add_field(name="Requested by",
                      value=self.requester.mention)
         em.add_field(
@@ -316,6 +323,7 @@ class Player:
         self.next = asyncio.Event()
         self.songs = SongQueue()
         self.saved_queue = SongQueue()
+        self.duration = stopwatch.StopWatch()
 
         self._loop = False
         self._loop_queue = False
@@ -379,6 +387,7 @@ class Player:
     async def player_loop(self):
         while True:
             self.next.clear()
+            self.duration.stop()
 
             if self.loop_queue:
                 self.current.source = self.current.source.remake_source()
@@ -399,6 +408,7 @@ class Player:
             print(3)
             self.current.source.volume = self._volume
             self.voice.play(self.current.source, after=self.play_next_song)
+            self.duration.start()
             print(4)
             if not self.loop:
                 await self.text_channel.send(self.current.create_message())
@@ -436,6 +446,16 @@ class Player:
             print(filename)
             if os.path.isfile(filename):
                 os.remove(filename)
+
+    def pause(self):
+        if self.is_playing and self.voice.is_playing():
+            self.voice.pause()
+            self.duration.pause()
+
+    def resume(self):
+        if self.is_playing and self.voice.is_paused():
+            self.voice.resume()
+            self.duration.unpause()
 
 
 def is_dj():
@@ -496,7 +516,7 @@ class Music(commands.Cog, name=":notes: Music"):
         if not player:
             return
         if len(player.voice.channel.members) == 1:
-            player.voice.pause()
+            player.pause()
             print("PAUSED")
             try:
                 await self.bot.wait_for("voice_state_update", timeout=120, check=check)
@@ -516,7 +536,7 @@ class Music(commands.Cog, name=":notes: Music"):
                     await player.text_channel.send("**I saved your queue!**\n"
                                 f"To resume where you left off, use this link with the `play` command: **{url}**")
             print("Resuming!")
-            player.voice.resume()
+            player.resume()
 
     async def votes(self, ctx, cmd: str, func, param=None):
         async def run_func():
@@ -664,9 +684,9 @@ class Music(commands.Cog, name=":notes: Music"):
         if not ctx.player.is_playing:
             return await ctx.send("Not currently playing a song.")
         if ctx.player.voice.is_paused():
-            em = ctx.player.current.create_embed("Currently Paused")
+            em = ctx.player.current.create_embed("Currently Paused", ctx.player.duration.get_time())
         else:
-            em = ctx.player.current.create_embed()
+            em = ctx.player.current.create_embed(duration=ctx.player.duration.get_time())
 
         await ctx.send(embed=em)
 
@@ -675,16 +695,16 @@ class Music(commands.Cog, name=":notes: Music"):
     async def _pause(self, ctx):
 
         if ctx.player.is_playing and ctx.player.voice.is_playing():
-            ctx.player.voice.pause()
+            ctx.player.pause()
             song = ctx.player.current.source.title
             await ctx.send(f"**:pause_button: Paused** `{song}`")
 
-    @commands.command(name="resume", description="Resumes a currently paused song.")
+    @commands.command(name="resume", description="Resumes a currently paused song.", aliases=["unpause"])
     @is_dj()
     async def _resume(self, ctx):
 
         if ctx.player.is_playing and ctx.player.voice.is_paused():
-            ctx.player.voice.resume()
+            ctx.player.resume()
             song = ctx.player.current.source.title
             await ctx.send(f"**:arrow_forward: Resuming** `{song}`")
 
@@ -967,7 +987,7 @@ class Music(commands.Cog, name=":notes: Music"):
 
         if not search and ctx.player.is_playing and ctx.player.voice.is_paused()\
              and ctx.author.guild_permissions.manage_guild:
-            ctx.player.voice.resume()
+            ctx.player.resume()
             return await ctx.send(f"**:arrow_forward: Resuming** `{ctx.player.current.source.title}`")
         if not search:
             return await ctx.send("Please specify a song to play/search for.")
