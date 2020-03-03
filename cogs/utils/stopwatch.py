@@ -1,10 +1,10 @@
-from datetime import timedelta
 from datetime import datetime
+from datetime import timedelta
 
 
 class StopWatch:
     """A stopwatch in Python"""
-    
+
     def __init__(self):
         self.start_time = None
         self.is_counting = False
@@ -32,7 +32,7 @@ class StopWatch:
         self.start_time = None
         self.is_counting = False
         return time
-    
+
     def pause(self):
         """Pause the stopwatch"""
         if self.is_paused:
@@ -63,4 +63,3 @@ class StopWatch:
             pause_amount = now - self.pause_start
             time = time - pause_amount
         return time
-    
