@@ -3,6 +3,10 @@ import discord
 
 import json
 from datetime import datetime as d
+import asyncio
+import re
+from urllib.parse import urlparse
+from async_timeout import timeout
 
 from .utils.checks import has_manage_guild
 
@@ -24,6 +28,60 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
             channel_id = self.log_channels.get(str(guild))
             return self.bot.get_channel(int(channel_id))
         return None
+
+    async def get_bin(self, url="https://hastebin.com"):
+        parsed = urlparse(url)
+        newpath = "/raw" + parsed.path
+        url = (parsed.scheme +
+            "://" +
+            parsed.netloc +
+            newpath)
+        try:
+            async with timeout(10):
+                async with self.bot.session.get(url) as resp:
+                    f = await resp.read()
+        except asyncio.TimeoutError:
+            raise TimeoutError(":warning: Could not fetch data from hastebin. \
+            Is the site down? Try https://www.pastebin.com")
+            return None
+        async with self.bot.session.get(url) as resp:
+            f = await resp.read()
+            f = f.decode("utf-8")
+            return f
+
+    async def wait_for_message(self, author, timeout=120):
+        def check(msg):
+            return msg.author == author and msg.channel == author.dm_channel
+        try:
+            return await self.bot.wait_for("message", check=check, timeout=120)
+        except asyncio.TimeoutError:
+            return None
+
+    @commands.command(description="Create a server info message for your server.")
+    async def welcome(self, ctx):
+        await ctx.send("Beginning interactive message generator in your DMs.")
+        author = ctx.author
+        await author.send("Welcome to the interactive message generator!\n"
+                    "Paste the message you want to send here, or give me a bin link "
+                    "(hastebin, mystbin, or your other bin preference).")
+        message = await self.wait_for_message(author)
+        content = message.content
+        if content.startswith("http"):
+            content = await self.get_bin(message.content)
+            if len(content) > 2000:
+                if "$$BREAK$$" not in content:
+                    return await author.send("That message is too long, and I couldn't find and message breaks in it.\n"
+                                             "Add message breaks with they keyword `$$BREAK$$`, and I will split the message there.")
+            all_contents = content.split("$$BREAK$$")
+        else:
+            all_contents = [content]
+        messages = []
+        for message in all_contents:
+            kwargs = {"content" : message,
+                      "embed" : None}
+            messages.append(kwargs)
+        for message in messages:
+            await author.send(**message)
 
     @commands.command(
         name="purge",
