@@ -141,6 +141,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
             print(e)
             if send_errors:
                 await ctx.send(f"**:x: Error while downloading** `{webpage_url}`")
+                return
         else:
             if processed_info is None:
                 raise YTDLError("Couldn't fetch `{}`".format(webpage_url))
