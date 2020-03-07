@@ -1,4 +1,4 @@
-from discord.ext import commands
+from discord.ext import commands, menus
 import discord
 
 import asyncio
@@ -459,6 +459,29 @@ class Player:
             self.duration.unpause()
 
 
+class SearchPages(menus.ListPageSource):
+    def __init__(self, data):
+        super().__init__(data, per_page=10)
+
+    async def format_page(self, menu, entries):
+        offset = menu.current_page * self.per_page
+        ctx = menu.ctx
+        hover = utils.hover_link(ctx, "Song Title", text="Song")
+        queue = f"`#` {hover} `Duration` @Requester\n\n"
+        for i, song in enumerate(entries, start=offset):
+            queue += f"`{i+1}.` [{song.source.title}]({song.source.url}) `{song.source.duration}` {song.source.requester.mention}\n"
+
+        em = discord.Embed(
+            title = "**:page_facing_up: Queue**",
+            description=f"**{len(ctx.player.songs)} Song(s):**\n{queue}"
+        )
+        if ctx.player.loop_queue:
+            em.title += " (:repeat: looping)"
+            em.description = "**:repeat: Loop queue is on**\n" + em.description
+        em.set_footer(text=f"Page {menu.current_page+1} of {self.get_max_pages()}")
+        return em
+
+
 def is_dj():
     def predicate(ctx):
         author = ctx.author
@@ -764,26 +787,28 @@ class Music(commands.Cog, name=":notes: Music"):
         if len(ctx.player.songs) == 0:
             return await ctx.send("Queue is empty. Nothing to display!")
 
-        items_per_page = 10
-        pages = math.ceil(len(ctx.player.songs) / items_per_page)
+        # items_per_page = 10
+        # pages = math.ceil(len(ctx.player.songs) / items_per_page)
 
-        start = (page - 1) * items_per_page
-        end = start + items_per_page
+        # start = (page - 1) * items_per_page
+        # end = start + items_per_page
 
-        hover = utils.hover_link(ctx, "Song Title", text="Song")
-        queue = f"`#` {hover} `Duration` @Requester\n\n"
-        for i, song in enumerate(ctx.player.songs[start:end], start=start):
-            queue += f"`{i+1}.` [{song.source.title}]({song.source.url}) `{song.source.duration}` {song.source.requester.mention}\n"
+        # hover = utils.hover_link(ctx, "Song Title", text="Song")
+        # queue = f"`#` {hover} `Duration` @Requester\n\n"
+        # for i, song in enumerate(ctx.player.songs[start:end], start=start):
+        #     queue += f"`{i+1}.` [{song.source.title}]({song.source.url}) `{song.source.duration}` {song.source.requester.mention}\n"
 
-        em = discord.Embed(
-            title = "**:page_facing_up: Queue**",
-            description=f"**{len(ctx.player.songs)} Song(s):**\n{queue}"
-        )
-        if ctx.player.loop_queue:
-            em.title += " (:repeat: looping)"
-            em.description = "**:repeat: Loop queue is on**\n" + em.description
-        em.set_footer(text=f"Page {page} of {pages}")
-        await ctx.send(embed=em)
+        # em = discord.Embed(
+        #     title = "**:page_facing_up: Queue**",
+        #     description=f"**{len(ctx.player.songs)} Song(s):**\n{queue}"
+        # )
+        # if ctx.player.loop_queue:
+        #     em.title += " (:repeat: looping)"
+        #     em.description = "**:repeat: Loop queue is on**\n" + em.description
+        # em.set_footer(text=f"Page {page} of {pages}")
+        # await ctx.send(embed=em)
+        pages = menus.MenuPages(source=SearchPages(ctx.player.songs), clear_reactions_after=True)
+        return await pages.start(ctx)
 
     @_queue.command(name="save", description="Save the queue to hastebin!",
                     aliases=["upload"])
