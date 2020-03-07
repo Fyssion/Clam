@@ -278,7 +278,7 @@ class Tools(commands.Cog, name=":tools: Tools"):
 
     @search.command(name="username",
                     description="Search server for a specified username",
-                    usage="[username]", aliases=["user"])
+                    usage="[username]", aliases=["user", "name"])
     async def search_username(self, ctx, username: str):
         matches = []
         for member in ctx.guild.members:
@@ -306,7 +306,7 @@ class Tools(commands.Cog, name=":tools: Tools"):
 
     @search.command(name="discriminator",
                     description="Search server for a specified descrininator",
-                    usage="[discriminator]", aliases=["number"])
+                    usage="[discriminator]", aliases=["number", "discrim", "dis", "num"])
     async def search_discriminator(self, ctx, discriminator: int):
         matches = []
         for member in ctx.guild.members:
