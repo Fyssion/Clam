@@ -19,11 +19,25 @@ def snowstamp(snowflake):
 
 class SearchPages(menus.ListPageSource):
     def __init__(self, data):
-        super().__init__(data, per_page=10)
+        pages_limit = 10
+        current = f"Found **{len(data)}** {'matches' if len(data) > 1 else 'match'}! ```ini\n"
+        for i, entry in enumerate(data):
+            if entry.nick:
+                nick = f"{entry.nick} - "
+            else:
+                nick = ""
+            if len(current + f"\n[{i+1}] {nick}{entry.name}#{entry.discriminator} ({entry.id})") <= 2000:
+                current += f"\n[{i+1}] {nick}{entry.name}#{entry.discriminator} ({entry.id})"
+            else:
+                current = f"Found **{len(data)}** {'matches' if len(data) > 1 else 'match'}! ```ini\n"
+                if i+1 < pages_limit:
+                    pages_limit = i+1
+        print(pages_limit)
+        super().__init__(data, per_page=pages_limit)
 
     async def format_page(self, menu, entries):
         offset = menu.current_page * self.per_page
-        msg = f"Found **{len(entries)}** {'matches' if len(entries) > 1 else 'match'}! ```ini\n"
+        msg = f"Found **{len(self.entries)}** {'matches' if len(self.entries) > 1 else 'match'}! ```ini\n"
         for i, member in enumerate(entries, start=offset):
             if member.nick:
                 nick = f"{member.nick} - "
