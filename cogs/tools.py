@@ -1,4 +1,4 @@
-from discord.ext import commands
+from discord.ext import commands, menus
 import discord
 
 from datetime import datetime as d
@@ -15,6 +15,24 @@ def snowstamp(snowflake):
     timestamp /= 1000
 
     return d.utcfromtimestamp(timestamp).strftime('%b %d, %Y at %#I:%M %p')
+
+
+class SearchPages(menus.ListPageSource):
+    def __init__(self, data):
+        super().__init__(data, per_page=10)
+
+    async def format_page(self, menu, entries):
+        offset = menu.current_page * self.per_page
+        msg = f"Found **{len(entries)}** {'matches' if len(entries) > 1 else 'match'}! ```ini\n"
+        for i, member in enumerate(entries, start=offset):
+            if member.nick:
+                nick = f"{member.nick} - "
+            else:
+                nick = ""
+            msg += f"\n[{i+1}] {nick}{member.name}#{member.discriminator} ({member.id})"
+        # msg += '\n'.join(f'{i+1}. {v}' for i, v in enumerate(entries, start=offset))
+        msg += "\n```"
+        return msg
 
 
 class Tools(commands.Cog, name=":tools: Tools"):
@@ -253,7 +271,9 @@ class Tools(commands.Cog, name=":tools: Tools"):
             if username.lower() in member.name.lower():
                 matches.append(member)
         if matches:
-            return await ctx.send(self.compile_list(matches))
+            pages = menus.MenuPages(source=SearchPages(matches), clear_reactions_after=True)
+            return await pages.start(ctx)
+            # return await ctx.send(self.compile_list(matches))
         await ctx.send("No matches found.")
 
     @search.command(name="nickname",
@@ -266,7 +286,8 @@ class Tools(commands.Cog, name=":tools: Tools"):
                 if nickname.lower() in member.nick.lower():
                     matches.append(member)
         if matches:
-            return await ctx.send(self.compile_list(matches))
+            pages = menus.MenuPages(source=SearchPages(matches), clear_reactions_after=True)
+            return await pages.start(ctx)
         await ctx.send("No matches found.")
 
     @search.command(name="discriminator",
@@ -278,7 +299,8 @@ class Tools(commands.Cog, name=":tools: Tools"):
             if discriminator == int(member.discriminator):
                 matches.append(member)
         if matches:
-            return await ctx.send(self.compile_list(matches))
+            pages = menus.MenuPages(source=SearchPages(matches), clear_reactions_after=True)
+            return await pages.start(ctx)
         await ctx.send("No matches found.")
 
     def parse_object_inv(self, stream, url):
