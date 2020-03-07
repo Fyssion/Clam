@@ -213,7 +213,6 @@ class Tools(commands.Cog, name=":tools: Tools"):
     async def snowstamp_command(self, ctx, snowflake = None):
         if snowflake == None:
             return await ctx.send("Please specify a snowflake to convert.")
-
         await ctx.send(snowstamp(snowflake))
 
     @commands.command(
