@@ -1022,6 +1022,8 @@ class Music(commands.Cog, name=":notes: Music"):
                 print(e)
                 await ctx.send(f"An error occurred while processing this request: ```py {str(e)}```")
             else:
+                if not source:
+                     return await ctx.send("Sorry. I couldn't fetch that song. Possibly being ratelimited.")
                 song = Song(source)
 
                 if not song:
