@@ -780,7 +780,7 @@ class Music(commands.Cog, name=":notes: Music"):
         )
         if ctx.player.loop_queue:
             em.title += " (:repeat: looping)"
-            em.description = "**:repeat: Loop queue is on\n**" + em.description
+            em.description = "**:repeat: Loop queue is on**\n" + em.description
         em.set_footer(text=f"Page {page} of {pages}")
         await ctx.send(embed=em)
 
