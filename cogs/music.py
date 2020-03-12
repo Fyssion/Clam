@@ -452,8 +452,9 @@ class Player:
     async def stop(self):
         filenames = [s.source.filename for s in self.songs._queue]
         if self.current:
-            filenames.insert(0, self.current.source.filename)
+            filenames.append(self.current.source.filename)
         self.songs.clear()
+        del self.songs
         if self.voice:
             await self.voice.disconnect()
             self.voice = None
@@ -474,8 +475,9 @@ class Player:
 
 
 class SearchPages(menus.ListPageSource):
-    def __init__(self, data):
+    def __init__(self, data, bot):
         super().__init__(data, per_page=10)
+        self.bot = bot
 
     async def format_page(self, menu, entries):
         offset = menu.current_page * self.per_page
@@ -492,6 +494,10 @@ class SearchPages(menus.ListPageSource):
         if ctx.player.loop_queue:
             em.title += " (:repeat: looping)"
             em.description = "**:repeat: Loop queue is on**\n" + em.description
+        if ctx.player.loop:
+            em.title += " (:repeat_one: looping)"
+            em.description = "**:repeat_one: Loop single is on**\n" + em.description
+        em.description += f"\nTo see what's currently playing, use `{self.bot.guild_prefix(menu.ctx.guild)}now`"
         em.set_footer(text=f"Page {menu.current_page+1} of {self.get_max_pages()}")
         return em
 
@@ -821,7 +827,7 @@ class Music(commands.Cog, name=":notes: Music"):
         #     em.description = "**:repeat: Loop queue is on**\n" + em.description
         # em.set_footer(text=f"Page {page} of {pages}")
         # await ctx.send(embed=em)
-        pages = menus.MenuPages(source=SearchPages(ctx.player.songs), clear_reactions_after=True)
+        pages = menus.MenuPages(source=SearchPages(ctx.player.songs, self.bot), clear_reactions_after=True)
         return await pages.start(ctx)
 
     @_queue.command(name="save", description="Save the queue to hastebin!",
