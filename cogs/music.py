@@ -76,6 +76,8 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self.uploader = data.get("uploader")
         self.uploader_url = data.get("uploader_url")
         date = data.get("upload_date")
+        self.date = data.get("upload_date")
+        self.total_seconds = int(data.get("duration"))
         self.upload_date = date[6:8] + "." + date[4:6] + "." + date[0:4]
         self.title = data.get("title")
         self.thumbnail = data.get("thumbnail")
@@ -254,6 +256,18 @@ class Song:
         self.source = source
         self.requester = source.requester
 
+    def create_duration(self, current, total):
+        decimal = current / total
+        position = round(decimal * 30)
+        bar = "`"
+        for i in range(30):
+            to_add = "▬"
+            if position == i:
+                to_add = "🔘"
+            bar += to_add
+        bar += "`"
+        return bar
+
     def create_embed(self, title="Now playing", duration=None):
         src = self.source
         em = discord.Embed(
@@ -264,10 +278,10 @@ class Song:
         if not duration:
             em.add_field(name="Duration", value=src.duration)
         else:
-            duration = duration.total_seconds()
-            formatted = YTDLSource.timestamp_duration(int(duration))
-            print(formatted)
-            em.add_field(name="Duration", value=f"{formatted}/{src.duration}")
+            seconds = duration.total_seconds()
+            formatted = YTDLSource.timestamp_duration(int(seconds))
+            bar = self.create_duration(seconds, src.total_seconds)
+            em.add_field(name="Duration", value=f"{formatted}/{src.duration} {bar}", inline=False)
         em.add_field(name="Requested by",
                      value=self.requester.mention)
         em.add_field(
