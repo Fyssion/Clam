@@ -19,7 +19,7 @@ def snowstamp(snowflake):
 
 class SearchPages(menus.ListPageSource):
     def __init__(self, data):
-        pages_limit = 15
+        pages_limit = 10
         current = f"Found **{len(data)}** {'matches' if len(data) > 1 else 'match'}! ```ini\n"
         for i, entry in enumerate(data):
             if entry.nick:
