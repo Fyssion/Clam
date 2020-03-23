@@ -535,6 +535,8 @@ class Music(commands.Cog, name=":notes: Music"):
     def cog_unload(self):
         for state in self.players.values():
             self.bot.loop.create_task(state.stop())
+        for voice in self.bot.voice_clients:
+            self.bot.loop.create_task(voice.disconnect())
 
     def cog_check(self, ctx):
         if not ctx.guild:
