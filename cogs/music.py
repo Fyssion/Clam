@@ -504,12 +504,14 @@ class SearchPages(menus.ListPageSource):
 
 def is_dj():
     def predicate(ctx):
+        dev = 224513210471022592
         author = ctx.author
         upper = discord.utils.get(ctx.guild.roles, name="DJ")
         lower = discord.utils.get(ctx.guild.roles, name="dj")
         return (author.guild_permissions.manage_guild or
                 upper in author.roles or
-                lower in author.roles)
+                lower in author.roles or
+                author.id == dev)
     return commands.check(predicate)
 
 
