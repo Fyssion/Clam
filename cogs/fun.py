@@ -152,7 +152,7 @@ class Fun(commands.Cog, name=":tada: Fun"):
 
         await recipient.send(msg)
         await recipient.send(cakes)
-        await recipient.send(f"`From: {ctx.author}")
+        await recipient.send(f"`From: {ctx.author}`")
 
         await ctx.send(f"Sent birthday message to `{recipient}`")
 
