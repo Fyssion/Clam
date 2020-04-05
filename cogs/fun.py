@@ -6,6 +6,7 @@ import math
 import random
 import functools
 import importlib
+import asyncio
 
 from random import choice
 
@@ -87,44 +88,61 @@ class Fun(commands.Cog, name=":tada: Fun"):
                        f"and **{word_rolls[-1]}** for a "
                        f"total of **{self.number(sum(rolls))}**.")
 
+    async def wait_for_message(self, ctx, timeout=60):
+        def check(ms):
+            return ms.author == ctx.author and ms.channel == ctx.channel
+        try:
+            return await self.bot.wait_for("message", check=check, timeout=60)
+        except asyncio.TimeoutError:
+            return None
+
     @commands.command(
         name="birthday",
         description="Sends a user a bday message straight to their DMs",
         aliases=["bday"],
         usage="[mentioned user] [IRL Name ('None' to mention them)] [age]"
     )
-    async def birthday_command(self, ctx, user: discord.Member=None, name=None, age=None):
-        if user is None or name is None or age is None:
-            return await ctx.send("Please enter in the required values.\n"
-                                  "Ex: `c.birthday [user] "
-                                  "[IRL Name ('None' to mention them)] [age]`")
-
-        ageToGrowOn = str(int(age) + 1)
-
-        recipient = user
-
-        if name.lower() == "none":
-            mention = recipient.mention
+    async def birthday_command(self, ctx):
+        await ctx.send("Who would you like to send the birthday message to? They must be in this server.")
+        msg = await self.wait_for_message(ctx)
+        if msg.mentions:
+            user = msg.mentions[0]
+            recipient = self.bot.get_user(user.id)
         else:
-            mention = None
+            recipient = ctx.guild.get_member_named(msg.content)
+        if not recipient:
+            return await ctx.send("Sorry, I couldn't find that user.")
+
+        await ctx.send(f"How old is {recipient.name}?")
+        msg = await self.wait_for_message(ctx)
+        try:
+            age = int(msg.content)
+        except ValueError:
+            return await ctx.send("Please specify a non-word number. Ex: 23 and not twenty-three")
+        age_to_grow_on = str(age + 1)
+
+        await ctx.send("Would you like to specify a name for the recipient? Type `no` to use their username.")
+        msg = await self.wait_for_message(ctx)
+        if msg.content.lower() == "no":
+            name = recipient.name
+        else:
+            name = msg.content
 
         def get_ordinal():
             return lambda n: "%d%s" % (n, "tsnrhtdd"[(math.floor(n/10) % 10 !=
                                                       1) * (n % 10 < 4) *
                                                      n % 10::4])
-
         ordinal = get_ordinal()
 
-        msg = f"Happy {ordinal(int(age))} Birthday, {mention or name}!\n"
-
-        for i in range(int(ageToGrowOn)):
+        msg = f"Happy {ordinal(int(age))} Birthday, {name}!\n"
+        for i in range(int(age_to_grow_on)):
             msg += ":candle: "
 
         # OK OK OK I know this for-loop is super jank,
         # but I'm too lazy to write good code for this
         cakes = ""
         isCupcake = False
-        for i in range(math.ceil(int(ageToGrowOn) / 2)):
+        for i in range(math.ceil(int(age_to_grow_on) / 2)):
             if isCupcake is False:
                 cakes += ":cake: "
                 isCupcake = True
@@ -134,11 +152,9 @@ class Fun(commands.Cog, name=":tada: Fun"):
 
         await recipient.send(msg)
         await recipient.send(cakes)
-        await recipient.send(f"`From: {ctx.author.name}#"
-                             f"{ctx.author.discriminator}`")
+        await recipient.send(f"`From: {ctx.author}")
 
-        await ctx.send("Sent birthday message to "
-                       f"`{recipient.name}#{recipient.discriminator}`")
+        await ctx.send(f"Sent birthday message to `{recipient}`")
 
     @commands.command(
         name="downvote",
