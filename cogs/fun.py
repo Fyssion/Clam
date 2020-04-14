@@ -109,7 +109,7 @@ class Fun(commands.Cog, name=":tada: Fun"):
             user = msg.mentions[0]
             recipient = self.bot.get_user(user.id)
         else:
-            recipient = ctx.guild.get_member_named(msg.content)
+            recipient = ctx.guild.get_member_named(msg.content.lower)
         if not recipient:
             return await ctx.send("Sorry, I couldn't find that user.")
 
