@@ -941,13 +941,14 @@ class Music(commands.Cog, name=":notes: Music"):
 
     async def hastebin_playlist(self, ctx, search):
         output = await self.get_haste(search)
-        if not output:
-            return
+        if not output or output == """{"message":"Document not found."}""":
+            return await ctx.send("That hastebin doesn't exist.")
         yt_urls = "(?:https?://)?(?:www.)?(?:youtube.com|youtu.be)/(?:watch\?v=)?([^\s]+)"
         if output == "404: Not Found":
             return await ctx.send(":warning: This is not a hastebin or hastebin-like website.")
         if len(re.findall(yt_urls, output)) == 0:
-            return await ctx.send(":warning: There are no YouTube URLS in this bin.")
+            await ctx.send(":warning: There are no YouTube URLS in this bin. "
+                           "Are you sure this is the correct URL?\nContinuing download...")
         videos = output.splitlines()
         playlist = []
         failed_songs = 0
