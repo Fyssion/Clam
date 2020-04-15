@@ -1060,7 +1060,7 @@ class Music(commands.Cog, name=":notes: Music"):
                 pass
             else:
                 await ctx.send("**:globe_with_meridians: Fetching from bin** "
-                               f"`{search}`\nThis make take awhile depending on amount of videos.")
+                               f"`{search}`\nThis make take awhile depending on amount of songs.")
                 await self.hastebin_playlist(ctx, search)
                 return
 
