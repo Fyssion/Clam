@@ -45,7 +45,7 @@ class Admin(commands.Cog):
 
         try:
             self.bot.reload_extension(cog.lower())
-            await ctx.send(f"**<a:cool_ok_sign:699837382433701998> Reloaded** `{cog.lower()}`")
+            await ctx.send(f"**<a:cool_ok_sign:699837382433701998>")
             self.log.info(f"Extension '{cog.lower()}' successfully reloaded.")
         except Exception as e:
             traceback_data = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
