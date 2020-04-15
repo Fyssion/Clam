@@ -947,8 +947,8 @@ class Music(commands.Cog, name=":notes: Music"):
         if output == "404: Not Found":
             return await ctx.send(":warning: This is not a hastebin or hastebin-like website.")
         if len(re.findall(yt_urls, output)) == 0:
-            await ctx.send(":warning: There are no YouTube URLS in this bin. "
-                           "Are you sure this is the correct URL?\nContinuing download...")
+            await ctx.send(":warning: There are no YouTube URLs in this bin. "
+                           "Are you sure this is the correct site?\n**Continuing download...**")
         videos = output.splitlines()
         playlist = []
         failed_songs = 0
