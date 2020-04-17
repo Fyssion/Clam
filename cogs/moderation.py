@@ -180,7 +180,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         verify_role = guild.get_role(int(self.verifications[str(guild.id)]["verify_role_id"]))
         verify_channel = guild.get_channel(int(self.verifications[str(guild.id)]["channel_id"]))
 
-        if guild.id in self.ver_messages:
+        if guild.id in self.ver_messages.keys():
             message = self.ver_messages[guild.id]
         else:
             message = await self.bot.fetch_message(payload.message_id)
