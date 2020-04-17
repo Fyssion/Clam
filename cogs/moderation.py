@@ -62,7 +62,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         except asyncio.TimeoutError:
             return None
 
-    @commands.command(description="Create a server info message for your server.")
+    @commands.command(description="Create a server info message for your server.", hidden=True)
     @commands.guild_only()
     @has_manage_guild()
     async def welcome(self, ctx):
@@ -87,6 +87,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
             kwargs = {"content" : message,
                       "embed" : None}
             messages.append(kwargs)
+        await author.send("Sending message to server...")
         for message in messages:
             await author.send(**message)
 
@@ -164,6 +165,19 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         with open("verifications.json", "w") as f:
             json.dump(self.verifications, f)
 
+    @verification.command(name="disable", description="Disable verification", aliases=["remove", "delete"])
+    @commands.guild_only()
+    @has_manage_guild()
+    @commands.bot_has_permissions(manage_messages=True, manage_guild=True, manage_roles=True, manage_channels=True)
+    async def ver_remove(self, ctx):
+        if not (ctx.guild.id in self.verifications.keys()):
+            return await ctx.send("**Verification is OFF** for this server. "
+                                  f"Set it up with `{self.bot.guild_prefix(ctx.guild)}verification create`")
+        del self.verifications[str(ctx.guild.id)]
+        with open("verifications.json", "w") as f:
+            json.dump(self.verifications, f, sort_keys=True, indent=4, separators=(',', ': '))
+        await ctx.send("**Disabled verification on your server.**")
+
     @commands.Cog.listener("on_raw_reaction_add")
     async def verification_reaction(self, payload):
         if str(payload.guild_id) not in self.verifications.keys():
@@ -218,8 +232,10 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         if emoji == "✅":
             await member.add_roles(role, reason="Verification")
             await bot_message.edit(content=f"**:white_check_mark: `{user}` accepted `{member}` into the server.**")
-        else:
+        elif emoji == "❌":
             await bot_message.edit(content=f":x: `{user}` ignored `{member}`")
+        else:
+            await bot_message.edit(content=f"**:x: Timed out! Ignored `{member}`")
 
         await bot_message.remove_reaction("✅", guild.me)
         await bot_message.remove_reaction("❌", guild.me)
