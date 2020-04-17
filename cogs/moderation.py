@@ -95,7 +95,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
     @commands.guild_only()
     @has_manage_guild()
     async def verification(self, ctx):
-        if ctx.guild.id in self.verifications.keys():
+        if str(ctx.guild.id) in self.verifications.keys():
             return await ctx.send("**Verification is ON** for this server.")
         else:
             return await ctx.send("**Verification is OFF** for this server. "
