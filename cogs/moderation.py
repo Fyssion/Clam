@@ -104,7 +104,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
     @verification.command(name="create", description="Create a verification system for your server")
     @commands.guild_only()
     @has_manage_guild()
-    @commands.bot_has_permissions(manage_messages=True, manage_guild=True, manage_roles=True, manage_channels=True)
+    @commands.bot_has_permissions(manage_messages=True, manage_roles=True, manage_channels=True)
     async def ver_create(self, ctx):
         await ctx.send("Welcome to the interactive verification system generator!\n"
                        "What would you like the verification message to say?")
