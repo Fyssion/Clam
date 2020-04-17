@@ -175,8 +175,12 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         verify_role = guild.get_role(int(self.verifications[str(guild.id)]["verify_role_id"]))
         verify_channel = guild.get_channel(int(self.verifications[str(guild.id)]["channel_id"]))
 
-        def check(ms):
-            return ms.channel == verify_channel and verify_role in ms.author.roles
+        def check(reaction, user):
+            return (
+                reaction.message == bot_message
+                and verify_role in user.roles
+                and reaction.emoji in ["✅", "❌"]
+            )
 
         if not guild or not channel or not role or not verify_channel or not verify_role:
             del self.verifications[str(guild.id)]
@@ -188,13 +192,15 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
 
         await channel.send("Your verification request is being processed by the moderators.", delete_after=10)
 
-        await verify_channel.send(f"**`{member}` is requesting verification!**\n\n"
-                                  "Reply with `confirm` to verify them, or `deny` to ignore.\n"
+        bot_message = await verify_channel.send(f"**`{member}` is requesting verification!**\n\n"
+                                  "React with :white_check_mark: to verify them, or :x: to ignore.\n"
                                   "If you don't respond within 24 hours, they will be ignored.")
-        message = await self.bot.wait_for("message", check=check, timeout=86400) # 24h
+        await bot_message.add_reaction("✅")
+        await bot_message.add_reaction("❌")
+        reaction, user = await self.bot.wait_for("reaction", check=check, timeout=86400) # 24h
 
-        lowered = message.content.lower()
-        if lowered == "confirm" or lowered == "yes" or lowered == "accept":
+        emoji = reaction.emoji()
+        if emoji == "✅" or emoji == "❌":
             await member.add_roles(role, reason="Verification")
             await verify_channel.send(f"**Accepted `{member}` into the server.**")
         else:
