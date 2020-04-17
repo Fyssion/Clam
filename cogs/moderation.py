@@ -121,6 +121,8 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         else:
             if is_int(message.content):
                 channel = ctx.guild.get_channel(int(message.content))
+            else:
+                channel = None
             channel = channel or discord.utils.get(ctx.guild.channels, name=message.content)
             if not channel:
                 return await ctx.send("I couldn't find that channel. Make sure I can see the channel.")
@@ -132,6 +134,8 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         else:
             if is_int(message.content):
                 role = ctx.guild.get_role(int(message.content))
+            else:
+                role = None
             role = role or discord.utils.get(ctx.guild.roles, name=message.content)
             if not channel:
                 return await ctx.send("I couldn't find that role.")
@@ -143,6 +147,8 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         else:
             if is_int(message.content):
                 verify_role = ctx.guild.get_role(int(message.content))
+            else:
+                verify_role = None
             verify_role = verify_role or discord.utils.get(ctx.guild.roles, name=message.content)
             if not channel:
                 return await ctx.send("I couldn't find that role.")
