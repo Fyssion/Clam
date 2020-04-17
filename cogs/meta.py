@@ -80,6 +80,11 @@ class Meta(commands.Cog, name=":gear: Meta"):
             return
         if isinstance(e, commands.errors.MissingPermissions):
             return
+        if isinstance(e, commands.errors.BotMissingPermissions):
+            perms = ""
+            for perm in e.missing_perms:
+                perms += f"\n  - {perm}"
+            return await ctx.send(f"**:x: The bot is missing some permissions:{perms}**")
         if isinstance(e, commands.errors.CheckFailure):
             return
         if isinstance(e, commands.errors.NotOwner):
