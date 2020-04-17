@@ -143,7 +143,8 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
             ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_messages=True,
                                                 embed_links=True, read_message_history=True),
             ctx.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            role: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+            role: discord.PermissionOverwrite(read_messages=False),
+            verify_role: discord.PermissionOverwrite(read_messages=True, send_messages=True)
         }
 
         notify_channel = await ctx.guild.create_text_channel("verifiers", overwrites=overwrites)
@@ -180,7 +181,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         if not guild or not channel or not role or not verify_channel or not verify_role:
             del self.verifications[str(guild.id)]
             with open("verifications.json", "w") as f:
-                json.dump(self.verifications, f)
+                json.dump(self.verifications, f, sort_keys=True, indent=4, separators=(',', ': '))
             return
         if payload.emoji.name != "✅":
             return
