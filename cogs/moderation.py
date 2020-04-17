@@ -187,6 +187,8 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
             self.ver_messages[guild.id] = message
 
         def check(reaction, user):
+            if reaction.emoji not in ["✅", "❌"]:
+                self.bot.loop.create_task(channel.send(f"{user.mention}, you do not have permission to verify.", delete_after=5))
             return (
                 reaction.message.id == bot_message.id
                 and user != guild.me
