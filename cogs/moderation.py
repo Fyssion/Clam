@@ -23,6 +23,9 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         with open("log_channels.json", "r") as f:
             self.log_channels = json.load(f)
 
+        with open("verifications.json", "r") as f:
+            self.verifications = json.load(f)
+
     def get_log(self, guild):
         if str(guild) in self.log_channels.keys():
             channel_id = self.log_channels.get(str(guild))
@@ -49,28 +52,30 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
             f = f.decode("utf-8")
             return f
 
-    async def wait_for_message(self, author, timeout=120):
+    async def wait_for_message(self, author, channel, timeout=120):
         def check(msg):
-            return msg.author == author and msg.channel == author.dm_channel
+            return msg.author == author and msg.channel == channel
         try:
             return await self.bot.wait_for("message", check=check, timeout=120)
         except asyncio.TimeoutError:
             return None
 
     @commands.command(description="Create a server info message for your server.")
+    @commands.guild_only()
+    @has_manage_guild()
     async def welcome(self, ctx):
         await ctx.send("Beginning interactive message generator in your DMs.")
         author = ctx.author
         await author.send("Welcome to the interactive message generator!\n"
                     "Paste the message you want to send here, or give me a bin link "
                     "(hastebin, mystbin, or your other bin preference).")
-        message = await self.wait_for_message(author)
+        message = await self.wait_for_message(author, author.dm_channel)
         content = message.content
         if content.startswith("http"):
             content = await self.get_bin(message.content)
             if len(content) > 2000:
                 if "$$BREAK$$" not in content:
-                    return await author.send("That message is too long, and I couldn't find and message breaks in it.\n"
+                    return await author.send("That message is too long, and I couldn't find any message breaks in it.\n"
                                              "Add message breaks with they keyword `$$BREAK$$`, and I will split the message there.")
             all_contents = content.split("$$BREAK$$")
         else:
@@ -82,6 +87,117 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
             messages.append(kwargs)
         for message in messages:
             await author.send(**message)
+
+    @commands.group(description="View the current verification system", invoke_without_command=True)
+    @commands.guild_only()
+    @has_manage_guild()
+    async def verification(self, ctx):
+        if ctx.guild.id in self.verifications.keys():
+            return await ctx.send("**Verification is ON** for this server.")
+        else:
+            return await ctx.send("**Verification is OFF** for this server. "
+                                  f"Set it up with `{self.bot.guild_prefix(ctx.guild)}verification create`")
+
+    @verification.command(name="create", description="Create a verification system for your server")
+    @commands.guild_only()
+    @has_manage_guild()
+    @commands.bot_has_permissions(manage_messages=True, manage_guild=True, manage_roles=True, manage_channels=True)
+    async def ver_create(self, ctx):
+        await ctx.send("Welcome to the interactive verification system generator!\n"
+                       "What would you like the verification message to say?")
+        message = await self.wait_for_message(ctx.author, ctx.channel)
+        if len(message.content) > 2000:
+            return await ctx.send("Message must be shorter than 2000 characters.")
+        content = message.content
+
+        await ctx.send("What channel should I send the verification message in? Type `none` for me to create a new channel.")
+        message = await self.wait_for_message(ctx.author, ctx.channel)
+        if message.channel_mentions:
+            channel = message.channel_mentions[0]
+        else:
+            channel = self.bot.get_channel(int(message.content)) or discord.utils.get(ctx.guild.channels, name=message.content)
+            if not channel:
+                return await ctx.send("I couldn't find that channel. Make sure I can see the channel.")
+
+        await ctx.send("What role should I give when verified? Type `none` for me to create a new role.")
+        message = await self.wait_for_message(ctx.author, ctx.channel)
+        if message.role_mentions:
+            role = message.role_mentions[0]
+        else:
+            role = ctx.guild.get_role(int(message.content)) or discord.utils.get(ctx.guild.roles, name=message.content)
+            if not channel:
+                return await ctx.send("I couldn't find that role.")
+
+        await ctx.send("What role should be allowed to confirm verifications? Type `none` for me to create a new role.")
+        message = await self.wait_for_message(ctx.author, ctx.channel)
+        if message.role_mentions:
+            verify_role = message.role_mentions[0]
+        else:
+            verify_role = ctx.guild.get_role(int(message.content)) or discord.utils.get(ctx.guild.roles, name=message.content)
+            if not channel:
+                return await ctx.send("I couldn't find that role.")
+
+        await ctx.send("Alright, generating the verification system... You can move the `verifiers` channel wherever you like.")
+
+        overwrites = {
+            ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_messages=True,
+                                                embed_links=True, read_message_history=True),
+            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            role: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        }
+
+        notify_channel = await ctx.guild.create_text_channel("verifiers", overwrites=overwrites)
+
+        message = await channel.send(content)
+        await message.add_reaction("✅")
+        self.verifications[ctx.guild.id] = {
+            "message_id": message.id,
+            "role_id": role.id,
+            "verify_role_id": verify_role.id,
+            "channel_id": notify_channel.id
+        }
+
+        with open("verifications.json", "w") as f:
+            json.dump(self.verifications, f)
+
+    @commands.Cog.listener("on_raw_reaction_add")
+    async def verification_reaction(self, payload):
+        if str(payload.guild_id) not in self.verifications.keys():
+            return
+        if payload.message_id != self.verifications[str(payload.guild_id)]["message_id"]:
+            return
+
+        channel = self.bot.get_channel(payload.channel_id)
+        guild = self.bot.get_guild(payload.guild_id)
+        member = guild.get_member(payload.user_id)
+        role = guild.get_role(int(self.verifications[str(guild.id)]["role_id"]))
+        verify_role = guild.get_role(int(self.verifications[str(guild.id)]["verify_role_id"]))
+        verify_channel = guild.get_channel(int(self.verifications[str(guild.id)]["channel_id"]))
+
+        def check(ms):
+            return ms.channel == verify_channel and verify_role in ms.author.roles
+
+        if not guild or not channel or not role or not verify_channel or not verify_role:
+            del self.verifications[str(guild.id)]
+            with open("verifications.json", "w") as f:
+                json.dump(self.verifications, f)
+            return
+        if payload.emoji.name != "✅":
+            return
+
+        await channel.send("Your verification request is being processed by the moderators.", delete_after=10)
+
+        await verify_channel.send(f"**`{member}` is requesting verification!**\n\n"
+                                  "Reply with `confirm` to verify them, or `deny` to ignore.\n"
+                                  "If you don't respond within 24 hours, they will be ignored.")
+        message = await self.bot.wait_for("message", check=check, timeout=86400) # 24h
+
+        lowered = message.content.lower()
+        if lowered == "confirm" or lowered == "yes" or lowered == "accept":
+            await member.add_roles(role, reason="Verification")
+            await verify_channel.send(f"**Accepted `{member}` into the server.**")
+        else:
+            await verify_channel.send("Ignoring...")
 
     @commands.command(
         name="purge",
