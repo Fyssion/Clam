@@ -151,7 +151,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
 
         message = await channel.send(content)
         await message.add_reaction("✅")
-        self.verifications[ctx.guild.id] = {
+        self.verifications[str(ctx.guild.id)] = {
             "message_id": message.id,
             "role_id": role.id,
             "verify_role_id": verify_role.id,
