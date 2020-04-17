@@ -141,3 +141,10 @@ def hover_link(ctx, msg, text="`?`"):
     return (f"[{text}](https://www.discordapp.com/"
             f"channels/{ctx.guild.id}/{ctx.channel.id} "
             f""""{msg}")""")
+
+def is_int(string):
+    try:
+        int(string)
+        return True
+    except ValueError:
+        return False

@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 from async_timeout import timeout
 
 from .utils.checks import has_manage_guild
+from .utils.utils import is_int
 
 
 class Moderation(commands.Cog, name = ":police_car: Moderation"):
@@ -118,7 +119,9 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         if message.channel_mentions:
             channel = message.channel_mentions[0]
         else:
-            channel = self.bot.get_channel(int(message.content)) or discord.utils.get(ctx.guild.channels, name=message.content)
+            if is_int(message.content):
+                channel = ctx.guild.get_channel(int(message.content))
+            channel = channel or discord.utils.get(ctx.guild.channels, name=message.content)
             if not channel:
                 return await ctx.send("I couldn't find that channel. Make sure I can see the channel.")
 
@@ -127,7 +130,9 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         if message.role_mentions:
             role = message.role_mentions[0]
         else:
-            role = ctx.guild.get_role(int(message.content)) or discord.utils.get(ctx.guild.roles, name=message.content)
+            if is_int(message.content):
+                role = ctx.guild.get_role(int(message.content))
+            role = role or discord.utils.get(ctx.guild.roles, name=message.content)
             if not channel:
                 return await ctx.send("I couldn't find that role.")
 
@@ -136,7 +141,9 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         if message.role_mentions:
             verify_role = message.role_mentions[0]
         else:
-            verify_role = ctx.guild.get_role(int(message.content)) or discord.utils.get(ctx.guild.roles, name=message.content)
+            if is_int(message.content):
+                verify_role = ctx.guild.get_role(int(message.content))
+            verify_role = verify_role or discord.utils.get(ctx.guild.roles, name=message.content)
             if not channel:
                 return await ctx.send("I couldn't find that role.")
 
