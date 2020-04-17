@@ -151,6 +151,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
 
         message = await channel.send(content)
         await message.add_reaction("✅")
+
         self.verifications[str(ctx.guild.id)] = {
             "message_id": message.id,
             "role_id": role.id,
@@ -167,6 +168,8 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
             return
         if payload.message_id != self.verifications[str(payload.guild_id)]["message_id"]:
             return
+        if payload.user_id == self.bot.user.id:
+            return
 
         channel = self.bot.get_channel(payload.channel_id)
         guild = self.bot.get_guild(payload.guild_id)
@@ -176,8 +179,13 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         verify_channel = guild.get_channel(int(self.verifications[str(guild.id)]["channel_id"]))
 
         def check(reaction, user):
+            print(reaction.message.id, bot_message.id)
+            print(reaction.message == bot_message)
+            print(user != self.bot.user)
+            print(verify_role in user.roles)
+            print(reaction.emoji in ["✅", "❌"])
             return (
-                reaction.message == bot_message
+                reaction.message.id == bot_message.id
                 and user != self.bot.user
                 and verify_role in user.roles
                 and reaction.emoji in ["✅", "❌"]
@@ -190,7 +198,6 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
             return
         if payload.emoji.name != "✅":
             return
-
         await channel.send("Your verification request is being processed by the moderators.", delete_after=10)
 
         bot_message = await verify_channel.send(f"**`{member}` is requesting verification!**\n\n"
@@ -198,14 +205,14 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
                                   "If you don't respond within 24 hours, they will be ignored.")
         await bot_message.add_reaction("✅")
         await bot_message.add_reaction("❌")
-        reaction, user = await self.bot.wait_for("reaction", check=check, timeout=86400) # 24h
+        reaction, user = await self.bot.wait_for("reaction_add", check=check, timeout=86400) # 24h
 
-        emoji = reaction.emoji()
+        emoji = reaction.emoji
         if emoji == "✅":
             await member.add_roles(role, reason="Verification")
-            await verify_channel.send(f"**Accepted `{member}` into the server.**")
+            await verify_channel.send(f"**:white_check_mark: `{user}` accepted `{member}` into the server.**")
         elif emoji == "❌":
-            await verify_channel.send("Ignoring...")
+            await verify_channel.send(f":x: `{user}` ignored `{member}`")
 
     @commands.command(
         name="purge",
