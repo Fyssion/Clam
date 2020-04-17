@@ -200,10 +200,10 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         reaction, user = await self.bot.wait_for("reaction", check=check, timeout=86400) # 24h
 
         emoji = reaction.emoji()
-        if emoji == "✅" or emoji == "❌":
+        if emoji == "✅":
             await member.add_roles(role, reason="Verification")
             await verify_channel.send(f"**Accepted `{member}` into the server.**")
-        else:
+        elif emoji == "❌":
             await verify_channel.send("Ignoring...")
 
     @commands.command(
