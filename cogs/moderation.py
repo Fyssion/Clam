@@ -26,6 +26,8 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         with open("verifications.json", "r") as f:
             self.verifications = json.load(f)
 
+        self.ver_messages = {}
+
     def get_log(self, guild):
         if str(guild) in self.log_channels.keys():
             channel_id = self.log_channels.get(str(guild))
@@ -178,12 +180,13 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         verify_role = guild.get_role(int(self.verifications[str(guild.id)]["verify_role_id"]))
         verify_channel = guild.get_channel(int(self.verifications[str(guild.id)]["channel_id"]))
 
+        if guild.id in self.ver_messages:
+            message = self.ver_messages[guild.id]
+        else:
+            message = await self.bot.fetch_message(payload.message_id)
+            self.ver_messages[guild.id] = message
+
         def check(reaction, user):
-            print(reaction.message.id, bot_message.id)
-            print(reaction.message == bot_message)
-            print(user != self.bot.user)
-            print(verify_role in user.roles)
-            print(reaction.emoji in ["✅", "❌"])
             return (
                 reaction.message.id == bot_message.id
                 and user != guild.me
@@ -199,6 +202,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         if payload.emoji.name != "✅":
             return
         await channel.send("Your verification request is being processed by the moderators.", delete_after=10)
+        await message.remove_reaction("✅", member)
 
         bot_message = await verify_channel.send(f"**`{member}` is requesting verification!**\n\n"
                                   "React with :white_check_mark: to verify them, or :x: to ignore.\n"
@@ -214,7 +218,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         if emoji == "✅":
             await member.add_roles(role, reason="Verification")
             await bot_message.edit(content=f"**:white_check_mark: `{user}` accepted `{member}` into the server.**")
-        elif emoji == "❌":
+        else:
             await bot_message.edit(content=f":x: `{user}` ignored `{member}`")
 
         await bot_message.remove_reaction("✅", guild.me)
