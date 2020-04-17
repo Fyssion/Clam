@@ -186,7 +186,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
             print(reaction.emoji in ["✅", "❌"])
             return (
                 reaction.message.id == bot_message.id
-                and user != self.bot.user
+                and user != guild.me
                 and verify_role in user.roles
                 and reaction.emoji in ["✅", "❌"]
             )
@@ -205,14 +205,20 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
                                   "If you don't respond within 24 hours, they will be ignored.")
         await bot_message.add_reaction("✅")
         await bot_message.add_reaction("❌")
-        reaction, user = await self.bot.wait_for("reaction_add", check=check, timeout=86400) # 24h
+        try:
+            reaction, user = await self.bot.wait_for("reaction_add", check=check, timeout=86400) # 24h
+        except asyncio.TimeoutError:
+            pass
 
         emoji = reaction.emoji
         if emoji == "✅":
             await member.add_roles(role, reason="Verification")
-            await verify_channel.send(f"**:white_check_mark: `{user}` accepted `{member}` into the server.**")
+            await bot_message.edit(content=f"**:white_check_mark: `{user}` accepted `{member}` into the server.**")
         elif emoji == "❌":
-            await verify_channel.send(f":x: `{user}` ignored `{member}`")
+            await bot_message.edit(content=f":x: `{user}` ignored `{member}`")
+
+        await bot_message.remove_reaction("✅", guild.me)
+        await bot_message.remove_reaction("❌", guild.me)
 
     @commands.command(
         name="purge",
