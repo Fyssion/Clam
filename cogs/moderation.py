@@ -183,7 +183,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         if guild.id in self.ver_messages.keys():
             message = self.ver_messages[guild.id]
         else:
-            message = await self.bot.fetch_message(payload.message_id)
+            message = await self.bot.fetch_message(int(self.verifications[str(guild.id)]["message_id"]))
             self.ver_messages[guild.id] = message
 
         def check(reaction, user):
