@@ -160,6 +160,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
 
         with open("verifications.json", "w") as f:
             json.dump(self.verifications, f)
+            self.verifications = json.load(f)
 
     @commands.Cog.listener("on_raw_reaction_add")
     async def verification_reaction(self, payload):
