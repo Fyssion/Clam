@@ -177,7 +177,8 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
 
         def check(reaction, user):
             return (
-                reaction.message.id == bot_message.id
+                reaction.message == bot_message
+                and user != self.bot.user
                 and verify_role in user.roles
                 and reaction.emoji in ["✅", "❌"]
             )
