@@ -59,8 +59,13 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         def check(msg):
             return msg.author == author and msg.channel == channel
         try:
-            return await self.bot.wait_for("message", check=check, timeout=120)
+            message = await self.bot.wait_for("message", check=check, timeout=timeout)
+            if message.content == f"{self.bot.guild_prefix(channel.guild)}abort":
+                await channel.send("Aborted")
+                return None
+            return message
         except asyncio.TimeoutError:
+            await channel.send("You took too long! Please try again.")
             return None
 
     @commands.command(description="Create a server info message for your server.", hidden=True)
@@ -107,15 +112,20 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
     @has_manage_guild()
     @commands.bot_has_permissions(manage_messages=True, manage_roles=True, manage_channels=True)
     async def ver_create(self, ctx):
-        await ctx.send("Welcome to the interactive verification system generator!\n"
+        await ctx.send("Welcome to the interactive verification system generator! "
+                       f"**You can use `{ctx.prefix}abort` to abort.**\n\n"
                        "What would you like the verification message to say?")
         message = await self.wait_for_message(ctx.author, ctx.channel)
+        if not message:
+            return
         if len(message.content) > 2000:
             return await ctx.send("Message must be shorter than 2000 characters.")
         content = message.content
 
         await ctx.send("What channel should I send the verification message in? Type `none` for me to create a new channel.")
         message = await self.wait_for_message(ctx.author, ctx.channel)
+        if not message:
+            return
         if message.channel_mentions:
             channel = message.channel_mentions[0]
         else:
@@ -129,6 +139,8 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
 
         await ctx.send("What role should I give when verified? Type `none` for me to create a new role.")
         message = await self.wait_for_message(ctx.author, ctx.channel)
+        if not message:
+            return
         if message.role_mentions:
             role = message.role_mentions[0]
         else:
@@ -142,6 +154,8 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
 
         await ctx.send("What role should be allowed to confirm verifications? Type `none` for me to create a new role.")
         message = await self.wait_for_message(ctx.author, ctx.channel)
+        if not message:
+            return
         if message.role_mentions:
             verify_role = message.role_mentions[0]
         else:

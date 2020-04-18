@@ -12,6 +12,12 @@ import json
 from cogs.utils import backup
 
 
+class Context(commands.Context):
+    @property
+    def prefix(self):
+        return self.bot.guild_prefix(self.guild)
+
+
 def get_prefix(client, message):
 
     prefixes = ["c."]
@@ -78,6 +84,9 @@ class Clam(commands.Bot):
         if str(guild) in self.guild_prefixes:
             return self.guild_prefixes[str(guild)][0]
         return "c."
+
+    async def get_context(self, message, *, cls=None):
+        return await super().get_context(message, cls=cls or Context)
 
     async def on_ready(self):
 
