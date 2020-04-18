@@ -113,7 +113,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
     @commands.bot_has_permissions(manage_messages=True, manage_roles=True, manage_channels=True)
     async def ver_create(self, ctx):
         await ctx.send("Welcome to the interactive verification system generator! "
-                       f"**You can use `{ctx.prefix}abort` to abort.**\n\n"
+                       f"**You can use `{ctx.guild_prefix}abort` to abort.**\n\n"
                        "What would you like the verification message to say?")
         message = await self.wait_for_message(ctx.author, ctx.channel)
         if not message:

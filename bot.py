@@ -14,7 +14,7 @@ from cogs.utils import backup
 
 class Context(commands.Context):
     @property
-    def prefix(self):
+    def guild_prefix(self):
         return self.bot.guild_prefix(self.guild)
 
 
