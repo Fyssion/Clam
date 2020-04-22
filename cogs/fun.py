@@ -308,20 +308,25 @@ class Fun(commands.Cog, name=":tada: Fun"):
         await ctx.send(embed=em)
 
     @commands.command(description="Generate a typing message for a name", usage="[name]")
-    async def typing(self, ctx, *, member):
+    async def typing(self, ctx, *, member, search: bool=True):
 
-        if not member:
-            return
-        if ctx.message.mentions:
-            name = ctx.message.channel_mentions[0].display_name
-        else:
-            if is_int(member):
-                name = ctx.guild.get_member(int(name)).display_name
+        if search:
+            if not member:
+                return
+            if ctx.message.mentions:
+                name = ctx.message.channel_mentions[0].display_name
             else:
-                name = None
-            name = name or discord.utils.get(ctx.guild.members, name=member).display_name
-            if not name:
-                name = member
+                if is_int(member):
+                    name = ctx.guild.get_member(int(name))
+                else:
+                    name = None
+                name = name or discord.utils.get(ctx.guild.members, name=member)
+                if name:
+                    name = name.display_name
+                else:
+                    name = member
+        else:
+            name = member
 
         emoji = "<a:typing:702604589668761681>"
         await ctx.send(f"{emoji} **{name}** is typing...")
