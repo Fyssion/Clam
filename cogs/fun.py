@@ -311,8 +311,8 @@ class Fun(commands.Cog, name=":tada: Fun"):
     async def typing(self, ctx, *, member=None):
         if not member:
             name = ctx.author.display_name
-        if ctx.message.mentions:
-            name = ctx.message.channel_mentions[0].display_name
+        elif ctx.message.mentions:
+            name = ctx.message.mentions[0].display_name
         else:
             name = member
 
