@@ -316,7 +316,7 @@ class Fun(commands.Cog, name=":tada: Fun"):
         else:
             name = member
 
-        emoji = "<a:typing:702604589668761681>"
+        emoji = "<a:typing:702612001733738517>"
         await ctx.send(f"{emoji} **{name}** is typing...")
 
     # async def do_thethaurize(self, sentence):
