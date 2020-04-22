@@ -308,7 +308,7 @@ class Fun(commands.Cog, name=":tada: Fun"):
         await ctx.send(embed=em)
 
     @commands.command(description="Generate a typing message for a name", usage="[name]")
-    async def typing(self, ctx, *, member):
+    async def typing(self, ctx, *, member=None):
         if not member:
             name = ctx.author.display_name
         if ctx.message.mentions:
