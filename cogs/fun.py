@@ -306,6 +306,11 @@ class Fun(commands.Cog, name=":tada: Fun"):
         em.set_footer(text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url)
         await ctx.send(embed=em)
 
+    @commands.command(description="Generate a typing message for a name", usage="[name]")
+    async def typing(self, ctx, name):
+        emoji = ":a:typing:702604589668761681:"
+        await ctx.send(f"{emoji} **{name}** is typing...")
+
     # async def do_thethaurize(self, sentence):
     #     words = sentence.split(" ")
     #     final_words = []
