@@ -308,7 +308,7 @@ class Fun(commands.Cog, name=":tada: Fun"):
 
     @commands.command(description="Generate a typing message for a name", usage="[name]")
     async def typing(self, ctx, name):
-        emoji = ":a:typing:702604589668761681:"
+        emoji = "<a:typing:702604589668761681>"
         await ctx.send(f"{emoji} **{name}** is typing...")
 
     # async def do_thethaurize(self, sentence):
