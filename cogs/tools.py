@@ -143,52 +143,52 @@ class Tools(commands.Cog, name=":tools: Tools"):
             desc += "\n:information_source: This guild is considered large (over 250 members)."
 
 
-        self.em = discord.Embed(
+        em = discord.Embed(
             description = desc,
             timestamp = d.utcnow()
         )
 
-        self.em.set_thumbnail(
+        em.set_thumbnail(
             url = ctx.guild.icon_url
             )
         if ctx.guild.banner_url:
-            self.em.set_image(
+            em.set_image(
                 url = ctx.guild.banner_url
             )
-        self.em.set_author(
+        em.set_author(
             name = f"{ctx.guild.name} ({ctx.guild.id})",
             icon_url = ctx.guild.icon_url
             )
-        self.em.set_footer(
+        em.set_footer(
                     text = f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
                     icon_url = self.bot.user.avatar_url
                     )
-        self.em.add_field(
+        em.add_field(
             name = "<:owner:649355683598303260> Owner",
             value = ctx.guild.owner.mention,
             inline = True
         )
-        self.em.add_field(
+        em.add_field(
             name = ":clock1: Server Created",
             value = snowstamp(ctx.guild.id),
             inline = True
         )
-        self.em.add_field(
+        em.add_field(
             name = "<:boost:649644112034922516> Nitro Boosts",
             value = f"Tier {ctx.guild.premium_tier} with {ctx.guild.premium_subscription_count} boosts",
             inline = True
         )
-        self.em.add_field(
+        em.add_field(
             name = ":earth_americas: Region",
             value = str(ctx.guild.region).replace("-", " ").upper(),
             inline = True
         )
-        self.em.add_field(
+        em.add_field(
             name = ":family: Members",
             value = len(ctx.guild.members),
             inline = True
         )
-        self.em.add_field(
+        em.add_field(
             name = ":speech_balloon: Channels",
             value = f"<:text_channel:661798072384225307> {len(ctx.guild.text_channels)} • <:voice_channel:665577300552843294> {len(ctx.guild.voice_channels)}",
             inline = True
@@ -197,12 +197,12 @@ class Tools(commands.Cog, name=":tools: Tools"):
         # roles = ""
         # for role in member.roles[1:]:
         #     roles += f"{role.mention} "
-        # self.em.add_field(
+        # em.add_field(
         #     name = "Roles",
         #     value = roles,
         #     inline = False
         # )
-        await ctx.send(embed = self.em)
+        await ctx.send(embed=em)
 
     @commands.command(
         name = "snowstamp",
@@ -237,19 +237,19 @@ class Tools(commands.Cog, name=":tools: Tools"):
         await ctx.send("Check your DMs!", delete_after = 5)
         await ctx.author.send("**Create an embed:**\nWhat server would you like to send the embed to? Type `here` to send the embed where you called the command.")
 
-        self.msg = await self.bot.wait_for("message", check = check)
+        msg = await self.bot.wait_for("message", check = check)
 
-        if self.msg == 'here':
-            self.em_guild = ctx.guild
+        if msg == 'here':
+            em_guild = ctx.guild
         else:
             await ctx.author.send("Custom servers not supported yet :(\nServer set to where you called the command.")
-            self.em_guild = ctx.guild
+            em_guild = ctx.guild
 
         # Check to see if bot has permission to view perms
 
-        await ctx.author.send(f"Server set to `{self.em_guild.name}`.\nWhat channel would you like to send to?")
+        await ctx.author.send(f"Server set to `{em_guild.name}`.\nWhat channel would you like to send to?")
 
-        self.msg = await self.bot.wait_for("message", check = check)
+        msg = await self.bot.wait_for("message", check = check)
 
         # Check for permission here
 
