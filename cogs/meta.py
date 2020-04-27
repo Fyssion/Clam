@@ -90,11 +90,9 @@ class Meta(commands.Cog, name=":gear: Meta"):
         if isinstance(e, commands.errors.NotOwner):
             return
         if isinstance(e, commands.errors.BadArgument):
-            return await ctx.send("**:x: You provided a bad argument.** "
-                                  "Make sure you are using the command correctly!")
+            return await ctx.send(f"**:x: You provided a bad argument: `{error.param.name}`**")
         if isinstance(e, commands.errors.MissingRequiredArgument):
-            return await ctx.send("**:x: Missing a required argument.** "
-                                  "Make sure you are using the command correctly!")
+            return await ctx.send(f"**:x: Missing a required argument: `{error.param.name}`**")
         em = discord.Embed(title=":warning: Unexpected Error",
                            color=discord.Color.gold(),
                            timestamp=d.utcnow())
