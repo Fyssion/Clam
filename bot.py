@@ -69,7 +69,8 @@ class Clam(commands.Bot):
 
         self.cogs_to_load = ["cogs.meta", "cogs.tools", "cogs.reddit",
                              "cogs.fun", "cogs.moderation", "cogs.music",
-                             "cogs.mathematics", "cogs.admin", "cogs.tags"]
+                             "cogs.mathematics", "cogs.admin", "cogs.tags",
+                             "cogs.games"]
 
         self.remove_command("help")
 
