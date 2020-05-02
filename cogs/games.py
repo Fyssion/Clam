@@ -101,7 +101,7 @@ class Connect4Row:
                     winner = piece
                     break
             else:
-                counter = 0
+                counter = 1
             previous_piece = piece
 
         return winner
@@ -152,7 +152,7 @@ class Connect4Board:
                     winner = piece
                     break
             else:
-                counter = 0
+                counter = 1
             previous_piece = piece
 
         return winner
