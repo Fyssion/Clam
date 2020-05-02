@@ -36,6 +36,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
     async def ban(self, ctx, user: int, *, reason=None):
         user = discord.Object(id=user)
         await ctx.guild.ban(user, reason=reason)
+        await ctx.send(":ok_hand:")
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
@@ -43,6 +44,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
     async def unban(self, ctx, user: int, *, reason=None):
         user = discord.Object(id=user)
         await ctx.guild.unban(user, reason=reason)
+        await ctx.send(":ok_hand:")
 
     @commands.command()
     @commands.has_permissions(kick_members=True)
@@ -50,6 +52,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
     async def kick(self, ctx, user: int, *, reason=None):
         user = discord.Object(id=user)
         await ctx.guild.kick(user, reason=reason)
+        await ctx.send(":ok_hand:")
 
     def get_log(self, guild):
         if str(guild) in self.log_channels.keys():
