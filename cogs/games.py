@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import random
 
 import discord
 from discord.ext import commands, menus
@@ -164,7 +165,7 @@ class Connect4(MultiPlayerGame):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.board = Connect4Board()
-        self.current_player = 0
+        self.current_player = random.choice([0, 1])
         self.pieces = [Piece("Red", "red_circle"), Piece("Blue", "blue_circle")]
         self.winner = None
 
