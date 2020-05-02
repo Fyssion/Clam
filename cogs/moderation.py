@@ -29,6 +29,21 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
 
         self.ver_messages = {}
 
+
+    @commands.command()
+    @commands.has_permissions(ban_members=True)
+    @commands.bot_has_permissions(ban_members=True)
+    async def ban(self, ctx, user: int, *, reason=None):
+        user = discord.Object(id=user)
+        await ctx.guild.ban(user, reason=reason)
+
+    @commands.command()
+    @commands.has_permissions(kick_members=True)
+    @commands.bot_has_permissions(kick_members=True)
+    async def ban(self, ctx, user: int, *, reason=None):
+        user = discord.Object(id=user)
+        await ctx.guild.kick(user, reason=reason)
+
     def get_log(self, guild):
         if str(guild) in self.log_channels.keys():
             channel_id = self.log_channels.get(str(guild))
