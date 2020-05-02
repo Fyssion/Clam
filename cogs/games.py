@@ -166,9 +166,10 @@ class Connect4(MultiPlayerGame):
         self.board = Connect4Board()
         self.current_player = 0
         self.pieces = [Piece("Red", "red_circle"), Piece("Blue", "blue_circle")]
+        self.winner = None
 
     async def finalize(self):
-        if self.timeout:
+        if self.timeout and not self.winner:
             em = self.make_embed(timeout=True)
             await self.message.edit(embed=em)
 
@@ -272,6 +273,7 @@ class Connect4(MultiPlayerGame):
         winner = self.find_4()
 
         if winner:
+            self.winner = winner
             em = self.make_embed(winner=winner)
             await self.message.edit(embed=em)
             self.stop()
@@ -284,6 +286,7 @@ class Connect4(MultiPlayerGame):
                 all_pieces.append(piece)
 
         if None not in all_pieces:
+            self.winner = "draw"
             em = self.make_embed(draw=True)
             await self.message.edit(embed=em)
             self.stop()
