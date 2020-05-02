@@ -167,6 +167,11 @@ class Connect4(MultiPlayerGame):
         self.current_player = 0
         self.pieces = [Piece("Red", "red_circle"), Piece("Blue", "blue_circle")]
 
+    async def finalize(self):
+        if self.timeout:
+            em = self.make_embed(timeout=True)
+            await self.message.edit(embed=em)
+
     async def send_initial_message(self, ctx, channel):
         em = self.make_embed()
         return await channel.send(embed=em)
@@ -177,6 +182,10 @@ class Connect4(MultiPlayerGame):
         embed.description += "1️⃣2️⃣3️⃣4️⃣5️⃣6️⃣"
         if winner:
             embed.description += f"\n:tada: Winner: {winner.mention}\nThanks for playing!"
+        elif tie:
+            embed.description += "\nTie game!"
+        elif timeout:
+            embed.description += f"\nGame is over.\n{self.players[self.current_player].mention} timed out."
         else:
             embed.description += f"\nCurrent player: {self.players[self.current_player].mention}"
 
