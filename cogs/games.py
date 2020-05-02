@@ -60,7 +60,7 @@ class TenSeconds(SinglePlayerGame):
 class MultiPlayerGame(menus.Menu):
 
     def __init__(self, players):
-        super().__init__(timeout=180.0) # 3 minutes
+        super().__init__(timeout=600.0) # 10 min
         self.players = players
 
     def reaction_check(self, payload):
@@ -189,8 +189,8 @@ class Connect4(MultiPlayerGame):
         await self.message.edit(embed=em)
 
     def find_diagonal_4(self):
-        height = 5
-        width = 6
+        height = len(self.board[0].pieces)
+        width = len(self.board.rows)
         board = self.board
 
         for piece in self.pieces:
@@ -198,15 +198,15 @@ class Connect4(MultiPlayerGame):
             for x in range(width - 3):
                 for y in range(3, height):
                     if board[x][y] == piece and board[x+1][y-1] == piece and board[x+2][y-2] == piece and board[x+3][y-3] == piece:
-                        return True
+                        return piece
 
             # check \ diagonal spaces
             for x in range(width - 3):
                 for y in range(height - 3):
                     if board[x][y] == piece and board[x+1][y+1] == piece and board[x+2][y+2] == piece and board[x+3][y+3] == piece:
-                        return True
+                        return piece
 
-        return False
+        return None
 
     def find_4(self):
         winner = None
@@ -313,9 +313,6 @@ class Games(commands.Cog, name=":video_game: Games"):
     def __init__(self, bot):
         self.bot = bot
 
-        # guild_id: Connect4
-        self.connect4_games = {}
-
     @commands.group(name="game", description="Play a game")
     async def _game(self, ctx):
         pass
@@ -337,13 +334,14 @@ def setup(bot):
 if __name__ == "__main__":
 
     def find_diagonal_4(board, pieces):
-        height = 5
-        width = 6
+        height = len(board[0].pieces)
+        width = len(board.rows)
 
         for piece in pieces:
             # check / diagonal spaces
             for x in range(width - 3):
                 for y in range(3, height):
+                    print(x, y)
                     if board[x][y] == piece and board[x+1][y-1] == piece and board[x+2][y-2] == piece and board[x+3][y-3] == piece:
                         return piece
 
@@ -358,9 +356,8 @@ if __name__ == "__main__":
     board = Connect4Board()
     pieces = [Piece("Red", "red_circle"), Piece("Blue", "blue_circle")]
     red = pieces[0]
-    board.rows[0].pieces[0] = red
-    board.rows[1].pieces[1] = red
-    board.rows[2].pieces[2] = red
+    board.rows[4].pieces[2] = red
     board.rows[3].pieces[3] = red
+    board.rows[2].pieces[4] = red
 
     print(find_diagonal_4(board, pieces))
