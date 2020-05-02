@@ -46,11 +46,11 @@ class TenSeconds(SinglePlayerGame):
         elif ten_seconds < end_time:
             time = end_time - ten_seconds
             result = str(float(f"{time.seconds}.{time.microseconds}"))
-            msg = f"You were fast by `{result}` seconds."
+            msg = f"You were slow by `{result}` seconds."
         elif ten_seconds > end_time:
             time = ten_seconds - end_time
             result = str(float(f"{time.seconds}.{time.microseconds}"))
-            msg = f"You were slow by `{result}` seconds."
+            msg = f"You were fast by `{result}` seconds."
         em = self.message.embeds[0]
         em.description = msg
         await self.message.edit(embed=em)
