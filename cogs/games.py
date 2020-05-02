@@ -176,14 +176,14 @@ class Connect4(MultiPlayerGame):
         em = self.make_embed()
         return await channel.send(embed=em)
 
-    def make_embed(self, winner=None, tie=False, timeout=False):
+    def make_embed(self, winner=None, draw=False, timeout=False):
         embed = discord.Embed(title="Connect 4", description=self.board.make(),
                               color=discord.Color.blurple())
         embed.description += "1️⃣2️⃣3️⃣4️⃣5️⃣6️⃣"
         if winner:
             embed.description += f"\n:tada: Winner: {winner.mention}\nThanks for playing!"
-        elif tie:
-            embed.description += "\nTie game!"
+        elif draw:
+            embed.description += "\nDraw game!"
         elif timeout:
             embed.description += f"\nGame is over.\n{self.players[self.current_player].mention} timed out."
         else:
@@ -284,7 +284,7 @@ class Connect4(MultiPlayerGame):
                 all_pieces.append(piece)
 
         if None not in all_pieces:
-            em = self.make_embed(tie=True)
+            em = self.make_embed(draw=True)
             await self.message.edit(embed=em)
             self.stop()
             return
