@@ -254,13 +254,15 @@ class Connect4(MultiPlayerGame):
 
         for i in range(5):
             row = rows[i]
-            next_row = rows[i+1]
+            if i == 0 and row.pieces[number]:
+                break
             if i == 4:
                 if not row.pieces[number]:
                     row.pieces[number] = piece
                     placed = True
                     break
-            elif next_row.pieces[number]:
+            next_row = rows[i+1]
+            if next_row.pieces[number]:
                 row.pieces[number] = piece
                 placed = True
                 break
