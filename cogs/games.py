@@ -95,6 +95,8 @@ class Connect4Row:
 
         for i, piece in enumerate(self.pieces):
             if not piece:
+                counter = 0
+                previous_piece = piece
                 continue
             if previous_piece == piece or not previous_piece:
                 counter += 1
@@ -236,8 +238,6 @@ class Connect4(MultiPlayerGame):
             if not winner:
                 winner = self.find_diagonal_4()
 
-        print(winner)
-
         if winner:
             winner = self.players[self.pieces.index(winner)]
 
@@ -356,7 +356,6 @@ if __name__ == "__main__":
             # check / diagonal spaces
             for x in range(width - 3):
                 for y in range(3, height):
-                    print(x, y)
                     if board[x][y] == piece and board[x+1][y-1] == piece and board[x+2][y-2] == piece and board[x+3][y-3] == piece:
                         return piece
 
@@ -371,8 +370,10 @@ if __name__ == "__main__":
     board = Connect4Board()
     pieces = [Piece("Red", "red_circle"), Piece("Blue", "blue_circle")]
     red = pieces[0]
-    board.rows[4].pieces[2] = red
-    board.rows[3].pieces[3] = red
-    board.rows[2].pieces[4] = red
+    board.rows[2].pieces[0] = red
+    board.rows[2].pieces[2] = red
+    board.rows[2].pieces[3] = red
+    board.rows[2].pieces[5] = red
 
     print(find_diagonal_4(board, pieces))
+    print(board.rows[2].find_4())
