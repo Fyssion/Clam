@@ -336,6 +336,8 @@ class Games(commands.Cog, name=":video_game: Games"):
     async def connect4(self, ctx, opponent: discord.Member):
         if opponent.bot:
             return await ctx.send("You cannot play with a bot.")
+        if ctx.author == opponent:
+            return await ctx.send("You can't play Connect 4 with yourself.")
         game = Connect4([ctx.author, opponent])
         await game.start(ctx)
 
