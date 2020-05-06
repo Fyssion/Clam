@@ -36,6 +36,10 @@ def strfdelta(tdelta, fmt):
     return f.format(fmt, **d)
 
 
+class ClamHelpCommand(commands.HelpCommand):
+    pass
+
+
 class Meta(commands.Cog, name=":gear: Meta"):
     """Everything to do with the bot itself."""
 
