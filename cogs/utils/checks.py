@@ -9,8 +9,6 @@ def has_manage_guild():
             permissions = True
         except commands.errors.MissingPermissions:
             permissions = False
-        return (
-            ctx.author.id == 224513210471022592
-            or permissions
-        )
+        return ctx.author.id == 224513210471022592 or permissions
+
     return commands.check(predicate)

@@ -30,7 +30,6 @@ def get_prefix(client, message):
 
 
 class Clam(commands.Bot):
-
     def __init__(self):
         super().__init__(
             command_prefix=get_prefix,
@@ -42,9 +41,12 @@ class Clam(commands.Bot):
         # self.session = aiohttp.ClientSession(loop=self.loop)
 
         self.log = logging.getLogger(__name__)
-        coloredlogs.install(level="DEBUG", logger=self.log,
-                            fmt="(%(asctime)s) %(levelname)s %(message)s",
-                            datefmt="%m/%d/%y - %H:%M:%S %Z")
+        coloredlogs.install(
+            level="DEBUG",
+            logger=self.log,
+            fmt="(%(asctime)s) %(levelname)s %(message)s",
+            datefmt="%m/%d/%y - %H:%M:%S %Z",
+        )
 
         # Config.yml load
         with open("config.yml", "r") as config:
@@ -55,6 +57,7 @@ class Clam(commands.Bot):
                 self.log.critical("Could not load config.yml")
                 print(exc)
                 import sys
+
                 sys.exit()
 
         with open("prefixes.json", "r") as f:
@@ -67,10 +70,18 @@ class Clam(commands.Bot):
         self.dev = self.get_user(224513210471022592)
         self.previous_error = None
 
-        self.cogs_to_load = ["cogs.meta", "cogs.tools", "cogs.reddit",
-                             "cogs.fun", "cogs.moderation", "cogs.music",
-                             "cogs.mathematics", "cogs.admin", "cogs.tags",
-                             "cogs.games"]
+        self.cogs_to_load = [
+            "cogs.meta",
+            "cogs.tools",
+            "cogs.reddit",
+            "cogs.fun",
+            "cogs.moderation",
+            "cogs.music",
+            "cogs.mathematics",
+            "cogs.admin",
+            "cogs.tags",
+            "cogs.games",
+        ]
 
         self.remove_command("help")
 

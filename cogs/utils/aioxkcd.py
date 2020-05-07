@@ -32,9 +32,22 @@ class Comic:
         date_str (str): Formatted datetime ({month} {day}, {year})
 
     """
-    __slots__ = ["number", "url", "_unparsed_data", "data",
-                 "title", "alt_text", "description", "image_url",
-                 "year", "month", "day", "publish_date", "date_str"]
+
+    __slots__ = [
+        "number",
+        "url",
+        "_unparsed_data",
+        "data",
+        "title",
+        "alt_text",
+        "description",
+        "image_url",
+        "year",
+        "month",
+        "day",
+        "publish_date",
+        "date_str",
+    ]
 
     XKCD_URL = "https://www.xkcd.com/"
     IMAGE_URL = "https://imgs.xkcd.com/comics/"
@@ -44,9 +57,9 @@ class Comic:
         self.number = number
         self.url = url
         self.data = json.loads(self._unparsed_data.decode())
-        self.title = self.data['safe_title']
-        self.alt_text = self.data['alt']
-        self.image_url = self.data['img']
+        self.title = self.data["safe_title"]
+        self.alt_text = self.data["alt"]
+        self.image_url = self.data["img"]
         self.year = int(self.data["year"])
         self.month = int(self.data["month"])
         self.day = int(self.data["day"])
@@ -92,7 +105,7 @@ async def get_latest_comic_num() -> int:
         async with session.get("https://xkcd.com/info.0.json") as resp:
             unparsed = await resp.read()
     data = json.loads(unparsed.decode())
-    number = data['num']
+    number = data["num"]
     return int(number)
 
 

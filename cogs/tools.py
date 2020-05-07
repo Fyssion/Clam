@@ -14,24 +14,34 @@ def snowstamp(snowflake):
     timestamp = (int(snowflake) >> 22) + 1420070400000
     timestamp /= 1000
 
-    return d.utcfromtimestamp(timestamp).strftime('%b %d, %Y at %#I:%M %p')
+    return d.utcfromtimestamp(timestamp).strftime("%b %d, %Y at %#I:%M %p")
 
 
 class SearchPages(menus.ListPageSource):
     def __init__(self, data):
         pages_limit = 10
-        current = f"Found **{len(data)}** {'matches' if len(data) > 1 else 'match'}! ```ini\n"
+        current = (
+            f"Found **{len(data)}** {'matches' if len(data) > 1 else 'match'}! ```ini\n"
+        )
         for i, entry in enumerate(data):
             if entry.nick:
                 nick = f"{entry.nick} - "
             else:
                 nick = ""
-            if len(current + f"\n[{i+1}] {nick}{entry.name}#{entry.discriminator} ({entry.id})") <= 2000:
-                current += f"\n[{i+1}] {nick}{entry.name}#{entry.discriminator} ({entry.id})"
+            if (
+                len(
+                    current
+                    + f"\n[{i+1}] {nick}{entry.name}#{entry.discriminator} ({entry.id})"
+                )
+                <= 2000
+            ):
+                current += (
+                    f"\n[{i+1}] {nick}{entry.name}#{entry.discriminator} ({entry.id})"
+                )
             else:
                 current = f"Found **{len(data)}** {'matches' if len(data) > 1 else 'match'}! ```ini\n"
-                if i+1 < pages_limit:
-                    pages_limit = i+1
+                if i + 1 < pages_limit:
+                    pages_limit = i + 1
         print(pages_limit)
         super().__init__(data, per_page=pages_limit)
 
@@ -60,17 +70,21 @@ class Tools(commands.Cog, name=":tools: Tools"):
         name="userinfo",
         description="Get information about a user",
         aliases=["memberinfo", "ui", "whois"],
-        usage="[user]"
+        usage="[user]",
     )
     async def userinfo_command(self, ctx, *, user: discord.Member = None):
         user = user or ctx.author
 
         if user == ctx.author:
-            self.log.info(f"{str(ctx.author)} successfully used the "
-                          "userinfo command on themself")
+            self.log.info(
+                f"{str(ctx.author)} successfully used the "
+                "userinfo command on themself"
+            )
         else:
-            self.log.info(f"{str(ctx.author)} successfully used the "
-                          f"userinfo command on '{user}'")
+            self.log.info(
+                f"{str(ctx.author)} successfully used the "
+                f"userinfo command on '{user}'"
+            )
 
         member = ctx.guild.get_member(user.id)
 
@@ -86,15 +100,16 @@ class Tools(commands.Cog, name=":tools: Tools"):
         if user.bot is True:
             desc += "\n:robot: This user is a bot."
         if user.id == ctx.guild.owner_id:
-            desc += ("\n<:owner:649355683598303260> "
-                     "This user is the server owner.")
+            desc += "\n<:owner:649355683598303260> " "This user is the server owner."
         if user.id == self.bot.owner_id:
             desc += "\n:gear: This user owns this bot."
         if member.premium_since:
-            formatted = member.premium_since.strftime('%b %d, %Y at %#I:%M %p')
-            desc += ("\n<:boost:649644112034922516> "
-                     "This user has been boosting this server since "
-                     f"{formatted}.")
+            formatted = member.premium_since.strftime("%b %d, %Y at %#I:%M %p")
+            desc += (
+                "\n<:boost:649644112034922516> "
+                "This user has been boosting this server since "
+                f"{formatted}."
+            )
 
         author = str(user)
         if member.nick:
@@ -105,20 +120,21 @@ class Tools(commands.Cog, name=":tools: Tools"):
             em.color = user.color
         em.set_thumbnail(url=user.avatar_url)
         em.set_author(name=author, icon_url=user.avatar_url)
-        em.set_footer(text=f"Requested by {str(ctx.author)}",
-                      icon_url=self.bot.user.avatar_url)
-        em.add_field(name=":clock1: Account Created",
-                     value=snowstamp(user.id),
-                     inline=True)
+        em.set_footer(
+            text=f"Requested by {str(ctx.author)}", icon_url=self.bot.user.avatar_url
+        )
+        em.add_field(
+            name=":clock1: Account Created", value=snowstamp(user.id), inline=True
+        )
         em.add_field(
             name="<:join:649722959958638643> Joined Server",
-            value=member.joined_at.strftime('%b %d, %Y at %#I:%M %p'),
-            inline=True)
+            value=member.joined_at.strftime("%b %d, %Y at %#I:%M %p"),
+            inline=True,
+        )
         members = ctx.guild.members
         members.sort(key=lambda x: x.joined_at)
         position = members.index(member)
-        em.add_field(name=":family: Join Position",
-                     value=position + 1)
+        em.add_field(name=":family: Join Position", value=position + 1)
         if member.roles[1:]:
             roles = ""
             for role in member.roles[1:]:
@@ -126,15 +142,19 @@ class Tools(commands.Cog, name=":tools: Tools"):
             em.add_field(name="Roles", value=roles, inline=False)
         await ctx.send(embed=em)
 
-    @commands.command(name="serverinfo",
-                      description="Get information about the current server",
-                      aliases=["guildinfo"])
+    @commands.command(
+        name="serverinfo",
+        description="Get information about the current server",
+        aliases=["guildinfo"],
+    )
     async def serverinfo_command(self, ctx):
         self.log.info(f"{str(ctx.author)} used the serverinfo command")
 
         if ctx.guild.unavailable == True:
             self.log.warning("Woah... {ctx.guild} is unavailable.")
-            return await ctx.send("This guild is unavailable.\nWhat does this mean? I don't know either.\nMaybe Discord is having an outage...")
+            return await ctx.send(
+                "This guild is unavailable.\nWhat does this mean? I don't know either.\nMaybe Discord is having an outage..."
+            )
 
         desc = ""
         if ctx.guild.description:
@@ -142,56 +162,41 @@ class Tools(commands.Cog, name=":tools: Tools"):
         if ctx.guild.large == True:
             desc += "\n:information_source: This guild is considered large (over 250 members)."
 
+        em = discord.Embed(description=desc, timestamp=d.utcnow())
 
-        em = discord.Embed(
-            description = desc,
-            timestamp = d.utcnow()
-        )
-
-        em.set_thumbnail(
-            url = ctx.guild.icon_url
-            )
+        em.set_thumbnail(url=ctx.guild.icon_url)
         if ctx.guild.banner_url:
-            em.set_image(
-                url = ctx.guild.banner_url
-            )
+            em.set_image(url=ctx.guild.banner_url)
         em.set_author(
-            name = f"{ctx.guild.name} ({ctx.guild.id})",
-            icon_url = ctx.guild.icon_url
-            )
+            name=f"{ctx.guild.name} ({ctx.guild.id})", icon_url=ctx.guild.icon_url
+        )
         em.set_footer(
-                    text = f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
-                    icon_url = self.bot.user.avatar_url
-                    )
-        em.add_field(
-            name = "<:owner:649355683598303260> Owner",
-            value = ctx.guild.owner.mention,
-            inline = True
+            text=f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
+            icon_url=self.bot.user.avatar_url,
         )
         em.add_field(
-            name = ":clock1: Server Created",
-            value = snowstamp(ctx.guild.id),
-            inline = True
+            name="<:owner:649355683598303260> Owner",
+            value=ctx.guild.owner.mention,
+            inline=True,
         )
         em.add_field(
-            name = "<:boost:649644112034922516> Nitro Boosts",
-            value = f"Tier {ctx.guild.premium_tier} with {ctx.guild.premium_subscription_count} boosts",
-            inline = True
+            name=":clock1: Server Created", value=snowstamp(ctx.guild.id), inline=True
         )
         em.add_field(
-            name = ":earth_americas: Region",
-            value = str(ctx.guild.region).replace("-", " ").upper(),
-            inline = True
+            name="<:boost:649644112034922516> Nitro Boosts",
+            value=f"Tier {ctx.guild.premium_tier} with {ctx.guild.premium_subscription_count} boosts",
+            inline=True,
         )
         em.add_field(
-            name = ":family: Members",
-            value = len(ctx.guild.members),
-            inline = True
+            name=":earth_americas: Region",
+            value=str(ctx.guild.region).replace("-", " ").upper(),
+            inline=True,
         )
+        em.add_field(name=":family: Members", value=len(ctx.guild.members), inline=True)
         em.add_field(
-            name = ":speech_balloon: Channels",
-            value = f"<:text_channel:661798072384225307> {len(ctx.guild.text_channels)} • <:voice_channel:665577300552843294> {len(ctx.guild.voice_channels)}",
-            inline = True
+            name=":speech_balloon: Channels",
+            value=f"<:text_channel:661798072384225307> {len(ctx.guild.text_channels)} • <:voice_channel:665577300552843294> {len(ctx.guild.voice_channels)}",
+            inline=True,
         )
 
         # roles = ""
@@ -205,26 +210,25 @@ class Tools(commands.Cog, name=":tools: Tools"):
         await ctx.send(embed=em)
 
     @commands.command(
-        name = "snowstamp",
-        description = "Get timestamp from a Discord snowflake",
-        usage = "[snowflake]",
-        hidden = True
+        name="snowstamp",
+        description="Get timestamp from a Discord snowflake",
+        usage="[snowflake]",
+        hidden=True,
     )
-    async def snowstamp_command(self, ctx, snowflake = None):
+    async def snowstamp_command(self, ctx, snowflake=None):
         if snowflake == None:
             return await ctx.send("Please specify a snowflake to convert.")
         await ctx.send(snowstamp(snowflake))
 
     @commands.command(
-        name = "embed",
-        description = "Create a custom embed and send it to a specified channel.",
-        aliases = ['em'],
-        hidden = True
+        name="embed",
+        description="Create a custom embed and send it to a specified channel.",
+        aliases=["em"],
+        hidden=True,
     )
     @commands.guild_only()
     @commands.is_owner()
     async def embed_command(self, ctx):
-
         def check(ms):
             # Look for the message sent in the same channel where the command was used
             # As well as by the user who used the command.
@@ -234,38 +238,51 @@ class Tools(commands.Cog, name=":tools: Tools"):
             await ctx.send("Please use this command in a server.")
             return
 
-        await ctx.send("Check your DMs!", delete_after = 5)
-        await ctx.author.send("**Create an embed:**\nWhat server would you like to send the embed to? Type `here` to send the embed where you called the command.")
+        await ctx.send("Check your DMs!", delete_after=5)
+        await ctx.author.send(
+            "**Create an embed:**\nWhat server would you like to send the embed to? Type `here` to send the embed where you called the command."
+        )
 
-        msg = await self.bot.wait_for("message", check = check)
+        msg = await self.bot.wait_for("message", check=check)
 
-        if msg == 'here':
+        if msg == "here":
             em_guild = ctx.guild
         else:
-            await ctx.author.send("Custom servers not supported yet :(\nServer set to where you called the command.")
+            await ctx.author.send(
+                "Custom servers not supported yet :(\nServer set to where you called the command."
+            )
             em_guild = ctx.guild
 
         # Check to see if bot has permission to view perms
 
-        await ctx.author.send(f"Server set to `{em_guild.name}`.\nWhat channel would you like to send to?")
+        await ctx.author.send(
+            f"Server set to `{em_guild.name}`.\nWhat channel would you like to send to?"
+        )
 
-        msg = await self.bot.wait_for("message", check = check)
+        msg = await self.bot.wait_for("message", check=check)
 
         # Check for permission here
 
         # while hasPermissionToSend == False:
 
-    @commands.group(description="Search for things in a server.",
-                    aliases=["find"], invoke_without_command=True)
+    @commands.group(
+        description="Search for things in a server.",
+        aliases=["find"],
+        invoke_without_command=True,
+    )
     async def search(self, ctx):
         dp = self.bot.guild_prefix(ctx.guild)
-        await ctx.send("You can use:\n"
-                       f"`{dp}search username [username]`\n"
-                       f"`{dp}search nickname [nickname]`\n"
-                       f"`{dp}search discriminator [discriminator]`")
+        await ctx.send(
+            "You can use:\n"
+            f"`{dp}search username [username]`\n"
+            f"`{dp}search nickname [nickname]`\n"
+            f"`{dp}search discriminator [discriminator]`"
+        )
 
     def compile_list(self, list):
-        msg = f"Found **{len(list)}** {'matches' if len(list) > 1 else 'match'}! ```ini\n"
+        msg = (
+            f"Found **{len(list)}** {'matches' if len(list) > 1 else 'match'}! ```ini\n"
+        )
         for i, member in enumerate(list):
             if member.nick:
                 nick = f"{member.nick} - "
@@ -275,23 +292,31 @@ class Tools(commands.Cog, name=":tools: Tools"):
         msg += "\n```"
         return msg
 
-    @search.command(name="username",
-                    description="Search server for a specified username",
-                    usage="[username]", aliases=["user", "name"])
+    @search.command(
+        name="username",
+        description="Search server for a specified username",
+        usage="[username]",
+        aliases=["user", "name"],
+    )
     async def search_username(self, ctx, username: str):
         matches = []
         for member in ctx.guild.members:
             if username.lower() in member.name.lower():
                 matches.append(member)
         if matches:
-            pages = menus.MenuPages(source=SearchPages(matches), clear_reactions_after=True)
+            pages = menus.MenuPages(
+                source=SearchPages(matches), clear_reactions_after=True
+            )
             return await pages.start(ctx)
             # return await ctx.send(self.compile_list(matches))
         await ctx.send("No matches found.")
 
-    @search.command(name="nickname",
-                    description="Search server for a specified nickname",
-                    usage="[nickname]", aliases=["nick"])
+    @search.command(
+        name="nickname",
+        description="Search server for a specified nickname",
+        usage="[nickname]",
+        aliases=["nick"],
+    )
     async def search_nickname(self, ctx, nickname: str):
         matches = []
         for member in ctx.guild.members:
@@ -299,20 +324,27 @@ class Tools(commands.Cog, name=":tools: Tools"):
                 if nickname.lower() in member.nick.lower():
                     matches.append(member)
         if matches:
-            pages = menus.MenuPages(source=SearchPages(matches), clear_reactions_after=True)
+            pages = menus.MenuPages(
+                source=SearchPages(matches), clear_reactions_after=True
+            )
             return await pages.start(ctx)
         await ctx.send("No matches found.")
 
-    @search.command(name="discriminator",
-                    description="Search server for a specified descrininator",
-                    usage="[discriminator]", aliases=["number", "discrim", "dis", "num"])
+    @search.command(
+        name="discriminator",
+        description="Search server for a specified descrininator",
+        usage="[discriminator]",
+        aliases=["number", "discrim", "dis", "num"],
+    )
     async def search_discriminator(self, ctx, discriminator: int):
         matches = []
         for member in ctx.guild.members:
             if discriminator == int(member.discriminator):
                 matches.append(member)
         if matches:
-            pages = menus.MenuPages(source=SearchPages(matches), clear_reactions_after=True)
+            pages = menus.MenuPages(
+                source=SearchPages(matches), clear_reactions_after=True
+            )
             return await pages.start(ctx)
         await ctx.send("No matches found.")
 
@@ -324,8 +356,8 @@ class Tools(commands.Cog, name=":tools: Tools"):
         # first line is version info
         inv_version = stream.readline().rstrip()
 
-        if inv_version != '# Sphinx inventory version 2':
-            raise RuntimeError('Invalid objects.inv file version.')
+        if inv_version != "# Sphinx inventory version 2":
+            raise RuntimeError("Invalid objects.inv file version.")
 
         # next line is "# Project: <name>"
         # then after that is "# Version: <version>"
@@ -334,19 +366,19 @@ class Tools(commands.Cog, name=":tools: Tools"):
 
         # next line says if it's a zlib header
         line = stream.readline()
-        if 'zlib' not in line:
-            raise RuntimeError('Invalid objects.inv file, not z-lib compatible.')
+        if "zlib" not in line:
+            raise RuntimeError("Invalid objects.inv file, not z-lib compatible.")
 
         # This code mostly comes from the Sphinx repository.
-        entry_regex = re.compile(r'(?x)(.+?)\s+(\S*:\S*)\s+(-?\d+)\s+(\S+)\s+(.*)')
+        entry_regex = re.compile(r"(?x)(.+?)\s+(\S*:\S*)\s+(-?\d+)\s+(\S+)\s+(.*)")
         for line in stream.read_compressed_lines():
             match = entry_regex.match(line.rstrip())
             if not match:
                 continue
 
             name, directive, prio, location, dispname = match.groups()
-            domain, _, subdirective = directive.partition(':')
-            if directive == 'py:module' and name in result:
+            domain, _, subdirective = directive.partition(":")
+            if directive == "py:module" and name in result:
                 # From the Sphinx Repository:
                 # due to a bug in 1.1 and below,
                 # two inventory entries are created
@@ -355,19 +387,19 @@ class Tools(commands.Cog, name=":tools: Tools"):
                 continue
 
             # Most documentation pages have a label
-            if directive == 'std:doc':
-                subdirective = 'label'
+            if directive == "std:doc":
+                subdirective = "label"
 
-            if location.endswith('$'):
+            if location.endswith("$"):
                 location = location[:-1] + name
 
-            key = name if dispname == '-' else dispname
-            prefix = f'{subdirective}:' if domain == 'std' else ''
+            key = name if dispname == "-" else dispname
+            prefix = f"{subdirective}:" if domain == "std" else ""
 
-            if projname == 'discord.py':
-                key = key.replace('discord.ext.commands.', '').replace('discord.', '')
+            if projname == "discord.py":
+                key = key.replace("discord.ext.commands.", "").replace("discord.", "")
 
-            result[f'{prefix}{key}'] = os.path.join(url, location)
+            result[f"{prefix}{key}"] = os.path.join(url, location)
 
         return result
 
@@ -375,9 +407,11 @@ class Tools(commands.Cog, name=":tools: Tools"):
         cache = {}
         for key, page in page_types.items():
             sub = cache[key] = {}
-            async with self.bot.session.get(page + '/objects.inv') as resp:
+            async with self.bot.session.get(page + "/objects.inv") as resp:
                 if resp.status != 200:
-                    raise RuntimeError('Cannot build rtfm lookup table, try again later.')
+                    raise RuntimeError(
+                        "Cannot build rtfm lookup table, try again later."
+                    )
 
                 stream = SphinxObjectFileReader(await resp.read())
                 cache[key] = self.parse_object_inv(stream, page)
@@ -386,36 +420,37 @@ class Tools(commands.Cog, name=":tools: Tools"):
 
     async def do_rtfm(self, ctx, key, obj):
         page_types = {
-            'latest': 'https://discordpy.readthedocs.io/en/latest',
-            'latest-jp': 'https://discordpy.readthedocs.io/ja/latest',
-            'python': 'https://docs.python.org/3',
-            'python-jp': 'https://docs.python.org/ja/3',
+            "latest": "https://discordpy.readthedocs.io/en/latest",
+            "latest-jp": "https://discordpy.readthedocs.io/ja/latest",
+            "python": "https://docs.python.org/3",
+            "python-jp": "https://docs.python.org/ja/3",
         }
 
         if obj is None:
             await ctx.send(page_types[key])
             return
 
-        if not hasattr(self, '_rtfm_cache'):
+        if not hasattr(self, "_rtfm_cache"):
             await ctx.trigger_typing()
             # em = discord.Embed(colour = discord.Colour.blurple())
             # em.add_field(name = "\u200b", value = ":mag: `Searching the docs...`")
             # bot_msg = await ctx.send(embed = em)
             await self.build_rtfm_lookup_table(page_types)
 
-        obj = re.sub(r'^(?:discord\.(?:ext\.)?)?(?:commands\.)?(.+)', r'\1', obj)
+        obj = re.sub(r"^(?:discord\.(?:ext\.)?)?(?:commands\.)?(.+)", r"\1", obj)
 
-        if key.startswith('latest'):
+        if key.startswith("latest"):
             # point the abc.Messageable types properly:
             q = obj.lower()
             for name in dir(discord.abc.Messageable):
-                if name[0] == '_':
+                if name[0] == "_":
                     continue
                 if q == name:
-                    obj = f'abc.Messageable.{name}'
+                    obj = f"abc.Messageable.{name}"
                     break
 
         cache = list(self._rtfm_cache[key].items())
+
         def transform(tup):
             return tup[0]
 
@@ -423,11 +458,14 @@ class Tools(commands.Cog, name=":tools: Tools"):
 
         em = discord.Embed(colour=discord.Colour.blurple())
         if len(matches) == 0:
-            return await ctx.send('Could not find anything. Sorry.')
-        em.add_field(name = f"`Results for '{obj}'`", value = '\n'.join(f'[`{key}`]({url})' for key, url in matches))
+            return await ctx.send("Could not find anything. Sorry.")
+        em.add_field(
+            name=f"`Results for '{obj}'`",
+            value="\n".join(f"[`{key}`]({url})" for key, url in matches),
+        )
         em.set_footer(
-            text = f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
-            icon_url = self.bot.user.avatar_url
+            text=f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
+            icon_url=self.bot.user.avatar_url,
         )
         # em.description = '\n'.join(f'[`{key}`]({url})' for key, url in matches)
         # await bot_msg.edit(embed = em)
@@ -437,35 +475,30 @@ class Tools(commands.Cog, name=":tools: Tools"):
         if ctx.guild is not None:
             #                             日本語 category
             if ctx.channel.category_id == 490287576670928914:
-                return prefix + '-jp'
+                return prefix + "-jp"
             #                    d.py unofficial JP
             elif ctx.guild.id == 463986890190749698:
-                return prefix + '-jp'
+                return prefix + "-jp"
         return prefix
 
     @commands.group(
-        aliases=['rtfm', 'rtfd'],
+        aliases=["rtfm", "rtfd"],
         invoke_without_command=True,
-        description = "Gives you a documentation link for a discord.py entity."
-        )
+        description="Gives you a documentation link for a discord.py entity.",
+    )
     async def docs(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a discord.py entity.
         Events, objects, and functions are all supported through a
         a cruddy fuzzy algorithm.
         """
-        key = self.transform_rtfm_language_key(ctx, 'latest')
+        key = self.transform_rtfm_language_key(ctx, "latest")
         await self.do_rtfm(ctx, key, obj)
 
-    @docs.command(
-        name='python',
-        aliases=['py']
-        )
+    @docs.command(name="python", aliases=["py"])
     async def docs_python(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a Python entity."""
-        key = self.transform_rtfm_language_key(ctx, 'python')
+        key = self.transform_rtfm_language_key(ctx, "python")
         await self.do_rtfm(ctx, key, obj)
-
-
 
     def insert_returns(self, body):
         # insert return stmt if the last expression is a expression statement
@@ -482,13 +515,9 @@ class Tools(commands.Cog, name=":tools: Tools"):
         if isinstance(body[-1], ast.With):
             insert_returns(body[-1].body)
 
-
     @commands.command(
-        name = "eval",
-        description = "Evaluates python code.",
-        usage = "[code]",
-        hidden = True
-        )
+        name="eval", description="Evaluates python code.", usage="[code]", hidden=True
+    )
     @commands.is_owner()
     async def eval_fn(self, ctx, *, cmd):
         """Evaluates input.
@@ -526,19 +555,16 @@ class Tools(commands.Cog, name=":tools: Tools"):
         self.insert_returns(body)
 
         env = {
-            'bot': ctx.bot,
-            'discord': discord,
-            'commands': commands,
-            'ctx': ctx,
-            '__import__': __import__
+            "bot": ctx.bot,
+            "discord": discord,
+            "commands": commands,
+            "ctx": ctx,
+            "__import__": __import__,
         }
         exec(compile(parsed, filename="<ast>", mode="exec"), env)
 
-        result = (await eval(f"{fn_name}()", env))
+        result = await eval(f"{fn_name}()", env)
         await ctx.send(result)
-
-
-
 
 
 def setup(bot):

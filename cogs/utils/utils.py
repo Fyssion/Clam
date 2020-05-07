@@ -1,4 +1,5 @@
 import random
+
 # from nltk.corpus import wordnet
 import asyncio
 import contextlib
@@ -10,6 +11,7 @@ from typing import Optional, Sequence, Union
 import io
 import zlib
 
+
 class SphinxObjectFileReader:
     # Inspired by Sphinx's InventoryFileReader
     BUFSIZE = 16 * 1024
@@ -18,7 +20,7 @@ class SphinxObjectFileReader:
         self.stream = io.BytesIO(buffer)
 
     def readline(self):
-        return self.stream.readline().decode('utf-8')
+        return self.stream.readline().decode("utf-8")
 
     def skipline(self):
         self.stream.readline()
@@ -33,20 +35,19 @@ class SphinxObjectFileReader:
         yield decompressor.flush()
 
     def read_compressed_lines(self):
-        buf = b''
+        buf = b""
         for chunk in self.read_compressed_chunks():
             buf += chunk
-            pos = buf.find(b'\n')
+            pos = buf.find(b"\n")
             while pos != -1:
-                yield buf[:pos].decode('utf-8')
-                buf = buf[pos + 1:]
-                pos = buf.find(b'\n')
-
+                yield buf[:pos].decode("utf-8")
+                buf = buf[pos + 1 :]
+                pos = buf.find(b"\n")
 
 
 # async def start():
 #     wordnet.synsets("test")
-    
+
 
 # async def thesaurize(msg):
 #     isInput = False
@@ -68,10 +69,10 @@ class SphinxObjectFileReader:
 #         isVaild = False
 #         while isVaild == False:
 
-            
+
 #             num = random.randrange(0, len(args))
-            
-            
+
+
 #             if num in toBeReplaced:
 #                 pass
 #             elif len(args[num]) < 4:
@@ -92,13 +93,14 @@ class SphinxObjectFileReader:
 
 #     return " ".join(args)
 
+
 async def wait_for_deletion(
     message: Message,
     user_ids: Sequence[Snowflake],
-    deletion_emoji: str = '❌',
+    deletion_emoji: str = "❌",
     timeout: int = 60,
     attach_emojis: bool = True,
-    client: Optional[Client] = None
+    client: Optional[Client] = None,
 ) -> None:
     """
     Wait for up to `timeout` seconds for a reaction by any of the specified `user_ids` to delete the message.
@@ -126,11 +128,11 @@ async def wait_for_deletion(
 
     # with contextlib.suppress(asyncio.TimeoutError):
     #     await bot.wait_for('reaction_add', check=check, timeout=timeout)
-        # for emoji in deletion_emojis:
-        #     await message.add_reaction(emoji)
-        # await message.delete()
+    # for emoji in deletion_emojis:
+    #     await message.add_reaction(emoji)
+    # await message.delete()
     try:
-        await bot.wait_for('reaction_add', check=check, timeout=timeout)
+        await bot.wait_for("reaction_add", check=check, timeout=timeout)
         await message.delete()
     except asyncio.TimeoutError:
 
@@ -138,9 +140,12 @@ async def wait_for_deletion(
 
 
 def hover_link(ctx, msg, text="`?`"):
-    return (f"[{text}](https://www.discordapp.com/"
-            f"channels/{ctx.guild.id}/{ctx.channel.id} "
-            f""""{msg}")""")
+    return (
+        f"[{text}](https://www.discordapp.com/"
+        f"channels/{ctx.guild.id}/{ctx.channel.id} "
+        f""""{msg}")"""
+    )
+
 
 def is_int(string):
     try:

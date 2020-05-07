@@ -12,7 +12,7 @@ from .utils.checks import has_manage_guild
 from .utils.utils import is_int
 
 
-class Moderation(commands.Cog, name = ":police_car: Moderation"):
+class Moderation(commands.Cog, name=":police_car: Moderation"):
     """
     This cog has not been fully developed. Will include many moderation features.
     """
@@ -28,7 +28,6 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
             self.verifications = json.load(f)
 
         self.ver_messages = {}
-
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
@@ -63,17 +62,16 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
     async def get_bin(self, url="https://hastebin.com"):
         parsed = urlparse(url)
         newpath = "/raw" + parsed.path
-        url = (parsed.scheme +
-            "://" +
-            parsed.netloc +
-            newpath)
+        url = parsed.scheme + "://" + parsed.netloc + newpath
         try:
             async with timeout(10):
                 async with self.bot.session.get(url) as resp:
                     f = await resp.read()
         except asyncio.TimeoutError:
-            raise TimeoutError(":warning: Could not fetch data from hastebin. \
-            Is the site down? Try https://www.pastebin.com")
+            raise TimeoutError(
+                ":warning: Could not fetch data from hastebin. \
+            Is the site down? Try https://www.pastebin.com"
+            )
             return None
         async with self.bot.session.get(url) as resp:
             f = await resp.read()
@@ -83,6 +81,7 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
     async def wait_for_message(self, author, channel, timeout=120):
         def check(msg):
             return msg.author == author and msg.channel == channel
+
         try:
             message = await self.bot.wait_for("message", check=check, timeout=timeout)
             if message.content == f"{self.bot.guild_prefix(channel.guild)}abort":
@@ -93,53 +92,68 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
             await channel.send("You took too long! Please try again.")
             return None
 
-    @commands.command(description="Create a server info message for your server.", hidden=True)
+    @commands.command(
+        description="Create a server info message for your server.", hidden=True
+    )
     @commands.guild_only()
     @has_manage_guild()
     async def welcome(self, ctx):
         await ctx.send("Beginning interactive message generator in your DMs.")
         author = ctx.author
-        await author.send("Welcome to the interactive message generator!\n"
-                    "Paste the message you want to send here, or give me a bin link "
-                    "(hastebin, mystbin, or your other bin preference).")
+        await author.send(
+            "Welcome to the interactive message generator!\n"
+            "Paste the message you want to send here, or give me a bin link "
+            "(hastebin, mystbin, or your other bin preference)."
+        )
         message = await self.wait_for_message(author, author.dm_channel)
         content = message.content
         if content.startswith("http"):
             content = await self.get_bin(message.content)
             if len(content) > 2000:
                 if "$$BREAK$$" not in content:
-                    return await author.send("That message is too long, and I couldn't find any message breaks in it.\n"
-                                             "Add message breaks with they keyword `$$BREAK$$`, and I will split the message there.")
+                    return await author.send(
+                        "That message is too long, and I couldn't find any message breaks in it.\n"
+                        "Add message breaks with they keyword `$$BREAK$$`, and I will split the message there."
+                    )
             all_contents = content.split("$$BREAK$$")
         else:
             all_contents = [content]
         messages = []
         for message in all_contents:
-            kwargs = {"content" : message,
-                      "embed" : None}
+            kwargs = {"content": message, "embed": None}
             messages.append(kwargs)
         await author.send("Sending message to server...")
         for message in messages:
             await author.send(**message)
 
-    @commands.group(description="View the current verification system", invoke_without_command=True)
+    @commands.group(
+        description="View the current verification system", invoke_without_command=True
+    )
     @commands.guild_only()
     @has_manage_guild()
     async def verification(self, ctx):
         if str(ctx.guild.id) in self.verifications.keys():
             return await ctx.send("**Verification is ON** for this server.")
         else:
-            return await ctx.send("**Verification is OFF** for this server. "
-                                  f"Set it up with `{self.bot.guild_prefix(ctx.guild)}verification create`")
+            return await ctx.send(
+                "**Verification is OFF** for this server. "
+                f"Set it up with `{self.bot.guild_prefix(ctx.guild)}verification create`"
+            )
 
-    @verification.command(name="create", description="Create a verification system for your server")
+    @verification.command(
+        name="create", description="Create a verification system for your server"
+    )
     @commands.guild_only()
     @has_manage_guild()
-    @commands.bot_has_permissions(manage_messages=True, manage_roles=True, manage_channels=True)
+    @commands.bot_has_permissions(
+        manage_messages=True, manage_roles=True, manage_channels=True
+    )
     async def ver_create(self, ctx):
-        await ctx.send("Welcome to the interactive verification system generator! "
-                       f"**You can use `{ctx.guild_prefix}abort` to abort.**\n\n"
-                       "What would you like the verification message to say?")
+        await ctx.send(
+            "Welcome to the interactive verification system generator! "
+            f"**You can use `{ctx.guild_prefix}abort` to abort.**\n\n"
+            "What would you like the verification message to say?"
+        )
         message = await self.wait_for_message(ctx.author, ctx.channel)
         if not message:
             return
@@ -147,7 +161,9 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
             return await ctx.send("Message must be shorter than 2000 characters.")
         content = message.content
 
-        await ctx.send("What channel should I send the verification message in? Type `none` for me to create a new channel.")
+        await ctx.send(
+            "What channel should I send the verification message in? Type `none` for me to create a new channel."
+        )
         message = await self.wait_for_message(ctx.author, ctx.channel)
         if not message:
             return
@@ -158,11 +174,17 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
                 channel = ctx.guild.get_channel(int(message.content))
             else:
                 channel = None
-            channel = channel or discord.utils.get(ctx.guild.channels, name=message.content)
+            channel = channel or discord.utils.get(
+                ctx.guild.channels, name=message.content
+            )
             if not channel:
-                return await ctx.send("I couldn't find that channel. Make sure I can see the channel.")
+                return await ctx.send(
+                    "I couldn't find that channel. Make sure I can see the channel."
+                )
 
-        await ctx.send("What role should I give when verified? Type `none` for me to create a new role.")
+        await ctx.send(
+            "What role should I give when verified? Type `none` for me to create a new role."
+        )
         message = await self.wait_for_message(ctx.author, ctx.channel)
         if not message:
             return
@@ -177,7 +199,9 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
             if not channel:
                 return await ctx.send("I couldn't find that role.")
 
-        await ctx.send("What role should be allowed to confirm verifications? Type `none` for me to create a new role.")
+        await ctx.send(
+            "What role should be allowed to confirm verifications? Type `none` for me to create a new role."
+        )
         message = await self.wait_for_message(ctx.author, ctx.channel)
         if not message:
             return
@@ -188,21 +212,34 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
                 verify_role = ctx.guild.get_role(int(message.content))
             else:
                 verify_role = None
-            verify_role = verify_role or discord.utils.get(ctx.guild.roles, name=message.content)
+            verify_role = verify_role or discord.utils.get(
+                ctx.guild.roles, name=message.content
+            )
             if not channel:
                 return await ctx.send("I couldn't find that role.")
 
-        await ctx.send("Alright, generating the verification system... You can move the `verifiers` channel wherever you like.")
+        await ctx.send(
+            "Alright, generating the verification system... You can move the `verifiers` channel wherever you like."
+        )
 
         overwrites = {
-            ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_messages=True,
-                                                embed_links=True, read_message_history=True),
+            ctx.me: discord.PermissionOverwrite(
+                read_messages=True,
+                send_messages=True,
+                manage_messages=True,
+                embed_links=True,
+                read_message_history=True,
+            ),
             ctx.guild.default_role: discord.PermissionOverwrite(read_messages=False),
             role: discord.PermissionOverwrite(read_messages=False),
-            verify_role: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+            verify_role: discord.PermissionOverwrite(
+                read_messages=True, send_messages=True
+            ),
         }
 
-        notify_channel = await ctx.guild.create_text_channel("verifiers", overwrites=overwrites)
+        notify_channel = await ctx.guild.create_text_channel(
+            "verifiers", overwrites=overwrites
+        )
 
         message = await channel.send(content)
         await message.add_reaction("✅")
@@ -211,30 +248,41 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
             "message_id": message.id,
             "role_id": role.id,
             "verify_role_id": verify_role.id,
-            "channel_id": notify_channel.id
+            "channel_id": notify_channel.id,
         }
 
         with open("verifications.json", "w") as f:
             json.dump(self.verifications, f)
 
-    @verification.command(name="disable", description="Disable verification", aliases=["remove", "delete"])
+    @verification.command(
+        name="disable", description="Disable verification", aliases=["remove", "delete"]
+    )
     @commands.guild_only()
     @has_manage_guild()
-    @commands.bot_has_permissions(manage_messages=True, manage_guild=True, manage_roles=True, manage_channels=True)
+    @commands.bot_has_permissions(
+        manage_messages=True, manage_guild=True, manage_roles=True, manage_channels=True
+    )
     async def ver_remove(self, ctx):
         if not (ctx.guild.id in self.verifications.keys()):
-            return await ctx.send("**Verification is OFF** for this server. "
-                                  f"Set it up with `{self.bot.guild_prefix(ctx.guild)}verification create`")
+            return await ctx.send(
+                "**Verification is OFF** for this server. "
+                f"Set it up with `{self.bot.guild_prefix(ctx.guild)}verification create`"
+            )
         del self.verifications[str(ctx.guild.id)]
         with open("verifications.json", "w") as f:
-            json.dump(self.verifications, f, sort_keys=True, indent=4, separators=(',', ': '))
+            json.dump(
+                self.verifications, f, sort_keys=True, indent=4, separators=(",", ": ")
+            )
         await ctx.send("**Disabled verification on your server.**")
 
     @commands.Cog.listener("on_raw_reaction_add")
     async def verification_reaction(self, payload):
         if str(payload.guild_id) not in self.verifications.keys():
             return
-        if payload.message_id != self.verifications[str(payload.guild_id)]["message_id"]:
+        if (
+            payload.message_id
+            != self.verifications[str(payload.guild_id)]["message_id"]
+        ):
             return
         if payload.user_id == self.bot.user.id:
             return
@@ -243,13 +291,19 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         guild = self.bot.get_guild(payload.guild_id)
         member = guild.get_member(payload.user_id)
         role = guild.get_role(int(self.verifications[str(guild.id)]["role_id"]))
-        verify_role = guild.get_role(int(self.verifications[str(guild.id)]["verify_role_id"]))
-        verify_channel = guild.get_channel(int(self.verifications[str(guild.id)]["channel_id"]))
+        verify_role = guild.get_role(
+            int(self.verifications[str(guild.id)]["verify_role_id"])
+        )
+        verify_channel = guild.get_channel(
+            int(self.verifications[str(guild.id)]["channel_id"])
+        )
 
         if guild.id in self.ver_messages.keys():
             message = self.ver_messages[guild.id]
         else:
-            message = await channel.fetch_message(int(self.verifications[str(guild.id)]["message_id"]))
+            message = await channel.fetch_message(
+                int(self.verifications[str(guild.id)]["message_id"])
+            )
             self.ver_messages[guild.id] = message
 
         def check(reaction, user):
@@ -260,30 +314,51 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
                 and reaction.emoji in ["✅", "❌"]
             )
 
-        if not guild or not channel or not role or not verify_channel or not verify_role:
+        if (
+            not guild
+            or not channel
+            or not role
+            or not verify_channel
+            or not verify_role
+        ):
             del self.verifications[str(guild.id)]
             with open("verifications.json", "w") as f:
-                json.dump(self.verifications, f, sort_keys=True, indent=4, separators=(',', ': '))
+                json.dump(
+                    self.verifications,
+                    f,
+                    sort_keys=True,
+                    indent=4,
+                    separators=(",", ": "),
+                )
             return
         if payload.emoji.name != "✅":
             return
-        await channel.send("Your verification request is being processed by the moderators.", delete_after=10)
+        await channel.send(
+            "Your verification request is being processed by the moderators.",
+            delete_after=10,
+        )
         await message.remove_reaction("✅", member)
 
-        bot_message = await verify_channel.send(f"**`{member}` is requesting verification!**\n\n"
-                                  "React with :white_check_mark: to verify them, or :x: to ignore.\n"
-                                  "If you don't respond within 24 hours, they will be ignored.")
+        bot_message = await verify_channel.send(
+            f"**`{member}` is requesting verification!**\n\n"
+            "React with :white_check_mark: to verify them, or :x: to ignore.\n"
+            "If you don't respond within 24 hours, they will be ignored."
+        )
         await bot_message.add_reaction("✅")
         await bot_message.add_reaction("❌")
         try:
-            reaction, user = await self.bot.wait_for("reaction_add", check=check, timeout=86400) # 24h
+            reaction, user = await self.bot.wait_for(
+                "reaction_add", check=check, timeout=86400
+            )  # 24h
         except asyncio.TimeoutError:
             pass
 
         emoji = reaction.emoji
         if emoji == "✅":
             await member.add_roles(role, reason="Verification")
-            await bot_message.edit(content=f"**:white_check_mark: `{user}` accepted `{member}` into the server.**")
+            await bot_message.edit(
+                content=f"**:white_check_mark: `{user}` accepted `{member}` into the server.**"
+            )
         elif emoji == "❌":
             await bot_message.edit(content=f":x: `{user}` ignored `{member}`")
         else:
@@ -294,10 +369,12 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
 
     @commands.command(
         name="purge",
-        description=("Purge messages in a channel.\n"
-                     "**Note: The user calling the command and the bot must have the manage messages permission.**"),
+        description=(
+            "Purge messages in a channel.\n"
+            "**Note: The user calling the command and the bot must have the manage messages permission.**"
+        ),
         aliases=["cleanup"],
-        usage="[amount]"
+        usage="[amount]",
     )
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
@@ -307,19 +384,29 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
 
         if not amount:
             deleted = await ctx.channel.purge(limit=None, check=is_not_ctx)
-            return await ctx.channel.send(f"Deleted {len(deleted)} message(s)", delete_after=5)
+            return await ctx.channel.send(
+                f"Deleted {len(deleted)} message(s)", delete_after=5
+            )
 
         deleted = await ctx.channel.purge(limit=int(amount), check=is_not_ctx)
-        return await ctx.channel.send(f"Deleted {len(deleted)} message(s)", delete_after=5)
+        return await ctx.channel.send(
+            f"Deleted {len(deleted)} message(s)", delete_after=5
+        )
 
-    @commands.group(name="log", description="Keep a log of all user actions.", invoke_without_command=True)
+    @commands.group(
+        name="log",
+        description="Keep a log of all user actions.",
+        invoke_without_command=True,
+    )
     @commands.guild_only()
     @has_manage_guild()
     async def _log(self, ctx):
         log = self.get_log(ctx.guild.id)
         if not log:
             await self.enable(ctx)
-        return await ctx.send(f"Server log at {log.mention}. Use `{self.bot.guild_prefix(ctx.guild.id)}log set` to change log channel.")
+        return await ctx.send(
+            f"Server log at {log.mention}. Use `{self.bot.guild_prefix(ctx.guild.id)}log set` to change log channel."
+        )
 
     @_log.command(description="Enable your server's log.")
     @commands.guild_only()
@@ -337,11 +424,14 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
             await ctx.send("This server doesn't have a log.")
         self.log_channels.pop(str(ctx.guild.id))
         with open("log_channels.json", "w") as f:
-            json.dump(self.log_channels, f, sort_keys=True, indent=4, separators=(',', ': '))
+            json.dump(
+                self.log_channels, f, sort_keys=True, indent=4, separators=(",", ": ")
+            )
         await ctx.send(f"**Log disabled**")
 
-    @_log.command(name="set", description="Set your server's log channel.",
-                  aliases=["setup"])
+    @_log.command(
+        name="set", description="Set your server's log channel.", aliases=["setup"]
+    )
     @commands.guild_only()
     @has_manage_guild()
     async def _set(self, ctx, channel: discord.TextChannel = None):
@@ -351,7 +441,9 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
             return await ctx.send("You must specify a channel in this server.")
         self.log_channels[str(ctx.guild.id)] = channel.id
         with open("log_channels.json", "w") as f:
-            json.dump(self.log_channels, f, sort_keys=True, indent=4, separators=(',', ': '))
+            json.dump(
+                self.log_channels, f, sort_keys=True, indent=4, separators=(",", ": ")
+            )
         await ctx.send(f"Log channel set to {channel.mention}")
 
     @commands.Cog.listener("on_message_delete")
@@ -359,8 +451,11 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         log = self.get_log(message.guild.id)
         if not log:
             return
-        em = discord.Embed(title="Message Deletion", color=discord.Color.red(),
-                           timestamp=message.created_at)
+        em = discord.Embed(
+            title="Message Deletion",
+            color=discord.Color.red(),
+            timestamp=message.created_at,
+        )
         em.set_author(name=str(message.author), icon_url=message.author.avatar_url)
         em.set_footer(text=f"Message sent at")
         em.description = f"In {message.channel.mention}:\n>>> {message.content}"
@@ -373,12 +468,17 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
             return
         if before.content == after.content:
             return
-        em = discord.Embed(title="Message Edit", color=discord.Color.blue(),
-                           timestamp=before.created_at)
+        em = discord.Embed(
+            title="Message Edit",
+            color=discord.Color.blue(),
+            timestamp=before.created_at,
+        )
         em.set_author(name=str(before.author), icon_url=before.author.avatar_url)
         em.set_footer(text=f"Message sent at")
-        em.description = (f"[Jump](https://www.discordapp.com/channels/{before.guild.id}/{before.channel.id}/{before.id})\n"
-                          f"In {before.channel.mention}:")
+        em.description = (
+            f"[Jump](https://www.discordapp.com/channels/{before.guild.id}/{before.channel.id}/{before.id})\n"
+            f"In {before.channel.mention}:"
+        )
         em.add_field(name="Before", value=f">>> {before.content}")
         em.add_field(name="After", value=f">>> {after.content}")
         await log.send(embed=em)
@@ -388,8 +488,12 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         log = self.get_log(member.guild.id)
         if not log:
             return
-        em = discord.Embed(title="Member Join", description=f"**{member.mention} joined the server!**",
-                           color=discord.Color.green(), timestamp=d.utcnow())
+        em = discord.Embed(
+            title="Member Join",
+            description=f"**{member.mention} joined the server!**",
+            color=discord.Color.green(),
+            timestamp=d.utcnow(),
+        )
         em.set_thumbnail(url=member.avatar_url)
         await log.send(embed=em)
 
@@ -398,8 +502,12 @@ class Moderation(commands.Cog, name = ":police_car: Moderation"):
         log = self.get_log(user.guild.id)
         if not log:
             return
-        em = discord.Embed(title="Member Left", description=f"**{user.mention} left the server**",
-                           color=discord.Color.red(), timestamp=d.utcnow())
+        em = discord.Embed(
+            title="Member Left",
+            description=f"**{user.mention} left the server**",
+            color=discord.Color.red(),
+            timestamp=d.utcnow(),
+        )
         em.set_thumbnail(url=user.avatar_url)
         await log.send(embed=em)
 

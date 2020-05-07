@@ -20,9 +20,9 @@ class Admin(commands.Cog):
     @commands.command(
         name="reload",
         description="Reload an extension",
-        aliases=['load'],
+        aliases=["load"],
         usage="[cog]",
-        hidden=True
+        hidden=True,
     )
     @commands.is_owner()
     async def _reload(self, ctx, cog="all"):
@@ -32,15 +32,23 @@ class Admin(commands.Cog):
             for ext in self.bot.cogs_to_load:
                 try:
                     self.bot.reload_extension(ext)
-                    msg += f"**<a:cool_ok_sign:699837382433701998> Reloaded** `{ext}`\n\n"
+                    msg += (
+                        f"**<a:cool_ok_sign:699837382433701998> Reloaded** `{ext}`\n\n"
+                    )
                     self.log.info(f"Extension '{cog.lower()}' successfully reloaded.")
 
                 except Exception as e:
-                    traceback_data = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
-                    msg += (f"**:warning: Extension `{ext}` not loaded.**\n"
-                            f"```py\n{traceback_data}```\n\n")
-                    self.log.warning(f"Extension 'cogs.{cog.lower()}' not loaded.\n"
-                                     f"{traceback_data}")
+                    traceback_data = "".join(
+                        traceback.format_exception(type(e), e, e.__traceback__, 1)
+                    )
+                    msg += (
+                        f"**:warning: Extension `{ext}` not loaded.**\n"
+                        f"```py\n{traceback_data}```\n\n"
+                    )
+                    self.log.warning(
+                        f"Extension 'cogs.{cog.lower()}' not loaded.\n"
+                        f"{traceback_data}"
+                    )
             return await ctx.send(msg)
 
         try:
@@ -48,9 +56,15 @@ class Admin(commands.Cog):
             await ctx.send(f"<a:cool_ok_sign:699837382433701998>")
             self.log.info(f"Extension '{cog.lower()}' successfully reloaded.")
         except Exception as e:
-            traceback_data = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
-            await ctx.send(f"**:warning: Extension `{cog.lower()}` not loaded.**\n```py\n{traceback_data}```")
-            self.log.warning(f"Extension 'cogs.{cog.lower()}' not loaded.\n{traceback_data}")
+            traceback_data = "".join(
+                traceback.format_exception(type(e), e, e.__traceback__, 1)
+            )
+            await ctx.send(
+                f"**:warning: Extension `{cog.lower()}` not loaded.**\n```py\n{traceback_data}```"
+            )
+            self.log.warning(
+                f"Extension 'cogs.{cog.lower()}' not loaded.\n{traceback_data}"
+            )
 
     @commands.group(name="cog")
     @commands.is_owner()
@@ -72,21 +86,29 @@ class Admin(commands.Cog):
             return f"{megs}mb"
         return f"{gigs}gb"
 
-    @commands.group(name="process", hidden=True, aliases=["computer", "comp", "cpu", "ram"])
+    @commands.group(
+        name="process", hidden=True, aliases=["computer", "comp", "cpu", "ram"]
+    )
     @commands.is_owner()
     async def _process(self, ctx):
-        em = discord.Embed(title="Current Process Stats", color=discord.Color.teal(),
-                           timestamp=d.utcnow())
-        em.add_field(name="CPU", value=f"{psutil.cpu_percent()}% used with {psutil.cpu_count()} CPU(s)")
+        em = discord.Embed(
+            title="Current Process Stats",
+            color=discord.Color.teal(),
+            timestamp=d.utcnow(),
+        )
+        em.add_field(
+            name="CPU",
+            value=f"{psutil.cpu_percent()}% used with {psutil.cpu_count()} CPU(s)",
+        )
         mem = psutil.virtual_memory()
         em.add_field(
             name="Virtual Memory",
-            value=f"{mem.percent}% used\n{self.readable(mem.used)}/{self.readable(mem.total)}"
+            value=f"{mem.percent}% used\n{self.readable(mem.used)}/{self.readable(mem.total)}",
         )
-        disk = psutil.disk_usage('/')
+        disk = psutil.disk_usage("/")
         em.add_field(
             name="Disk",
-            value=f"{disk.percent}% used\n{self.readable(disk.used)}/{self.readable(disk.total)}"
+            value=f"{disk.percent}% used\n{self.readable(disk.used)}/{self.readable(disk.total)}",
         )
 
         await ctx.send(embed=em)
@@ -101,13 +123,11 @@ class Admin(commands.Cog):
         if not self.bot.previous_error:
             return await ctx.send("No previous error cached.")
         e = self.bot.previous_error
-        error = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
+        error = "".join(traceback.format_exception(type(e), e, e.__traceback__, 1))
         await ctx.send(f"```py\n{error}```")
 
     @commands.command(
-        name="logout",
-        description="Logs out and shuts down bot",
-        hidden=True
+        name="logout", description="Logs out and shuts down bot", hidden=True
     )
     @commands.is_owner()
     async def logout_command(self, ctx):
@@ -116,8 +136,9 @@ class Admin(commands.Cog):
         await self.bot.session.close()
         await self.bot.logout()
 
-    @commands.group(description="DMs with the bot", aliases=["dms"],
-                    invoke_without_command=True)
+    @commands.group(
+        description="DMs with the bot", aliases=["dms"], invoke_without_command=True
+    )
     @commands.is_owner()
     async def dm(self, ctx):
         await self.all_dms(ctx)
@@ -151,8 +172,11 @@ class Admin(commands.Cog):
     async def dm_listener(self, message):
         if isinstance(message.channel, discord.DMChannel) and not message.author.bot:
             channel = self.bot.get_channel(679841169248747696)
-            em = discord.Embed(description=message.clean_content,
-                               color=discord.Color.blue(), timestamp=d.utcnow())
+            em = discord.Embed(
+                description=message.clean_content,
+                color=discord.Color.blue(),
+                timestamp=d.utcnow(),
+            )
             em.set_author(name=message.author, icon_url=message.author.avatar_url)
             em.set_footer(text="Incoming DM")
             return await channel.send(embed=em)

@@ -12,15 +12,40 @@ from random import choice
 
 from .utils import aioxkcd
 from .utils.utils import is_int
+
 # from .utils.utils import thesaurize
 
-num2words1 = {1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five',
-              6: 'six', 7: 'seven', 8: 'eight', 9: 'nine', 10: 'ten',
-              11: 'eleven', 12: 'twelve', 13: 'thirteen', 14: 'fourteen',
-              15: 'fifteen', 16: 'sixteen', 17: 'seventeen', 18: 'eighteen',
-              19: 'nineteen'}
-num2words2 = ['twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy',
-              'eighty', 'ninety']
+num2words1 = {
+    1: "one",
+    2: "two",
+    3: "three",
+    4: "four",
+    5: "five",
+    6: "six",
+    7: "seven",
+    8: "eight",
+    9: "nine",
+    10: "ten",
+    11: "eleven",
+    12: "twelve",
+    13: "thirteen",
+    14: "fourteen",
+    15: "fifteen",
+    16: "sixteen",
+    17: "seventeen",
+    18: "eighteen",
+    19: "nineteen",
+}
+num2words2 = [
+    "twenty",
+    "thirty",
+    "forty",
+    "fifty",
+    "sixty",
+    "seventy",
+    "eighty",
+    "ninety",
+]
 
 
 class Fun(commands.Cog, name=":tada: Fun"):
@@ -37,24 +62,26 @@ class Fun(commands.Cog, name=":tada: Fun"):
             return num2words1[num]
         elif 20 <= num <= 99:
             tens, below_ten = divmod(num, 10)
-            return num2words2[tens - 2] + '-' + num2words1[below_ten]
+            return num2words2[tens - 2] + "-" + num2words1[below_ten]
         else:
             return str(num)
 
     @commands.command(description="Flip a coin.")
     async def flipcoin(self, ctx):
-        result = random.choice(['heads', 'tails'])
+        result = random.choice(["heads", "tails"])
         await ctx.send(f"You flipped a **{result}**.")
 
     @commands.group(
-        description=("Roll a die or two. "
-                     "Also see `c.rolldice sides [# of sides]`"),
-        usage="<# of dice>", aliases=['diceroll'],
-        invoke_without_command=True)
+        description=("Roll a die or two. " "Also see `c.rolldice sides [# of sides]`"),
+        usage="<# of dice>",
+        aliases=["diceroll"],
+        invoke_without_command=True,
+    )
     async def rolldice(self, ctx, dice: int = 1):
         if dice > 10:
-            return await ctx.send(":warning: Too many dice. "
-                                  "You can roll up to 10 dice.")
+            return await ctx.send(
+                ":warning: Too many dice. " "You can roll up to 10 dice."
+            )
         rolls = []
         for i in range(dice):
             rolls.append(random.randrange(1, 6))
@@ -63,20 +90,25 @@ class Fun(commands.Cog, name=":tada: Fun"):
             return await ctx.send(f":game_die: You rolled **{result}**.")
 
         word_rolls = [f"**{self.number(num)}**" for num in rolls]
-        await ctx.send(f":game_die: You rolled {', '.join(word_rolls[:-1])} "
-                       f"and **{word_rolls[-1]}** for a "
-                       f"total of **{self.number(sum(rolls))}**.")
+        await ctx.send(
+            f":game_die: You rolled {', '.join(word_rolls[:-1])} "
+            f"and **{word_rolls[-1]}** for a "
+            f"total of **{self.number(sum(rolls))}**."
+        )
 
-    @rolldice.command(name="sides",
-                      description="Roll a dice with a specified # of sizes.",
-                      aliases=['side'], usage="[# of sides] <# of dice>")
+    @rolldice.command(
+        name="sides",
+        description="Roll a dice with a specified # of sizes.",
+        aliases=["side"],
+        usage="[# of sides] <# of dice>",
+    )
     async def rolldice_sides(self, ctx, sides: int = 6, dice: int = 1):
         if dice > 10:
-            return await ctx.send(":warning: Too many dice. "
-                                  "You can roll up to 10 dice.")
+            return await ctx.send(
+                ":warning: Too many dice. " "You can roll up to 10 dice."
+            )
         if sides < 2:
-            return await ctx.send(":warning: You must have "
-                                  "more than two sides.")
+            return await ctx.send(":warning: You must have " "more than two sides.")
         rolls = []
         for i in range(dice):
             rolls.append(random.randrange(1, sides))
@@ -85,13 +117,16 @@ class Fun(commands.Cog, name=":tada: Fun"):
             return await ctx.send(f":game_die: You rolled **{result}**.")
 
         word_rolls = [f"**{self.number(num)}**" for num in rolls]
-        await ctx.send(f":game_die: You rolled {', '.join(word_rolls[:-1])} "
-                       f"and **{word_rolls[-1]}** for a "
-                       f"total of **{self.number(sum(rolls))}**.")
+        await ctx.send(
+            f":game_die: You rolled {', '.join(word_rolls[:-1])} "
+            f"and **{word_rolls[-1]}** for a "
+            f"total of **{self.number(sum(rolls))}**."
+        )
 
     async def wait_for_message(self, ctx, timeout=60):
         def check(ms):
             return ms.author == ctx.author and ms.channel == ctx.channel
+
         try:
             return await self.bot.wait_for("message", check=check, timeout=60)
         except asyncio.TimeoutError:
@@ -101,10 +136,12 @@ class Fun(commands.Cog, name=":tada: Fun"):
         name="birthday",
         description="Sends a user a bday message straight to their DMs",
         aliases=["bday"],
-        usage="[mentioned user] [IRL Name ('None' to mention them)] [age]"
+        usage="[mentioned user] [IRL Name ('None' to mention them)] [age]",
     )
     async def birthday_command(self, ctx):
-        await ctx.send("Who would you like to send the birthday message to? They must be in this server.")
+        await ctx.send(
+            "Who would you like to send the birthday message to? They must be in this server."
+        )
         msg = await self.wait_for_message(ctx)
         if msg.mentions:
             user = msg.mentions[0]
@@ -119,10 +156,14 @@ class Fun(commands.Cog, name=":tada: Fun"):
         try:
             age = int(msg.content)
         except ValueError:
-            return await ctx.send("Please specify a non-word number. Ex: 23 and not twenty-three")
+            return await ctx.send(
+                "Please specify a non-word number. Ex: 23 and not twenty-three"
+            )
         age_to_grow_on = str(age + 1)
 
-        await ctx.send("Would you like to specify a name for the recipient? Type `no` to use their username.")
+        await ctx.send(
+            "Would you like to specify a name for the recipient? Type `no` to use their username."
+        )
         msg = await self.wait_for_message(ctx)
         if msg.content.lower() == "no":
             name = recipient.name
@@ -130,9 +171,11 @@ class Fun(commands.Cog, name=":tada: Fun"):
             name = msg.content
 
         def get_ordinal():
-            return lambda n: "%d%s" % (n, "tsnrhtdd"[(math.floor(n/10) % 10 !=
-                                                      1) * (n % 10 < 4) *
-                                                     n % 10::4])
+            return lambda n: "%d%s" % (
+                n,
+                "tsnrhtdd"[(math.floor(n / 10) % 10 != 1) * (n % 10 < 4) * n % 10 :: 4],
+            )
+
         ordinal = get_ordinal()
 
         msg = f"Happy {ordinal(int(age))} Birthday, {name}!\n"
@@ -160,7 +203,7 @@ class Fun(commands.Cog, name=":tada: Fun"):
     @commands.command(
         name="downvote",
         description="Downvotes previous message or specified message",
-        usage="[optional message id]"
+        usage="[optional message id]",
     )
     async def downvote_commmand(self, ctx, *args):
 
@@ -183,8 +226,7 @@ class Fun(commands.Cog, name=":tada: Fun"):
 
         if len(args) < 1:
 
-            latest = await ctx.channel.history(limit=100,
-                                               before=ctx.message).get()
+            latest = await ctx.channel.history(limit=100, before=ctx.message).get()
 
             base = self.bot.get_guild(454469821376102410)
 
@@ -192,17 +234,16 @@ class Fun(commands.Cog, name=":tada: Fun"):
 
             await latest.add_reaction(emoji)
 
-            self.log.info(f"{str(ctx.author)} used the downvote command "
-                          "on previous message")
+            self.log.info(
+                f"{str(ctx.author)} used the downvote command " "on previous message"
+            )
             em = discord.Embed(
-                title="I just downvoted your message.\nFAQ",
-                timestamp=d.utcnow()
-                )
+                title="I just downvoted your message.\nFAQ", timestamp=d.utcnow()
+            )
             em.add_field(
                 name="What does this mean?",
-                value=("The amount of points on your message has "
-                       "decreased by one."),
-                inline=False
+                value=("The amount of points on your message has " "decreased by one."),
+                inline=False,
             )
             em.add_field(
                 name="Why did you do this?",
@@ -212,7 +253,7 @@ class Fun(commands.Cog, name=":tada: Fun"):
                        Rudeness towards other users,\n• \
                        Spreading incorrect information,\n• \
                        Sarcasm not correctly flagged with a `/s`.",
-                inline=False
+                inline=False,
             )
             em.add_field(
                 name="Am I banned from the Discord?",
@@ -221,11 +262,13 @@ class Fun(commands.Cog, name=":tada: Fun"):
                        Otherwise I will be forced to issue an additional \
                        downvote, which may put your messaging \
                        privileges in jeopardy.",
-                inline=False
+                inline=False,
             )
             em.add_field(
-                name=("I don't believe my message deserved a downvote. "
-                      "Can you un-downvote it?"),
+                name=(
+                    "I don't believe my message deserved a downvote. "
+                    "Can you un-downvote it?"
+                ),
                 value="Sure, mistakes happen. But only in exceedingly rare \
                        circumstances will I undo a downvote. \
                        If you would like to issue an appeal, \
@@ -234,7 +277,7 @@ class Fun(commands.Cog, name=":tada: Fun"):
                        minutes. Do note, however, that \
                        over 99.9% of downvote appeals are rejected, \
                        and yours is likely no exception.",
-                inline=False
+                inline=False,
             )
             em.add_field(
                 name="How can I prevent this from happening in the future?",
@@ -245,27 +288,32 @@ class Fun(commands.Cog, name=":tada: Fun"):
                          improve your conduct. Remember: Discord is \
                          a privilege, not a right.\n\n\
                          [What's this?](https://www.reddit.com/r/copypasta/comments/dfcuzs/i_just_downvoted_your_comment/)",
-                inline=False
+                inline=False,
             )
             em.set_footer(
-                    text=f"Requested by {str(ctx.author)}",
-                    icon_url=self.bot.user.avatar_url
-                    )
+                text=f"Requested by {str(ctx.author)}",
+                icon_url=self.bot.user.avatar_url,
+            )
 
             await ctx.send(embed=em)
 
         else:
-            self.log.info(f"{str(ctx.author)} used the downvote command "
-                          "on custom message")
+            self.log.info(
+                f"{str(ctx.author)} used the downvote command " "on custom message"
+            )
 
             try:
-                await ctx.send("This feature is in development.\n~~:warning: "
-                               "Message not found! "
-                               "Please use a vaild message ID.~~")
+                await ctx.send(
+                    "This feature is in development.\n~~:warning: "
+                    "Message not found! "
+                    "Please use a vaild message ID.~~"
+                )
             except Exception():
-                await ctx.send("This feature is in development.\n~~:warning: "
-                               "Message not found! "
-                               "Please use a vaild message ID.~~")
+                await ctx.send(
+                    "This feature is in development.\n~~:warning: "
+                    "Message not found! "
+                    "Please use a vaild message ID.~~"
+                )
 
     @commands.command(hidden=True)
     @commands.is_owner()
@@ -273,8 +321,12 @@ class Fun(commands.Cog, name=":tada: Fun"):
         importlib.reload(aioxkcd)
         await ctx.send("It has been done.")
 
-    @commands.group(name="xkcd", description="Fetch an xdcd comic",
-                    usage="<comic> (random if left blank)", invoke_without_command=True)
+    @commands.group(
+        name="xkcd",
+        description="Fetch an xdcd comic",
+        usage="<comic> (random if left blank)",
+        invoke_without_command=True,
+    )
     async def _xkcd(self, ctx, number: int = None):
         if not number:
             return await self._random_xkcd(ctx)
@@ -282,32 +334,53 @@ class Fun(commands.Cog, name=":tada: Fun"):
             comic = await aioxkcd.get_comic(number)
         except aioxkcd.XkcdError:
             return await ctx.send("That comic does not exist!")
-        em = discord.Embed(title=f"#{comic.number} - {comic.title}", description=comic.alt_text,
-                           color=discord.Color.blurple(), url=comic.url)
+        em = discord.Embed(
+            title=f"#{comic.number} - {comic.title}",
+            description=comic.alt_text,
+            color=discord.Color.blurple(),
+            url=comic.url,
+        )
         em.set_image(url=comic.image_url)
-        em.set_footer(text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url)
+        em.set_footer(
+            text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url
+        )
         await ctx.send(embed=em)
 
-    @_xkcd.command(name="random", description="Fetch a random xdcd comic",
-                   aliases=["r"])
+    @_xkcd.command(
+        name="random", description="Fetch a random xdcd comic", aliases=["r"]
+    )
     async def _random_xkcd(self, ctx):
         comic = await aioxkcd.get_random_comic()
-        em = discord.Embed(title=f"#{comic.number} - {comic.title}", description=comic.alt_text,
-                           color=discord.Color.blurple(), url=comic.url)
+        em = discord.Embed(
+            title=f"#{comic.number} - {comic.title}",
+            description=comic.alt_text,
+            color=discord.Color.blurple(),
+            url=comic.url,
+        )
         em.set_image(url=comic.image_url)
-        em.set_footer(text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url)
+        em.set_footer(
+            text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url
+        )
         await ctx.send(embed=em)
 
     @_xkcd.command(name="latest", description="Fetch the latest xkcd comic")
     async def _latest_xkcd(self, ctx):
         comic = await aioxkcd.get_latest_comic()
-        em = discord.Embed(title=f"#{comic.number} - {comic.title}", description=comic.alt_text,
-                           color=discord.Color.blurple(), url=comic.url)
+        em = discord.Embed(
+            title=f"#{comic.number} - {comic.title}",
+            description=comic.alt_text,
+            color=discord.Color.blurple(),
+            url=comic.url,
+        )
         em.set_image(url=comic.image_url)
-        em.set_footer(text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url)
+        em.set_footer(
+            text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url
+        )
         await ctx.send(embed=em)
 
-    @commands.command(description="Generate a typing message for a name", usage="[name]")
+    @commands.command(
+        description="Generate a typing message for a name", usage="[name]"
+    )
     async def typing(self, ctx, *, member=None):
         if not member:
             name = ctx.author.display_name

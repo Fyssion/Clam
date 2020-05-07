@@ -60,9 +60,15 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
     ytdl = youtube_dl.YoutubeDL(YTDL_OPTIONS)
 
-    def __init__(self, ctx: commands.Context,
-                 source: discord.FFmpegPCMAudio, *, data: dict,
-                 volume: float = 0.5, filename = None):
+    def __init__(
+        self,
+        ctx: commands.Context,
+        source: discord.FFmpegPCMAudio,
+        *,
+        data: dict,
+        volume: float = 0.5,
+        filename=None,
+    ):
         super().__init__(source, volume)
 
         self.ytdl_source = source
@@ -96,15 +102,27 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
     def remake_source(self):
         print(self.filename)
-        return YTDLSource(self.ctx, discord.FFmpegPCMAudio(self.filename, **self.FFMPEG_OPTIONS), data=self.data, filename=self.filename)
+        return YTDLSource(
+            self.ctx,
+            discord.FFmpegPCMAudio(self.filename, **self.FFMPEG_OPTIONS),
+            data=self.data,
+            filename=self.filename,
+        )
 
     @classmethod
-    async def create_source(cls, ctx: commands.Context,
-                            search: str, *, loop: asyncio.BaseEventLoop = None,
-                            send_errors=True):
+    async def create_source(
+        cls,
+        ctx: commands.Context,
+        search: str,
+        *,
+        loop: asyncio.BaseEventLoop = None,
+        send_errors=True,
+    ):
         loop = loop or asyncio.get_event_loop()
 
-        partial = functools.partial(cls.ytdl.extract_info, search, download=False, process=False)
+        partial = functools.partial(
+            cls.ytdl.extract_info, search, download=False, process=False
+        )
         try:
             data = await loop.run_in_executor(None, partial)
         except youtube_dl.DownloadError as e:
@@ -126,7 +144,9 @@ class YTDLSource(discord.PCMVolumeTransformer):
                     break
 
             if process_info is None:
-                raise YTDLError("Couldn't find anything that matches `{}`".format(search))
+                raise YTDLError(
+                    "Couldn't find anything that matches `{}`".format(search)
+                )
 
         webpage_url = process_info["webpage_url"]
         filename = cls.ytdl.prepare_filename(process_info)[:-3] + ".webm"
@@ -136,7 +156,9 @@ class YTDLSource(discord.PCMVolumeTransformer):
             download = False
         else:
             download = True
-        partial = functools.partial(cls.ytdl.extract_info, webpage_url, download=download)
+        partial = functools.partial(
+            cls.ytdl.extract_info, webpage_url, download=download
+        )
         try:
             processed_info = await loop.run_in_executor(None, partial)
         except youtube_dl.DownloadError as e:
@@ -157,15 +179,26 @@ class YTDLSource(discord.PCMVolumeTransformer):
                         info = processed_info["entries"].pop(0)
                     except IndexError as e:
                         print(e)
-                        raise YTDLError("Couldn't retrieve any matches for `{}`".format(webpage_url))
+                        raise YTDLError(
+                            "Couldn't retrieve any matches for `{}`".format(webpage_url)
+                        )
             filename = cls.ytdl.prepare_filename(info)
-            return cls(ctx, discord.FFmpegPCMAudio(filename, **cls.FFMPEG_OPTIONS), data=info, filename=filename)
+            return cls(
+                ctx,
+                discord.FFmpegPCMAudio(filename, **cls.FFMPEG_OPTIONS),
+                data=info,
+                filename=filename,
+            )
 
     @classmethod
-    async def get_playlist(cls, ctx: commands.Context, search: str, *, loop: asyncio.BaseEventLoop = None):
+    async def get_playlist(
+        cls, ctx: commands.Context, search: str, *, loop: asyncio.BaseEventLoop = None
+    ):
         loop = loop or asyncio.get_event_loop()
 
-        partial = functools.partial(cls.ytdl.extract_info, search, download=False, process=False)
+        partial = functools.partial(
+            cls.ytdl.extract_info, search, download=False, process=False
+        )
         unproccessed = await loop.run_in_executor(None, partial)
 
         if unproccessed is None:
@@ -206,13 +239,19 @@ class YTDLSource(discord.PCMVolumeTransformer):
                             info = data["entries"].pop(0)
                         except IndexError as e:
                             print(e)
-                            await ctx.send(f"Couldn't retrieve any matches for `{webpage_url}`")
+                            await ctx.send(
+                                f"Couldn't retrieve any matches for `{webpage_url}`"
+                            )
                 filename = cls.ytdl.prepare_filename(info)
-                source = cls(ctx, discord.FFmpegPCMAudio(filename, **cls.FFMPEG_OPTIONS), data=info, filename=filename)
+                source = cls(
+                    ctx,
+                    discord.FFmpegPCMAudio(filename, **cls.FFMPEG_OPTIONS),
+                    data=info,
+                    filename=filename,
+                )
                 playlist.append(source)
 
         return playlist, counter
-
 
     @staticmethod
     def parse_duration(duration: int):
@@ -243,9 +282,9 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
         duration = ""
         if hours > 0:
-            duration += (f"{hours}:")
+            duration += f"{hours}:"
             minutes = f"{minutes:02d}"
-        duration += (f"{minutes}:{seconds:02d}")
+        duration += f"{minutes}:{seconds:02d}"
         return duration
 
 
@@ -273,7 +312,7 @@ class Song:
         em = discord.Embed(
             title=title,
             description=f"```css\n{src.title}\n```",
-            color=discord.Color.blurple()
+            color=discord.Color.blurple(),
         )
         if not duration:
             em.add_field(name="Duration", value=src.duration)
@@ -281,13 +320,11 @@ class Song:
             seconds = duration.total_seconds()
             formatted = YTDLSource.timestamp_duration(int(seconds))
             bar = self.create_duration(seconds, src.total_seconds)
-            em.add_field(name="Duration", value=f"{formatted}/{src.duration} {bar}", inline=False)
-        em.add_field(name="Requested by",
-                     value=self.requester.mention)
-        em.add_field(
-            name="Uploader",
-            value=f"[{src.uploader}]({src.uploader_url})"
-        )
+            em.add_field(
+                name="Duration", value=f"{formatted}/{src.duration} {bar}", inline=False
+            )
+        em.add_field(name="Requested by", value=self.requester.mention)
+        em.add_field(name="Uploader", value=f"[{src.uploader}]({src.uploader_url})")
         em.add_field(name="URL", value=f"[Click]({src.url})")
         em.set_thumbnail(url=self.source.thumbnail)
 
@@ -300,8 +337,7 @@ class Song:
 class SongQueue(asyncio.Queue):
     def __getitem__(self, item):
         if isinstance(item, slice):
-            return list(itertools.islice(self._queue,
-            item.start, item.stop, item.step))
+            return list(itertools.islice(self._queue, item.start, item.stop, item.step))
         else:
             return self._queue[item]
 
@@ -343,15 +379,9 @@ class Player:
         self._loop = False
         self._loop_queue = False
         self._volume = 0.5
-        self._votes = {
-            "skip": set(),
-            "shuffle": set(),
-            "remove": set()
-            }
+        self._votes = {"skip": set(), "shuffle": set(), "remove": set()}
 
-        self.audio_player = bot.loop.create_task(
-            self.player_loop()
-        )
+        self.audio_player = bot.loop.create_task(self.player_loop())
 
     def __del__(self):
         self.audio_player.cancel()
@@ -391,8 +421,7 @@ class Player:
                 # The player is techincally in
                 # the middle of playing a song
                 return True
-            return (self.voice.is_playing() is True and
-                    self.current is not None)
+            return self.voice.is_playing() is True and self.current is not None
         return self.voice is not None and self.current is not None
 
     @property
@@ -488,8 +517,8 @@ class SearchPages(menus.ListPageSource):
             queue += f"`{i+1}.` [{song.source.title}]({song.source.url}) `{song.source.duration}` {song.source.requester.mention}\n"
 
         em = discord.Embed(
-            title = "**:page_facing_up: Queue**",
-            description=f"**{len(ctx.player.songs)} Song(s):**\n{queue}"
+            title="**:page_facing_up: Queue**",
+            description=f"**{len(ctx.player.songs)} Song(s):**\n{queue}",
         )
         if ctx.player.loop_queue:
             em.title += " (:repeat: looping)"
@@ -508,15 +537,19 @@ def is_dj():
         author = ctx.author
         upper = discord.utils.get(ctx.guild.roles, name="DJ")
         lower = discord.utils.get(ctx.guild.roles, name="dj")
-        return (author.guild_permissions.manage_guild or
-                upper in author.roles or
-                lower in author.roles or
-                author.id == dev)
+        return (
+            author.guild_permissions.manage_guild
+            or upper in author.roles
+            or lower in author.roles
+            or author.id == dev
+        )
+
     return commands.check(predicate)
 
 
 class Music(commands.Cog, name=":notes: Music"):
     """Listen to music in any voice channel!\nUse `c.play` to play a song."""
+
     def __init__(self, bot):
         self.bot = bot
         self.players = {}
@@ -540,7 +573,9 @@ class Music(commands.Cog, name=":notes: Music"):
 
     def cog_check(self, ctx):
         if not ctx.guild:
-            raise commands.NoPrivateMessage("This command can't be used in DM channels.")
+            raise commands.NoPrivateMessage(
+                "This command can't be used in DM channels."
+            )
 
         return True
 
@@ -558,6 +593,7 @@ class Music(commands.Cog, name=":notes: Music"):
                 return False
             if af.channel:
                 return True
+
         if member.bot:
             return
         player = self.players.get(member.guild.id)
@@ -580,9 +616,13 @@ class Music(commands.Cog, name=":notes: Music"):
                 if songs:
                     url = await self.post("\n".join(songs))
                     if url is None:
-                        return await player.text_channel.send("Sorry, I couldn't save your queue.")
-                    await player.text_channel.send("**I saved your queue!**\n"
-                                f"To resume where you left off, use this link with the `play` command: **{url}**")
+                        return await player.text_channel.send(
+                            "Sorry, I couldn't save your queue."
+                        )
+                    await player.text_channel.send(
+                        "**I saved your queue!**\n"
+                        f"To resume where you left off, use this link with the `play` command: **{url}**"
+                    )
             print("Resuming!")
             player.resume()
 
@@ -592,9 +632,10 @@ class Music(commands.Cog, name=":notes: Music"):
                 await func(param)
             else:
                 await func()
+
         voter = ctx.message.author
 
-        if_is_requester = (voter == ctx.player.current.requester)
+        if_is_requester = voter == ctx.player.current.requester
         if_has_perms = voter.guild_permissions.manage_guild
 
         upper = discord.utils.get(ctx.guild.roles, name="DJ")
@@ -621,8 +662,10 @@ class Music(commands.Cog, name=":notes: Music"):
                 ctx.player._votes[cmd].clear()
                 await run_func()
             else:
-                await ctx.send(f"{cmd.capitalize()} vote added, "
-                               f"currently at `{total_votes}/{required_votes}`")
+                await ctx.send(
+                    f"{cmd.capitalize()} vote added, "
+                    f"currently at `{total_votes}/{required_votes}`"
+                )
 
         else:
             await ctx.send(f"You have already voted to {cmd}.")
@@ -633,8 +676,12 @@ class Music(commands.Cog, name=":notes: Music"):
         importlib.reload(utils)
         await ctx.send(f"Reloaded utils")
 
-    @commands.command(name="join", description="Joins a voice channel.",
-                      aliases=["connect"], invoke_without_subcommand=True)
+    @commands.command(
+        name="join",
+        description="Joins a voice channel.",
+        aliases=["connect"],
+        invoke_without_subcommand=True,
+    )
     async def _join(self, ctx):
         destination = ctx.author.voice.channel
         ctx.player.text_channel = ctx.channel
@@ -644,17 +691,21 @@ class Music(commands.Cog, name=":notes: Music"):
             ctx.player.voice = await destination.connect()
         v_emote = "<:voice_channel:665577300552843294>"
         t_emote = "<:text_channel:661798072384225307>"
-        await ctx.send(f"**Connected to ** {v_emote}`{destination}` and **bound to** {t_emote}`{ctx.channel}`")
+        await ctx.send(
+            f"**Connected to ** {v_emote}`{destination}` and **bound to** {t_emote}`{ctx.channel}`"
+        )
 
     @commands.command(
         name="summon",
         description="Summons the bot to a voice channel. \
-            If no channel was specified, it joins your channel."
+            If no channel was specified, it joins your channel.",
     )
     @is_dj()
     async def _summon(self, ctx, *, channel: discord.VoiceChannel = None):
         if not channel and not ctx.author.voice:
-            raise VoiceError("You are neither connected to a voice channel nor specified a channel to join.")
+            raise VoiceError(
+                "You are neither connected to a voice channel nor specified a channel to join."
+            )
 
         destination = channel or ctx.author.voice.channel
         ctx.player.text_channel = ctx.channel
@@ -664,16 +715,20 @@ class Music(commands.Cog, name=":notes: Music"):
             ctx.player.voice = await destination.connect()
         v_emote = "<:voice_channel:665577300552843294>"
         t_emote = "<:text_channel:661798072384225307>"
-        await ctx.send(f"**Connected to ** {v_emote}`{destination}` and **bound to** {t_emote}`{ctx.channel}`")
+        await ctx.send(
+            f"**Connected to ** {v_emote}`{destination}` and **bound to** {t_emote}`{ctx.channel}`"
+        )
 
-    async def post(self, content, url='https://hastebin.com'):
-        async with self.bot.session.post(f'{url}/documents', data=content.encode('utf-8')) as post:
-            return url + '/' + (await post.json())['key']
+    async def post(self, content, url="https://hastebin.com"):
+        async with self.bot.session.post(
+            f"{url}/documents", data=content.encode("utf-8")
+        ) as post:
+            return url + "/" + (await post.json())["key"]
 
     @commands.command(
         name="leave",
         description="Clears the queue and leaves the voice channel.",
-        aliases=["disconnect"]
+        aliases=["disconnect"],
     )
     @is_dj()
     async def _leave(self, ctx):
@@ -694,8 +749,10 @@ class Music(commands.Cog, name=":notes: Music"):
             url = await self.post("\n".join(songs))
             if url is None:
                 return await ctx.send("Sorry, I couldn't save your queue.")
-            await ctx.send("**I saved your queue!**\n"
-                           f"To resume where you left off, use this link with the `play` command: **{url}**")
+            await ctx.send(
+                "**I saved your queue!**\n"
+                f"To resume where you left off, use this link with the `play` command: **{url}**"
+            )
 
     def get_volume_emoji(self, volume):
         if volume >= 50:
@@ -705,9 +762,11 @@ class Music(commands.Cog, name=":notes: Music"):
 
     @commands.command(name="volume", description="Sets the volume of the player.")
     async def _volume(self, ctx, *, volume: int = None):
-        return await ctx.send("To change the volume:\n"
-                              "Right click on me in the voice channel, "
-                              "and adjust the `User Volume` slider.")
+        return await ctx.send(
+            "To change the volume:\n"
+            "Right click on me in the voice channel, "
+            "and adjust the `User Volume` slider."
+        )
 
         if not volume:
             volume = ctx.player.volume * 100
@@ -726,15 +785,19 @@ class Music(commands.Cog, name=":notes: Music"):
     @commands.command(
         name="now",
         description="Displays the currently playing song.",
-        aliases=["current", "playing", "np"]
+        aliases=["current", "playing", "np"],
     )
     async def _now(self, ctx):
         if not ctx.player.is_playing:
             return await ctx.send("Not currently playing a song.")
         if ctx.player.voice.is_paused():
-            em = ctx.player.current.create_embed("Currently Paused", ctx.player.duration.get_time())
+            em = ctx.player.current.create_embed(
+                "Currently Paused", ctx.player.duration.get_time()
+            )
         else:
-            em = ctx.player.current.create_embed(duration=ctx.player.duration.get_time())
+            em = ctx.player.current.create_embed(
+                duration=ctx.player.duration.get_time()
+            )
 
         await ctx.send(embed=em)
 
@@ -747,7 +810,11 @@ class Music(commands.Cog, name=":notes: Music"):
             song = ctx.player.current.source.title
             await ctx.send(f"**:pause_button: Paused** `{song}`")
 
-    @commands.command(name="resume", description="Resumes a currently paused song.", aliases=["unpause"])
+    @commands.command(
+        name="resume",
+        description="Resumes a currently paused song.",
+        aliases=["unpause"],
+    )
     @is_dj()
     async def _resume(self, ctx):
 
@@ -756,13 +823,15 @@ class Music(commands.Cog, name=":notes: Music"):
             song = ctx.player.current.source.title
             await ctx.send(f"**:arrow_forward: Resuming** `{song}`")
 
-    @commands.command(name="stop", description="Stops playing song and clears the queue.")
+    @commands.command(
+        name="stop", description="Stops playing song and clears the queue."
+    )
     @is_dj()
     async def _stop(self, ctx):
         if len(ctx.player.songs) > 0:
-                songs = ctx.player.songs.to_list()
-                songs = [s.source.url for s in songs]
-                songs.insert(0, ctx.player.current.source.url)
+            songs = ctx.player.songs.to_list()
+            songs = [s.source.url for s in songs]
+            songs.insert(0, ctx.player.current.source.url)
         else:
             songs = None
         if ctx.player.is_playing:
@@ -781,13 +850,15 @@ class Music(commands.Cog, name=":notes: Music"):
             url = await self.post("\n".join(songs))
             if url is None:
                 return await ctx.send("Sorry, I couldn't save your queue.")
-            await ctx.send("**I saved your queue!**\n"
-                           f"To resume where you left off, use this link with the `play` command: **{url}**")
+            await ctx.send(
+                "**I saved your queue!**\n"
+                f"To resume where you left off, use this link with the `play` command: **{url}**"
+            )
 
     @commands.command(
         name="skip",
         description="Vote to skip a song. The requester can automatically skip.",
-        aliases=["next"]
+        aliases=["next"],
     )
     async def _skip(self, ctx):
         async def skip_song():
@@ -804,7 +875,7 @@ class Music(commands.Cog, name=":notes: Music"):
         description="Shows the player's queue. You can optionally select the page.",
         usage="<page #>",
         aliases=["playlist"],
-        invoke_without_command=True
+        invoke_without_command=True,
     )
     async def _queue(self, ctx, *, page: int = 1):
 
@@ -831,11 +902,14 @@ class Music(commands.Cog, name=":notes: Music"):
         #     em.description = "**:repeat: Loop queue is on**\n" + em.description
         # em.set_footer(text=f"Page {page} of {pages}")
         # await ctx.send(embed=em)
-        pages = menus.MenuPages(source=SearchPages(ctx.player.songs, self.bot), clear_reactions_after=True)
+        pages = menus.MenuPages(
+            source=SearchPages(ctx.player.songs, self.bot), clear_reactions_after=True
+        )
         return await pages.start(ctx)
 
-    @_queue.command(name="save", description="Save the queue to hastebin!",
-                    aliases=["upload"])
+    @_queue.command(
+        name="save", description="Save the queue to hastebin!", aliases=["upload"]
+    )
     @commands.cooldown(1, 10)
     async def _save_queue(self, ctx):
         if len(ctx.player.songs) == 0:
@@ -848,9 +922,8 @@ class Music(commands.Cog, name=":notes: Music"):
             return await ctx.send("Sorry, I couldn't save your queue.")
         await ctx.send(f"**Current queue: {url}**")
 
-    @commands.command(name="shuffle", description = "Shuffles the queue.")
+    @commands.command(name="shuffle", description="Shuffles the queue.")
     async def _shuffle(self, ctx):
-
         async def shuffle_queue():
             ctx.player.songs.shuffle()
             await ctx.send("**:twisted_rightwards_arrows: Shuffled songs**")
@@ -863,7 +936,7 @@ class Music(commands.Cog, name=":notes: Music"):
     @commands.command(
         name="remove",
         description="Removes a song from the queue at a given index.",
-        usage="[song #]"
+        usage="[song #]",
     )
     async def _remove(self, ctx, index: int):
         async def remove_song(index):
@@ -879,7 +952,7 @@ class Music(commands.Cog, name=":notes: Music"):
     @commands.group(
         name="loop",
         description="Loops/unloops the currently playing song.",
-        invoke_without_command=True
+        invoke_without_command=True,
     )
     async def _loop(self, ctx):
 
@@ -893,16 +966,17 @@ class Music(commands.Cog, name=":notes: Music"):
         ctx.player.loop = not ctx.player.loop
         ctx.player.loop_queue = False
         if ctx.player.loop:
-            await ctx.send("**:repeat_one: Now looping** "
-                           f"`{ctx.player.current.source.title}`")
+            await ctx.send(
+                "**:repeat_one: Now looping** " f"`{ctx.player.current.source.title}`"
+            )
         else:
-            await ctx.send("**:repeat_one: :x: No longer looping** "
-                           f"`{ctx.player.current.source.title}`")
+            await ctx.send(
+                "**:repeat_one: :x: No longer looping** "
+                f"`{ctx.player.current.source.title}`"
+            )
 
     @_loop.command(
-        name="playlist",
-        description="Loop the entire playlist.",
-        aliases=["queue"]
+        name="playlist", description="Loop the entire playlist.", aliases=["queue"]
     )
     async def _loop_queue(self, ctx):
         if not ctx.player.is_playing and not ctx.player.loop_queue:
@@ -921,18 +995,17 @@ class Music(commands.Cog, name=":notes: Music"):
     async def get_haste(self, url="https://hastebin.com"):
         parsed = urlparse(url)
         newpath = "/raw" + parsed.path
-        url = (parsed.scheme +
-            "://" +
-            parsed.netloc +
-            newpath)
+        url = parsed.scheme + "://" + parsed.netloc + newpath
 
         try:
             async with timeout(10):
                 async with self.bot.session.get(url) as resp:
                     f = await resp.read()
         except asyncio.TimeoutError:
-            raise TimeoutError(":warning: Could not fetch data from hastebin. \
-            Is the site down? Try https://www.pastebin.com")
+            raise TimeoutError(
+                ":warning: Could not fetch data from hastebin. \
+            Is the site down? Try https://www.pastebin.com"
+            )
             return None
         async with self.bot.session.get(url) as resp:
             f = await resp.read()
@@ -943,20 +1016,30 @@ class Music(commands.Cog, name=":notes: Music"):
         output = await self.get_haste(search)
         if not output or output == """{"message":"Document not found."}""":
             return await ctx.send("That hastebin doesn't exist.")
-        yt_urls = "(?:https?://)?(?:www.)?(?:youtube.com|youtu.be)/(?:watch\?v=)?([^\s]+)"
+        yt_urls = (
+            "(?:https?://)?(?:www.)?(?:youtube.com|youtu.be)/(?:watch\?v=)?([^\s]+)"
+        )
         if output == "404: Not Found":
-            return await ctx.send(":warning: This is not a hastebin or hastebin-like website.")
+            return await ctx.send(
+                ":warning: This is not a hastebin or hastebin-like website."
+            )
         if len(re.findall(yt_urls, output)) == 0:
-            await ctx.send(":warning: There are no YouTube URLs in this bin. "
-                           "Are you sure this is the correct site?\n**Continuing download...**")
+            await ctx.send(
+                ":warning: There are no YouTube URLs in this bin. "
+                "Are you sure this is the correct site?\n**Continuing download...**"
+            )
         videos = output.splitlines()
         playlist = []
         failed_songs = 0
         for video in videos:
             try:
-                source = await YTDLSource.create_source(ctx, video, loop=self.bot.loop, send_errors=False)
+                source = await YTDLSource.create_source(
+                    ctx, video, loop=self.bot.loop, send_errors=False
+                )
             except YTDLError as e:
-                await ctx.send(f"An error occurred while processing this request: ```py {str(e)}```")
+                await ctx.send(
+                    f"An error occurred while processing this request: ```py {str(e)}```"
+                )
             else:
                 if source:
                     playlist.append(source)
@@ -966,7 +1049,7 @@ class Music(commands.Cog, name=":notes: Music"):
         em = discord.Embed(
             title="**:page_facing_up: Enqueued:**",
             timestamp=d.utcnow(),
-            color=discord.Color.blurple()
+            color=discord.Color.blurple(),
         )
         description = ""
         total_duration = 0
@@ -985,22 +1068,33 @@ class Music(commands.Cog, name=":notes: Music"):
         total_duration = YTDLSource.parse_duration(total_duration)
         description += f"\nTotal duration: {total_duration}"
         if failed_songs > 0:
-            description += f"\n:warning: Sorry, {failed_songs} song(s) failed to download."
+            description += (
+                f"\n:warning: Sorry, {failed_songs} song(s) failed to download."
+            )
 
         em.description = description
-        em.set_footer(text=f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
-                      icon_url=self.bot.user.avatar_url)
+        em.set_footer(
+            text=f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
+            icon_url=self.bot.user.avatar_url,
+        )
         await ctx.send(embed=em)
 
     async def fetch_yt_playlist(self, ctx, url):
         try:
-            playlist, failed_songs = await YTDLSource.get_playlist(ctx, url, loop=self.bot.loop)
+            playlist, failed_songs = await YTDLSource.get_playlist(
+                ctx, url, loop=self.bot.loop
+            )
         except YTDLError as e:
             print(e)
-            await ctx.send(f"An error occurred while processing this request: ```py {str(e)}```")
+            await ctx.send(
+                f"An error occurred while processing this request: ```py {str(e)}```"
+            )
         else:
-            em = discord.Embed(title="**:page_facing_up: Enqueued:**",
-                               timestamp=d.utcnow(), color=0xFF0000)
+            em = discord.Embed(
+                title="**:page_facing_up: Enqueued:**",
+                timestamp=d.utcnow(),
+                color=0xFF0000,
+            )
             description = ""
             total_duration = 0
             for i, source in enumerate(playlist):
@@ -1012,7 +1106,9 @@ class Music(commands.Cog, name=":notes: Music"):
                 await ctx.player.songs.put(song)
                 total_duration += int(source.data.get("duration"))
                 if i < 9:
-                    description += f"\n• [{source.title}]({source.url}) `{source.duration}`"
+                    description += (
+                        f"\n• [{source.title}]({source.url}) `{source.duration}`"
+                    )
                 elif i == 9 and len(playlist) > 10:
                     songs_left = len(playlist) - (i + 1)
                     description += f"\n• [{source.title}]({source.url}) \
@@ -1021,25 +1117,35 @@ class Music(commands.Cog, name=":notes: Music"):
             total_duration = YTDLSource.parse_duration(total_duration)
             description += f"\nTotal duration: {total_duration}"
             if failed_songs > 0:
-                description += f"\n:warning: Sorry, {failed_songs} song(s) failed to download."
+                description += (
+                    f"\n:warning: Sorry, {failed_songs} song(s) failed to download."
+                )
 
             em.description = description
-            em.set_footer(text=f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
-                          icon_url=self.bot.user.avatar_url)
+            em.set_footer(
+                text=f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
+                icon_url=self.bot.user.avatar_url,
+            )
             await ctx.send(embed=em)
 
     @commands.command(
         name="play",
         description="Search for a song and play it.",
         aliases=["p", "yt"],
-        usage="[song]"
+        usage="[song]",
     )
     async def _play(self, ctx, *, search: str = None):
 
-        if not search and ctx.player.is_playing and ctx.player.voice.is_paused()\
-             and ctx.author.guild_permissions.manage_guild:
+        if (
+            not search
+            and ctx.player.is_playing
+            and ctx.player.voice.is_paused()
+            and ctx.author.guild_permissions.manage_guild
+        ):
             ctx.player.resume()
-            return await ctx.send(f"**:arrow_forward: Resuming** `{ctx.player.current.source.title}`")
+            return await ctx.send(
+                f"**:arrow_forward: Resuming** `{ctx.player.current.source.title}`"
+            )
         if not search:
             return await ctx.send("Please specify a song to play/search for.")
 
@@ -1048,19 +1154,25 @@ class Music(commands.Cog, name=":notes: Music"):
 
         urls = "http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
         if len(re.findall(urls, search)) > 0:
-            youtube_urls = "(?:https?://)?(?:www.)?(?:youtube.com|youtu.be)/(?:watch\?v=)?([^\s]+)"
+            youtube_urls = (
+                "(?:https?://)?(?:www.)?(?:youtube.com|youtu.be)/(?:watch\?v=)?([^\s]+)"
+            )
             if len(re.findall(youtube_urls, search)) > 0:
                 if "list=" in search:
-                    await ctx.send("**<:youtube:667536366447493120> Fetching YouTube playlist** "
-                                   f"`{search}`\nThis make take awhile depending on playlist size.")
+                    await ctx.send(
+                        "**<:youtube:667536366447493120> Fetching YouTube playlist** "
+                        f"`{search}`\nThis make take awhile depending on playlist size."
+                    )
 
                     await self.fetch_yt_playlist(ctx, search)
                     return
             elif "soundcloud" in search:
                 pass
             else:
-                await ctx.send("**:globe_with_meridians: Fetching from bin** "
-                               f"`{search}`\nThis make take awhile depending on amount of songs.")
+                await ctx.send(
+                    "**:globe_with_meridians: Fetching from bin** "
+                    f"`{search}`\nThis make take awhile depending on amount of songs."
+                )
                 await self.hastebin_playlist(ctx, search)
                 return
 
@@ -1071,29 +1183,42 @@ class Music(commands.Cog, name=":notes: Music"):
                 source = await YTDLSource.create_source(ctx, search, loop=self.bot.loop)
             except YTDLError as e:
                 print(e)
-                await ctx.send(f"An error occurred while processing this request: ```py {str(e)}```")
+                await ctx.send(
+                    f"An error occurred while processing this request: ```py {str(e)}```"
+                )
             else:
                 if not source:
-                     return await ctx.send("Sorry. I couldn't fetch that song. Possibly being ratelimited.")
+                    return await ctx.send(
+                        "Sorry. I couldn't fetch that song. Possibly being ratelimited."
+                    )
                 song = Song(source)
 
                 if not song:
-                    return await ctx.send("Sorry. I couldn't fetch that song. Possibly being ratelimited.")
+                    return await ctx.send(
+                        "Sorry. I couldn't fetch that song. Possibly being ratelimited."
+                    )
 
                 await ctx.player.songs.put(song)
                 if ctx.player.is_playing:
                     await ctx.send(f"**:page_facing_up: Enqueued** {str(source)}")
 
-    @commands.command(name="ytdl", description="Test YTDL to see if it works", hidden=True)
+    @commands.command(
+        name="ytdl", description="Test YTDL to see if it works", hidden=True
+    )
     @commands.is_owner()
     async def _ytdl_test(self, ctx):
-        partial = functools.partial(YTDLSource.ytdl.extract_info, "hat kid electro", download=False, process=False)
+        partial = functools.partial(
+            YTDLSource.ytdl.extract_info,
+            "hat kid electro",
+            download=False,
+            process=False,
+        )
         try:
             data = await self.bot.loop.run_in_executor(None, partial)
         except youtube_dl.DownloadError as e:
             print("Could not connect to YouTube")
             traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
-            error = ''.join(traceback.format_exception(type(e), e, e.__traceback__, 1))
+            error = "".join(traceback.format_exception(type(e), e, e.__traceback__, 1))
             return await ctx.send(f"Could not connect to YouTube!```py\n{error}```")
         if not data:
             return await ctx.send("YouTube did not return any data.")

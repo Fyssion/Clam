@@ -6,7 +6,6 @@ from discord.ext import commands, menus
 
 
 class Piece:
-
     def __init__(self, name, emoji_name, custom=False, id=None, animated=False):
         self.name = name
         self.emoji_name = emoji_name
@@ -30,8 +29,10 @@ class TenSeconds(SinglePlayerGame):
         super().__init__(timeout=30.0)
 
     async def send_initial_message(self, ctx, channel):
-        em = discord.Embed(description="Click the reaction after 10 seconds!",
-                           color=discord.Color.blurple())
+        em = discord.Embed(
+            description="Click the reaction after 10 seconds!",
+            color=discord.Color.blurple(),
+        )
         msg = await channel.send(embed=em)
         self.ten_seconds = datetime.utcnow() + timedelta(seconds=10)
         return msg
@@ -59,9 +60,8 @@ class TenSeconds(SinglePlayerGame):
 
 
 class MultiPlayerGame(menus.Menu):
-
     def __init__(self, players):
-        super().__init__(timeout=600.0) # 10 min
+        super().__init__(timeout=600.0)  # 10 min
         self.players = players
 
     def reaction_check(self, payload):
@@ -76,7 +76,6 @@ EMPTY_piece = ":black_large_square:"
 
 
 class Connect4Row:
-
     def __init__(self, size):
         self.pieces = []
         for i in range(size):
@@ -111,7 +110,6 @@ class Connect4Row:
 
 
 class Connect4Board:
-
     def __init__(self, x_size=6, y_size=5):
         self.x_size = x_size
         self.y_size = y_size
@@ -163,7 +161,6 @@ class Connect4Board:
 
 # 1️⃣2️⃣3️⃣4️⃣5️⃣6️⃣
 class Connect4(MultiPlayerGame):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.board = Connect4Board()
@@ -181,17 +178,24 @@ class Connect4(MultiPlayerGame):
         return await channel.send(embed=em)
 
     def make_embed(self, winner=None, draw=False, timeout=False):
-        embed = discord.Embed(title="Connect 4", description=self.board.make(),
-                              color=discord.Color.blurple())
+        embed = discord.Embed(
+            title="Connect 4",
+            description=self.board.make(),
+            color=discord.Color.blurple(),
+        )
         embed.description += "1️⃣2️⃣3️⃣4️⃣5️⃣6️⃣"
         if winner:
-            embed.description += f"\n:tada: Winner: {winner.mention}\nThanks for playing!"
+            embed.description += (
+                f"\n:tada: Winner: {winner.mention}\nThanks for playing!"
+            )
         elif draw:
             embed.description += "\nDraw game!"
         elif timeout:
             embed.description += f"\nGame is over.\n{self.players[self.current_player].mention} timed out."
         else:
-            embed.description += f"\nCurrent player: {self.players[self.current_player].mention}"
+            embed.description += (
+                f"\nCurrent player: {self.players[self.current_player].mention}"
+            )
 
         embed.set_footer(text=f"{self.players[0]} vs {self.players[1]}")
 
@@ -210,13 +214,23 @@ class Connect4(MultiPlayerGame):
             # check / diagonal spaces
             for x in range(width - 3):
                 for y in range(3, height):
-                    if board[x][y] == piece and board[x+1][y-1] == piece and board[x+2][y-2] == piece and board[x+3][y-3] == piece:
+                    if (
+                        board[x][y] == piece
+                        and board[x + 1][y - 1] == piece
+                        and board[x + 2][y - 2] == piece
+                        and board[x + 3][y - 3] == piece
+                    ):
                         return piece
 
             # check \ diagonal spaces
             for x in range(width - 3):
                 for y in range(height - 3):
-                    if board[x][y] == piece and board[x+1][y+1] == piece and board[x+2][y+2] == piece and board[x+3][y+3] == piece:
+                    if (
+                        board[x][y] == piece
+                        and board[x + 1][y + 1] == piece
+                        and board[x + 2][y + 2] == piece
+                        and board[x + 3][y + 3] == piece
+                    ):
                         return piece
 
         return None
@@ -261,7 +275,7 @@ class Connect4(MultiPlayerGame):
                     row.pieces[number] = piece
                     placed = True
                     break
-            next_row = rows[i+1]
+            next_row = rows[i + 1]
             if next_row.pieces[number]:
                 row.pieces[number] = piece
                 placed = True
@@ -341,7 +355,10 @@ class Games(commands.Cog, name=":video_game: Games"):
         game = Connect4([ctx.author, opponent])
         await game.start(ctx)
 
-    @commands.command(name="10s", description="Start a ten seconds game. Timer starts as soon as my message is sent.")
+    @commands.command(
+        name="10s",
+        description="Start a ten seconds game. Timer starts as soon as my message is sent.",
+    )
     async def ten_seconds(self, ctx):
         m = TenSeconds()
         await m.start(ctx)
@@ -349,6 +366,7 @@ class Games(commands.Cog, name=":video_game: Games"):
 
 def setup(bot):
     bot.add_cog(Games(bot))
+
 
 if __name__ == "__main__":
 
@@ -360,13 +378,23 @@ if __name__ == "__main__":
             # check / diagonal spaces
             for x in range(width - 3):
                 for y in range(3, height):
-                    if board[x][y] == piece and board[x+1][y-1] == piece and board[x+2][y-2] == piece and board[x+3][y-3] == piece:
+                    if (
+                        board[x][y] == piece
+                        and board[x + 1][y - 1] == piece
+                        and board[x + 2][y - 2] == piece
+                        and board[x + 3][y - 3] == piece
+                    ):
                         return piece
 
             # check \ diagonal spaces
             for x in range(width - 3):
                 for y in range(height - 3):
-                    if board[x][y] == piece and board[x+1][y+1] == piece and board[x+2][y+2] == piece and board[x+3][y+3] == piece:
+                    if (
+                        board[x][y] == piece
+                        and board[x + 1][y + 1] == piece
+                        and board[x + 2][y + 2] == piece
+                        and board[x + 3][y + 3] == piece
+                    ):
                         return piece
 
         return None
