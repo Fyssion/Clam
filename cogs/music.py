@@ -483,7 +483,6 @@ class Player:
         if self.current:
             filenames.append(self.current.source.filename)
         self.songs.clear()
-        del self.songs
         if self.voice:
             await self.voice.disconnect()
             self.voice = None
