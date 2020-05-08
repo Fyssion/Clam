@@ -66,6 +66,21 @@ class Fun(commands.Cog, name=":tada: Fun"):
         else:
             return str(num)
 
+    @commands.command(
+        description="Search for an emoji I have access to.",
+        aliases=["emote", "nitro"],
+        usage="[emoji name]",
+    )
+    async def emoji(self, ctx, query):
+        emoji = discord.utils.get(self.bot.emojis, name=query)
+
+        if not emoji:
+            return await ctx.send("Sorry, I couldn't find that emoji.")
+        if not emoji.is_usable():
+            return await ctx.send("Sorry, I can't use this emoji.")
+
+        await ctx.send(str(emoji))
+
     @commands.command(description="Flip a coin.")
     async def flipcoin(self, ctx):
         result = random.choice(["heads", "tails"])
