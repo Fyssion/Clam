@@ -245,10 +245,8 @@ class Tools(commands.Cog, name=":tools: Tools"):
         except binascii.Error:
             return await ctx.send("Failed to decode timestamp.")
         epoch = int.from_bytes(decoded, "big")
-        print(epoch)
         timestamp = epoch + 1293840000
         created = d.utcfromtimestamp(timestamp)
-        print(created.year)
         if not self.time_in_range(2015, 2040, created.year):
             created = created - timedelta(days=14975)
         created = created.strftime("%b %d, %Y at %#I:%M %p")
