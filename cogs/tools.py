@@ -2,10 +2,12 @@ from discord.ext import commands, menus
 import discord
 
 from datetime import datetime as d
+from datetime import timedelta
 import re
 import os
 import ast
 import base64
+import binascii
 
 from .utils import fuzzy
 from .utils.utils import SphinxObjectFileReader
@@ -226,13 +228,20 @@ class Tools(commands.Cog, name=":tools: Tools"):
         parsed = token.split(".")
         if len(parsed) != 3:
             return await ctx.send("This is not a Discord token :/")
-        user_id = base64.b64decode(parsed[0])
+        try:
+            user_id = base64.b64decode(parsed[0])
+        except binascii.Error:
+            return await ctx.send("Failed to decode user id.")
         user_id = int(user_id)
-        decoded = base64.b64decode(parsed[1] + "==")
+        try:
+            decoded = base64.b64decode(parsed[1] + "==")
+        except binascii.Error:
+            return await ctx.send("Failed to decode timestamp.")
         epoch = int.from_bytes(decoded, "big")
         print(epoch)
         timestamp = epoch + 1293840000
-        created = d.utcfromtimestamp(timestamp).strftime("%b %d, %Y at %#I:%M %p")
+        created = d.utcfromtimestamp(timestamp) - timedelta(days=14975)
+        created = created.strftime("%b %d, %Y at %#I:%M %p")
         user = await self.bot.fetch_user(user_id)
         if not user:
             return await ctx.send(
