@@ -5,6 +5,7 @@ from datetime import datetime as d
 import re
 import os
 import ast
+import base64
 
 from .utils import fuzzy
 from .utils.utils import SphinxObjectFileReader
@@ -219,6 +220,27 @@ class Tools(commands.Cog, name=":tools: Tools"):
         if snowflake == None:
             return await ctx.send("Please specify a snowflake to convert.")
         await ctx.send(snowstamp(snowflake))
+
+    @commands.command(description="Parse a Discord token", usage="[token]", hidden=True)
+    async def parsetoken(self, ctx, token):
+        parsed = token.split(".")
+        if len(parsed) != 3:
+            return await ctx.send("This is not a Discord token :/")
+        user_id = base64.b64decode(parsed[0])
+        user_id = int(user_id)
+        decoded = base64.b64decode(parsed[1] + "==")
+        epoch = int.from_bytes(decoded, "big")
+        print(epoch)
+        timestamp = epoch + 1293840000
+        created = d.utcfromtimestamp(timestamp).strftime("%b %d, %Y at %#I:%M %p")
+        user = await self.bot.fetch_user(user_id)
+        if not user:
+            return await ctx.send(
+                f"ID: `{user_id}`\nCreated: `{created}`\nUser not found."
+            )
+        await ctx.send(
+            f"ID: `{user_id}`\nUsername: `{user}`\nBot: `{user.bot}`\nCreated: `{created}`"
+        )
 
     @commands.command(
         name="embed",
