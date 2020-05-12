@@ -223,6 +223,13 @@ class Tools(commands.Cog, name=":tools: Tools"):
             return await ctx.send("Please specify a snowflake to convert.")
         await ctx.send(snowstamp(snowflake))
 
+    def time_in_range(self, start, end, x):
+        """Return true if x is in the range [start, end]"""
+        if start <= end:
+            return start <= x <= end
+        else:
+            return start <= x or x <= end
+
     @commands.command(description="Parse a Discord token", usage="[token]", hidden=True)
     async def parsetoken(self, ctx, token):
         parsed = token.split(".")
@@ -240,7 +247,10 @@ class Tools(commands.Cog, name=":tools: Tools"):
         epoch = int.from_bytes(decoded, "big")
         print(epoch)
         timestamp = epoch + 1293840000
-        created = d.utcfromtimestamp(timestamp) - timedelta(days=14975)
+        created = d.utcfromtimestamp(timestamp)
+        print(created.year)
+        if not self.time_in_range(2015, 2040, created.year):
+            created = created - timedelta(days=14975)
         created = created.strftime("%b %d, %Y at %#I:%M %p")
         user = await self.bot.fetch_user(user_id)
         if not user:
