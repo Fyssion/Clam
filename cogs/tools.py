@@ -254,10 +254,10 @@ class Tools(commands.Cog, name=":tools: Tools"):
             created = created - timedelta(days=14975)
 
         created = created.strftime("%b %d, %Y at %#I:%M %p")
-        user = await self.bot.fetch_user(user_id)
-
         em = discord.Embed(color=0x36393F)
-        if not user:
+        try:
+            user = await self.bot.fetch_user(user_id)
+        except discord.NotFound:
             em.description = f"ID: `{user_id}`\nCreated: `{created}`\nUser not found."
             return await ctx.send(embed=em)
 
