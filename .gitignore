@@ -8,3 +8,4 @@ ffmpeg.exe
 *.json
 *.webm
 env/*
+clam.log
