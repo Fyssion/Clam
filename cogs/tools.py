@@ -235,29 +235,35 @@ class Tools(commands.Cog, name=":tools: Tools"):
         parsed = token.split(".")
         if len(parsed) != 3:
             return await ctx.send("This is not a Discord token :/")
+
         try:
             user_id = base64.b64decode(parsed[0])
         except binascii.Error:
             return await ctx.send("Failed to decode user id.")
+
         user_id = int(user_id)
         try:
             decoded = base64.b64decode(parsed[1] + "==")
         except binascii.Error:
             return await ctx.send("Failed to decode timestamp.")
+
         epoch = int.from_bytes(decoded, "big")
         timestamp = epoch + 1293840000
         created = d.utcfromtimestamp(timestamp)
         if not self.time_in_range(2015, 2040, created.year):
             created = created - timedelta(days=14975)
+
         created = created.strftime("%b %d, %Y at %#I:%M %p")
         user = await self.bot.fetch_user(user_id)
+
+        em = discord.Embed(color=0x36393F)
         if not user:
-            return await ctx.send(
-                f"ID: `{user_id}`\nCreated: `{created}`\nUser not found."
-            )
-        await ctx.send(
-            f"ID: `{user_id}`\nUsername: `{user}`\nBot: `{user.bot}`\nCreated: `{created}`"
-        )
+            em.description = f"ID: `{user_id}`\nCreated: `{created}`\nUser not found."
+            return await ctx.send(embed=em)
+
+        em.description = f"ID: `{user_id}`\nUsername: `{user}`\nBot: `{user.bot}`\nCreated: `{created}`"
+        em.set_thumbnail(url=user.avatar_url)
+        await ctx.send(embed=em)
 
     @commands.command(
         name="embed",
