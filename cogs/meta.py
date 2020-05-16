@@ -112,7 +112,7 @@ class ClamHelpCommand(commands.HelpCommand):
             if hasattr(cog, "emoji"):
                 cog_names.append(f"{cog.emoji} {cog.qualified_name}")
             else:
-                cog_names.append(cog.qualified_name)
+                cog_names.append(f":grey_question: {cog.qualified_name}")
         em.add_field(name="Categories", value="\n".join(cog_names), inline=True)
 
         dev = bot.get_user(224513210471022592)
