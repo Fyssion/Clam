@@ -48,7 +48,9 @@ class HelpPages(menus.ListPageSource):
         offset = menu.current_page * self.per_page
         em = self.embed_base
         em.description = self.original_description
-        em.set_footer(text=f"Page {menu.current_page + 1}/{self.get_max_pages()}")
+        page_count = f"Page {menu.current_page + 1}/{self.get_max_pages()}"
+        em.set_author(name=page_count)
+        em.set_footer(text=page_count)
         command_info = []
         for i, command in enumerate(entries, start=offset):
             command_help = f"**`{self.prefix}"
