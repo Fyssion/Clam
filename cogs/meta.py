@@ -139,6 +139,9 @@ class ClamHelpCommand(commands.HelpCommand):
         else:
             em.description = f"**{cog.qualified_name}**"
 
+        if cog.description:
+            em.description += f"\n{cog.description}"
+
         more_info = f"{self.arg_help()}\n{self.i_cmd(ctx)}"
 
         pages = menus.MenuPages(
@@ -154,9 +157,10 @@ class ClamHelpCommand(commands.HelpCommand):
         em = self.get_base_embed()
         em.description = f"**`{bot.guild_prefix(ctx.guild)}{group.name}"
         em.description += f" {group.usage}`**" if group.usage is not None else "`**"
-        em.description += (
-            f" - {group.description}" if group.description is not None else ""
-        )
+        if group.description:
+            em.description += f" - {group.description}"
+        if group.help:
+            em.description += "\n" + group.help
         if group.aliases:
             formatted_aliases = []
             for alias in group.aliases:
@@ -167,7 +171,7 @@ class ClamHelpCommand(commands.HelpCommand):
                 formatted_alias += alias + "`"
                 formatted_aliases.append(formatted_alias)
             em.description += f"\nAliases: {', '.join(formatted_aliases)}"
-        em.description += "\n\n**Subcommands:**"
+        em.description += f"\n\n**Subcommands ({len(filtered)} total):**"
 
         more_info = f"{self.arg_help()}\n{self.i_cmd(ctx)}"
 
@@ -185,9 +189,10 @@ class ClamHelpCommand(commands.HelpCommand):
         em.description += f"{command.parent} " if command.parent is not None else ""
         em.description += command.name
         em.description += f" {command.usage}`**" if command.usage is not None else "`**"
-        em.description += (
-            f" - {command.description}" if command.description is not None else ""
-        )
+        if command.description:
+            em.description += f" - {command.description}"
+        if command.help:
+            em.description += "\n" + command.help
         if command.aliases:
             formatted_aliases = []
             for alias in command.aliases:
