@@ -57,9 +57,8 @@ class HelpPages(menus.ListPageSource):
             command_help += (
                 f" {command.usage}`**" if command.usage is not None else "`**"
             )
-            command_help += (
-                f" - {command.description}" if command.description is not None else ""
-            )
+            if command.description:
+                command_help += f" - {command.description}"
             command_info.append(command_help)
         formatted = "\n".join(command_info)
         em.description += f"\n\n{formatted}\n\n{self.more_info}"
@@ -78,6 +77,9 @@ class ClamHelpCommand(commands.HelpCommand):
             "For **more info** on a **specific command**, "
             f"use: **`{self.context.bot.guild_prefix(self.context.guild)}help [command]`‍**"
         )
+
+    def arg_help(self):
+        return "**Key:** `[required]` `<optional>`\n**Remove `[]` and `<>` when using the command.**"
 
     def get_base_embed(self):
         ctx = self.context
@@ -137,8 +139,11 @@ class ClamHelpCommand(commands.HelpCommand):
         else:
             em.description = f"**{cog.qualified_name}**"
 
+        more_info = f"{self.arg_help()}\n{self.i_cmd(ctx)}"
+
         pages = menus.MenuPages(
-            source=HelpPages(filtered, em, bot.guild_prefix(ctx.guild), self.i_cmd(ctx))
+            source=HelpPages(filtered, em, bot.guild_prefix(ctx.guild), more_info),
+            clear_reactions_after=True,
         )
         await pages.start(ctx)
 
@@ -163,8 +168,12 @@ class ClamHelpCommand(commands.HelpCommand):
                 formatted_aliases.append(formatted_alias)
             em.description += f"\nAliases: {', '.join(formatted_aliases)}"
         em.description += "\n\n**Subcommands:**"
+
+        more_info = f"{self.arg_help()}\n{self.i_cmd(ctx)}"
+
         pages = menus.MenuPages(
-            source=HelpPages(filtered, em, bot.guild_prefix(ctx.guild), self.i_cmd(ctx))
+            source=HelpPages(filtered, em, bot.guild_prefix(ctx.guild), more_info),
+            clear_reactions_after=True,
         )
         await pages.start(ctx)
 
