@@ -546,11 +546,12 @@ def is_dj():
     return commands.check(predicate)
 
 
-class Music(commands.Cog, name=":notes: Music"):
+class Music(commands.Cog):
     """Listen to music in any voice channel!\nUse `c.play` to play a song."""
 
     def __init__(self, bot):
         self.bot = bot
+        self.emoji = ":notes:"
         self.players = {}
 
     def get_player(self, ctx: commands.Context):

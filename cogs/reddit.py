@@ -8,13 +8,14 @@ hyperlink_color = 0x3366BB  # Not used
 warning_color = 0xFFCC4D
 
 
-class Reddit(commands.Cog, name="<:RedditLogo:650197892065263626> Reddit"):
+class Reddit(commands.Cog):
     """
     Get information about subreddits and redditors.
     """
 
     def __init__(self, bot):
         self.bot = bot
+        self.emoji = "<:RedditLogo:650197892065263626>"
         self.log = self.bot.log
 
         # Reddit PRAW login

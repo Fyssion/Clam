@@ -12,6 +12,7 @@ class Admin(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.hidden = True
         self.log = self.bot.log
 
         with open("active_dms.json", "r") as f:

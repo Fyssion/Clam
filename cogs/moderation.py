@@ -12,13 +12,14 @@ from .utils.checks import has_manage_guild
 from .utils.utils import is_int
 
 
-class Moderation(commands.Cog, name=":police_car: Moderation"):
+class Moderation(commands.Cog):
     """
     This cog has not been fully developed. Will include many moderation features.
     """
 
     def __init__(self, bot):
         self.bot = bot
+        self.emoji = ":police_car:"
         self.log = self.bot.log
 
         with open("log_channels.json", "r") as f:

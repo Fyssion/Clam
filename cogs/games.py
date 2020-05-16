@@ -336,11 +336,12 @@ class Connect4(MultiPlayerGame):
         await self.play_piece(payload, 6)
 
 
-class Games(commands.Cog, name=":video_game: Games"):
+class Games(commands.Cog):
     """Games to play with friends"""
 
     def __init__(self, bot):
         self.bot = bot
+        self.emoji = ":video_game:"
 
     @commands.group(name="game", description="Play a game")
     async def _game(self, ctx):

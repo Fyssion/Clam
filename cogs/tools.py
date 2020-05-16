@@ -62,11 +62,12 @@ class SearchPages(menus.ListPageSource):
         return msg
 
 
-class Tools(commands.Cog, name=":tools: Tools"):
+class Tools(commands.Cog):
     """Useful Discord tools."""
 
     def __init__(self, bot):
         self.bot = bot
+        self.emoji = ":tools:"
         self.log = self.bot.log
 
     @commands.command(

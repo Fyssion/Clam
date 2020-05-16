@@ -92,11 +92,12 @@ class Clam(commands.Bot):
             "cogs.games",
         ]
 
-        self.remove_command("help")
+        self.load_extension("jishaku")
 
         for cog in self.cogs_to_load:
             self.load_extension(cog)
-        self.load_extension("jishaku")
+
+        self.ordered_cogs = [c for c in self.cogs.values()]
 
     def guild_prefix(self, guild):
         if not guild:
@@ -114,8 +115,6 @@ class Clam(commands.Bot):
         self.log.info(f"Logged in as {self.user.name} - {self.user.id}")
 
         self.startup_time = d.now()
-
-        self.ordered_cogs = [c for c in self.cogs.keys()]
 
         self.session = aiohttp.ClientSession(loop=self.loop)
 

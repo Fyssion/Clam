@@ -1,5 +1,5 @@
-from discord.ext import commands
 import discord
+from discord.ext import commands, menus
 
 from datetime import datetime as d
 from string import Formatter
@@ -36,19 +36,179 @@ def strfdelta(tdelta, fmt):
     return f.format(fmt, **d)
 
 
+class HelpPages(menus.ListPageSource):
+    def __init__(self, data, embed, prefix, more_info):
+        self.embed_base = embed
+        self.original_description = embed.description
+        self.prefix = prefix
+        self.more_info = more_info
+        super().__init__(data, per_page=10)
+
+    async def format_page(self, menu, entries):
+        offset = menu.current_page * self.per_page
+        em = self.embed_base
+        em.description = self.original_description
+        em.set_footer(text=f"Page {menu.current_page + 1}/{self.get_max_pages()}")
+        command_info = []
+        for i, command in enumerate(entries, start=offset):
+            command_help = f"**`{self.prefix}"
+            command_help += f"{command.parent} " if command.parent is not None else ""
+            command_help += command.name
+            command_help += (
+                f" {command.usage}`**" if command.usage is not None else "`**"
+            )
+            command_help += (
+                f" - {command.description}" if command.description is not None else ""
+            )
+            command_info.append(command_help)
+        formatted = "\n".join(command_info)
+        em.description += f"\n\n{formatted}\n\n{self.more_info}"
+        return em
+
+
 class ClamHelpCommand(commands.HelpCommand):
-    pass
+    def i_category(self, ctx):
+        return (
+            "For **more info** on a **specific category**, "
+            f"use: **`{self.context.bot.guild_prefix(self.context.guild)}help [category]`‍**"
+        )
+
+    def i_cmd(self, ctx):
+        return (
+            "For **more info** on a **specific command**, "
+            f"use: **`{self.context.bot.guild_prefix(self.context.guild)}help [command]`‍**"
+        )
+
+    def get_base_embed(self):
+        ctx = self.context
+        bot = ctx.bot
+        em = discord.Embed(
+            title=f"Help for {bot.user.name}", color=0xFF95B0, timestamp=d.utcnow(),
+        )
+        em.set_thumbnail(url=ctx.bot.user.avatar_url)
+        return em
+
+    async def send_bot_help(self, mapping):
+        ctx = self.context
+        bot = ctx.bot
+
+        em = self.get_base_embed()
+        em.description = (
+            f"{bot.description}\n\n"
+            f"**Default Prefix: `{bot.guild_prefix(ctx.guild)}`** "
+            f"Ex: `{bot.guild_prefix(ctx.guild)}help`\n"
+            f"Use `{bot.guild_prefix(ctx.guild)}prefixes` to view all prefixes for this server.\n"
+            f"{self.i_category(ctx)}\n"
+        )
+
+        cog_names = []
+        for cog in bot.ordered_cogs:
+            if hasattr(cog, "hidden") or cog.qualified_name == "Jishaku":
+                if ctx.author.id != bot.owner_id:
+                    continue
+
+            if hasattr(cog, "emoji"):
+                cog_names.append(f"{cog.emoji} {cog.qualified_name}")
+            else:
+                cog_names.append(cog.qualified_name)
+        em.add_field(name="Categories", value="\n".join(cog_names), inline=True)
+
+        dev = bot.get_user(224513210471022592)
+        em.add_field(
+            name=":information_source: Technical Info",
+            value=(
+                f"Developed by - {dev}\n"
+                "Programming Language - Python\n"
+                "Framework - discord.py commands"
+            ),
+            inline=True,
+        )
+
+        await ctx.send(embed=em)
+
+    async def send_cog_help(self, cog):
+        ctx = self.context
+        bot = ctx.bot
+        filtered = await self.filter_commands(cog.get_commands(), sort=True)
+        em = self.get_base_embed()
+
+        if hasattr(cog, "emoji"):
+            em.description = f"**{cog.emoji} {cog.qualified_name}**"
+        else:
+            em.description = f"**{cog.qualified_name}**"
+
+        pages = menus.MenuPages(
+            source=HelpPages(filtered, em, bot.guild_prefix(ctx.guild), self.i_cmd(ctx))
+        )
+        await pages.start(ctx)
+
+    async def send_group_help(self, group):
+        ctx = self.context
+        bot = ctx.bot
+        filtered = await self.filter_commands(group.commands, sort=True)
+        em = self.get_base_embed()
+        em.description = f"**`{bot.guild_prefix(ctx.guild)}{group.name}"
+        em.description += f" {group.usage}`**" if group.usage is not None else "`**"
+        em.description += (
+            f" - {group.description}" if group.description is not None else ""
+        )
+        if group.aliases:
+            formatted_aliases = []
+            for alias in group.aliases:
+                formatted_alias = f"`{bot.guild_prefix(ctx.guild)}"
+                formatted_alias += (
+                    f"{group.parent} " if group.parent is not None else ""
+                )
+                formatted_alias += alias + "`"
+                formatted_aliases.append(formatted_alias)
+            em.description += f"\nAliases: {', '.join(formatted_aliases)}"
+        em.description += "\n\n**Subcommands:**"
+        pages = menus.MenuPages(
+            source=HelpPages(filtered, em, bot.guild_prefix(ctx.guild), self.i_cmd(ctx))
+        )
+        await pages.start(ctx)
+
+    async def send_command_help(self, command):
+        ctx = self.context
+        bot = ctx.bot
+        em = self.get_base_embed()
+        em.description = f"**`{bot.guild_prefix(ctx.guild)}"
+        em.description += f"{command.parent} " if command.parent is not None else ""
+        em.description += command.name
+        em.description += f" {command.usage}`**" if command.usage is not None else "`**"
+        em.description += (
+            f" - {command.description}" if command.description is not None else ""
+        )
+        if command.aliases:
+            formatted_aliases = []
+            for alias in command.aliases:
+                formatted_alias = f"`{bot.guild_prefix(ctx.guild)}"
+                formatted_alias += (
+                    f"{command.parent} " if command.parent is not None else ""
+                )
+                formatted_alias += alias + "`"
+                formatted_aliases.append(formatted_alias)
+            em.description += f"\nAliases: {', '.join(formatted_aliases)}"
+        await ctx.send(embed=em)
 
 
-class Meta(commands.Cog, name=":gear: Meta"):
+class Meta(commands.Cog):
     """Everything to do with the bot itself."""
 
     def __init__(self, bot):
         self.bot = bot
+        self.emoji = ":gear:"
         self.log = self.bot.log
 
         with open("prefixes.json", "r") as f:
             self.bot.guild_prefixes = json.load(f)
+
+        self._original_help_command = bot.help_command
+        bot.help_command = ClamHelpCommand()
+        bot.help_command.cog = self
+
+    def cog_unload(self):
+        self.bot.help_command = self._original_help_command
 
     def i_category(self, ctx):
         return (
@@ -134,309 +294,6 @@ class Meta(commands.Cog, name=":gear: Meta"):
             prefixes.append("or when mentioned")
             return ", ".join(prefixes)
         return " ".join(self.bot.prefixes)
-
-    @commands.group(
-        name="help",
-        description="You're looking at it!",
-        aliases=["commands", "command", "h"],
-        usage="[command]",
-        invoke_without_command=True,
-    )
-    async def help_command(self, ctx, search="all"):
-        search = search.lower()
-        em = discord.Embed(
-            title=f"Help for {self.bot.user.name}",
-            description=(
-                f"{self.bot.description}\n\n"
-                f"**Default Prefix: `{self.bot.guild_prefix(ctx.guild)}`** "
-                f"Ex: `{self.bot.guild_prefix(ctx.guild)}help`\n"
-                f"Use `{self.bot.guild_prefix(ctx.guild)}prefixes` to view all prefixes for this server.\n"
-                f"{self.i_category(ctx)}\n"
-            ),
-            # color = 0x15DFEA,
-            color=0xFF95B0,
-            timestamp=d.utcnow(),
-        )
-        # if ctx.guild:
-        #     hover = hover_link(ctx, "More info here")
-        #     em.description += (f"Hover over {hover} to get more info """
-        #                        "(sorry mobile users).\n")
-        em.set_thumbnail(url=self.bot.user.avatar_url)
-        em.set_footer(
-            text=f"Requested by {ctx.message.author.name}#"
-            f"{ctx.message.author.discriminator}",
-            icon_url=self.bot.user.avatar_url,
-        )
-
-        # cogs = [c for c in self.bot.cogs.values()]
-        cog_names = [c for c in self.bot.cogs.keys()]
-        cog_class_names = []
-        for cog in cog_names:
-            args = cog.split(" ")
-            cog = args[1:]
-            cog = "".join(cog)
-            cog_class_names.append(cog)
-
-        # If the user didn't specify a command, the full help command is sent
-        if search == "all":
-            all_categories = ""
-            for cog in self.bot.ordered_cogs:
-                cog_docstring = self.bot.get_cog(cog).__doc__
-
-                if cog in ["Jishaku", "Admin"]:
-                    pass
-                else:
-
-                    all_categories += f"\n{cog}"
-                    # if cog_docstring and ctx.guild:
-                    #     all_categories += hover_link(ctx, cog_docstring)
-            em.add_field(name="Categories", value=all_categories, inline=True)
-
-            dev = self.bot.get_user(224513210471022592)
-            em.add_field(
-                name=":information_source: Technical Info",
-                value=(
-                    f"Developed by - {dev.mention}\n"
-                    "Programming Language - Python\n"
-                    "Framework - Discord.py Commands"
-                ),
-                inline=True,
-            )
-
-        else:
-            all_commands_list = [command for command in self.bot.commands]
-            cog_search_lowered = [c.lower() for c in cog_class_names]
-
-            if search in cog_search_lowered:
-                cog_called = self.bot.get_cog(
-                    cog_names[cog_search_lowered.index(search)]
-                )
-
-                commands_list = cog_called.get_commands()
-                help_text = f"**{cog_called.qualified_name}**\n"
-                help_text += (
-                    cog_called.description + "\n\n"
-                    if cog_called.description is not None
-                    else "\n"
-                )
-
-                for command in commands_list:
-                    if not command.hidden:
-                        command_usage = (
-                            " " + command.usage if command.usage is not None else ""
-                        )
-                        help_text += (
-                            f"**`{self.bot.guild_prefix(ctx.guild)}"
-                            f"{command.name}{command_usage}`** - "
-                            f"{command.description}\n"
-                        )
-
-                        if len(command.aliases) > 0:
-                            prefix_aliases = [
-                                f"`{self.bot.guild_prefix(ctx.guild)}{a}`"
-                                for a in command.aliases
-                            ]
-                            help_text += f"Aliases : " f"{', '.join(prefix_aliases)}\n"
-
-                        if isinstance(command, commands.Group):
-                            for cmd in command.commands:
-                                if cmd.hidden:
-                                    continue
-                                command_usage = (
-                                    " " + cmd.usage if cmd.usage is not None else ""
-                                )
-                                help_text += (
-                                    f"**`{self.bot.guild_prefix(ctx.guild)}"
-                                    f"{command.name} {cmd.name}{command_usage}`** - "
-                                    f"{cmd.description}\n"
-                                )
-                                if len(cmd.aliases) > 0:
-                                    prefix_aliases = [
-                                        f"`{self.bot.guild_prefix(ctx.guild)}{command.name} {a}`"
-                                        for a in cmd.aliases
-                                    ]
-                                    help_text += (
-                                        f"Aliases : " f"{', '.join(prefix_aliases)}\n"
-                                    )
-
-                help_text += f"\n{self.i_cmd(ctx)}"
-
-                em.description = help_text
-
-            elif search in [command.name for command in self.bot.commands]:
-                command = next((c for c in all_commands_list if c.name == search), None)
-
-                if command.hidden is True:
-                    return await ctx.send("That command is hidden!")
-
-                em.description = (
-                    f"**{command.name.capitalize()}**\n{command.description}\n\n"
-                    f"Format: `{self.bot.guild_prefix(ctx.guild)}{command.name}"
-                    f"{' ' + command.usage if command.usage is not None else ''}`\n"
-                )
-                if len(command.aliases) > 0:
-                    prefix_aliases = [
-                        f"`{self.bot.guild_prefix(ctx.guild)}{a}`"
-                        for a in command.aliases
-                    ]
-                    em.description += f"Aliases : {', '.join(prefix_aliases)}\n"
-
-                if isinstance(command, commands.Group):
-                    subcommands = ""
-                    for cmd in command.commands:
-                        if not cmd.hidden:
-                            command_usage = (
-                                " " + cmd.usage if cmd.usage is not None else ""
-                            )
-                            subcommands += (
-                                f"**`{self.bot.guild_prefix(ctx.guild)}"
-                                f"{command.name} {cmd.name}{command_usage}`** - "
-                                f"{cmd.description}\n"
-                            )
-                            if len(cmd.aliases) > 0:
-                                prefix_aliases = [
-                                    f"`{self.bot.guild_prefix(ctx.guild)}{command.name} {a}`"
-                                    for a in cmd.aliases
-                                ]
-                                subcommands += (
-                                    f"Aliases : " f"{', '.join(prefix_aliases)}\n"
-                                )
-                    if subcommands:
-                        em.add_field(name="Subcommands", value=subcommands)
-
-            else:
-                return await ctx.send(
-                    "Invalid category/command specified.\n"
-                    f"Use `{self.bot.guild_prefix(ctx.guild)}help` "
-                    "to view list of all categories and commands."
-                )
-
-        bot_message = await ctx.send(embed=em)
-
-        self.bot.loop.create_task(
-            wait_for_deletion(bot_message, user_ids=(ctx.author.id,), client=self.bot)
-        )
-
-    @help_command.command(
-        name="admin",
-        description="Displays all admin commands",
-        aliases=["a"],
-        hidden=True,
-    )
-    @commands.is_owner()
-    async def help_admin_command(self, ctx, commd="all"):
-        em = discord.Embed(
-            title=f"Admin Help For {self.bot.user.name}",
-            description=f"{self.bot.description}\n\n**Prefixes:** {self.bot.prefixes}\
-                        \nFor **more info** on a **specific command**, \
-                        use: **`{self.bot.guild_prefix(ctx.guild)}help admin [command]`‍**\n‍",
-            color=0xFF95B0,
-            timestamp=d.utcnow(),
-        )
-        em.set_thumbnail(url=self.bot.user.avatar_url)
-        em.set_footer(
-            text=f"Requested by {str(ctx.author)}", icon_url=self.bot.user.avatar_url
-        )
-
-        cogs = [c for c in self.bot.cogs.keys()]
-        if commd == "all":
-            for cog in cogs:
-                cog_commands = self.bot.get_cog(cog).get_commands()
-                if cog != "Admin":
-                    hidden_counter = 0
-                    for comm in cog_commands:
-                        if comm.hidden == True:
-                            hidden_counter += 1
-                    if hidden_counter <= 0:
-                        continue
-                commands_list = ""
-                # cmd_list = [c if c.hidden for c in cog_commands]
-                for comm in cog_commands:
-                    if comm.hidden == True or comm.cog_name == "Admin":
-                        commands_list += f"**`{comm.name}`** - {comm.description}\n"
-                        if len(comm.aliases) > 0:
-                            prefix_aliases = [f"`{a}`" for a in comm.aliases]
-                            commands_list += (
-                                f"Aliases : " f"{', '.join(prefix_aliases)}\n"
-                            )
-                        if isinstance(comm, commands.Group):
-                            for cmd in comm.commands:
-                                if cmd.hidden:
-                                    continue
-                                command_usage = (
-                                    " " + cmd.usage if cmd.usage is not None else ""
-                                )
-                                commands_list += (
-                                    f"**`"
-                                    f"{comm.name} {cmd.name}{command_usage}`** - "
-                                    f"{cmd.description}\n"
-                                )
-                                if len(cmd.aliases) > 0:
-                                    prefix_aliases = [
-                                        f"`{comm.name} {a}`" for a in cmd.aliases
-                                    ]
-                                    commands_list += (
-                                        f"Aliases : " f"{', '.join(prefix_aliases)}\n"
-                                    )
-
-                em.add_field(name=cog, value=commands_list, inline=False)
-
-            dev = self.bot.get_user(224513210471022592)
-            em.add_field(
-                name=":information_source: Technical Info",
-                value=(
-                    f"**Developed by** - {dev.mention}\n"
-                    "**Programming Language** - Python\n"
-                    "**Framework** - Discord.py Commands"
-                ),
-                inline=False,
-            )
-
-        else:
-            all_commands_list = [command for command in self.bot.commands]
-            if commd in [command.name for command in self.bot.commands]:
-                command = next(
-                    (c for c in all_commands_list if c.name == commd.lower()), None
-                )
-
-                if len(command.aliases) != 0:
-                    self.aliases_section = f"Aliases: {', '.join(command.aliases)}"
-                else:
-                    self.aliases_section = ""
-
-                checks = [ch.__name__ for ch in command.checks]
-
-                if len(checks) != 0:
-                    joinedChecks = ", ".join(checks)
-                else:
-                    joinedChecks = "None"
-
-                if command.usage:
-                    usage = command.usage
-                else:
-                    usage = ""
-
-                em.description = (
-                    f"**{command.cog_name} - {command.name.capitalize()}**\n"
-                    f"Name: {command.name}\n"
-                    f"Description: {command.description}\n"
-                    f"Format: `@{str(self.bot.user)} {command.name} {usage}`\n"
-                    f"{self.aliases_section}\n"
-                    f"Hidden: `{command.hidden}`\n"
-                    f"Checks: `{joinedChecks}`\n"
-                    f"Enabled: `{command.enabled}`"
-                )
-
-            else:
-                return await ctx.send(
-                    "Invalid command specified.\nUse `help` to view list of all commands."
-                )
-
-        bot_message = await ctx.send(embed=em)
-
-        self.bot.loop.create_task(
-            wait_for_deletion(bot_message, user_ids=(ctx.author.id,), client=self.bot)
-        )
 
     async def get_lines_of_code(self):
         total = 0

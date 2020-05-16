@@ -48,13 +48,14 @@ num2words2 = [
 ]
 
 
-class Fun(commands.Cog, name=":tada: Fun"):
+class Fun(commands.Cog):
     """
     Fun commands to mess around with.
     """
 
     def __init__(self, bot):
         self.bot = bot
+        self.emoji = ":tada:"
         self.log = self.bot.log
 
     def number(self, num):

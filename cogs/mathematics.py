@@ -5,9 +5,10 @@ import math
 import matplotlib
 
 
-class Math(commands.Cog, name=":triangular_ruler: Math"):
+class Math(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.emoji = ":triangular_ruler:"
         self.log = self.bot.log
 
     @commands.command(
