@@ -370,10 +370,7 @@ class Moderation(commands.Cog):
 
     @commands.command(
         name="purge",
-        description=(
-            "Purge messages in a channel.\n"
-            "**Note: The user calling the command and the bot must have the manage messages permission.**"
-        ),
+        description="Purge messages in a channel",
         aliases=["cleanup"],
         usage="[amount]",
     )
