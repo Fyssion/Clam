@@ -178,10 +178,10 @@ class Connect4(MultiPlayerGame):
         return await channel.send(embed=em)
 
     def make_embed(self, winner=None, draw=False, timeout=False):
+        # color is red if current is one, blue if current is zero
+        color = 0x55ACEE if self.current_player else 0xDD2E44
         embed = discord.Embed(
-            title="Connect 4",
-            description=self.board.make(),
-            color=discord.Color.blurple(),
+            title="Connect 4", description=self.board.make(), color=color,
         )
         embed.description += "1️⃣2️⃣3️⃣4️⃣5️⃣6️⃣"
         if winner:
@@ -193,9 +193,7 @@ class Connect4(MultiPlayerGame):
         elif timeout:
             embed.description += f"\nGame is over.\n{self.players[self.current_player].mention} timed out."
         else:
-            embed.description += (
-                f"\nCurrent player: {self.players[self.current_player].mention}"
-            )
+            embed.description += f"\nCurrent player: {self.players[self.current_player].mention} {self.pieces[self.current_player].emoji}"
 
         embed.set_footer(text=f"{self.players[0]} vs {self.players[1]}")
 
@@ -281,12 +279,6 @@ class Connect4(MultiPlayerGame):
                 placed = True
                 break
 
-        if placed:
-            if self.current_player == 0:
-                self.current_player = 1
-            else:
-                self.current_player = 0
-
         winner = self.find_4()
 
         if winner:
@@ -308,6 +300,12 @@ class Connect4(MultiPlayerGame):
             await self.message.edit(embed=em)
             self.stop()
             return
+
+        if placed:
+            if self.current_player == 0:
+                self.current_player = 1
+            else:
+                self.current_player = 0
 
         await self.display()
 
