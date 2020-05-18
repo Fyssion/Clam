@@ -341,10 +341,6 @@ class Games(commands.Cog):
         self.bot = bot
         self.emoji = ":video_game:"
 
-    @commands.group(name="game", description="Play a game")
-    async def _game(self, ctx):
-        pass
-
     @commands.command(desciption="Start a Connect 4 game", usage="[opponent]")
     async def connect4(self, ctx, opponent: discord.Member):
         if opponent.bot:
