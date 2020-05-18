@@ -16,6 +16,7 @@ from .utils.utils import wait_for_deletion
 from .utils import db
 from .utils.utils import hover_link
 from .utils.checks import has_manage_guild
+from .utils.menus import MenuPages
 
 
 def strfdelta(tdelta, fmt):
@@ -146,7 +147,7 @@ class ClamHelpCommand(commands.HelpCommand):
 
         more_info = f"{self.arg_help()}\n{self.i_cmd(ctx)}"
 
-        pages = menus.MenuPages(
+        pages = MenuPages(
             source=HelpPages(filtered, em, bot.guild_prefix(ctx.guild), more_info),
             clear_reactions_after=True,
         )
@@ -177,7 +178,7 @@ class ClamHelpCommand(commands.HelpCommand):
 
         more_info = f"{self.arg_help()}\n{self.i_cmd(ctx)}"
 
-        pages = menus.MenuPages(
+        pages = MenuPages(
             source=HelpPages(filtered, em, bot.guild_prefix(ctx.guild), more_info),
             clear_reactions_after=True,
         )
