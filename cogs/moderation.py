@@ -20,6 +20,7 @@ class Moderation(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.emoji = ":police_car:"
+        self.private = True
         self.log = self.bot.log
 
         with open("log_channels.json", "r") as f:

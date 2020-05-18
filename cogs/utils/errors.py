@@ -1,0 +1,2 @@
+class PrivateCog(Exception):
+    pass

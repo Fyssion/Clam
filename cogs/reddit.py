@@ -16,6 +16,7 @@ class Reddit(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.emoji = "<:RedditLogo:650197892065263626>"
+        self.private = True
         self.log = self.bot.log
 
         # Reddit PRAW login

@@ -18,6 +18,7 @@ import traceback
 
 from .utils import utils
 from .utils import stopwatch
+from .utils.errors import PrivateCog
 
 
 # Silence useless bug reports messages
@@ -547,11 +548,12 @@ def is_dj():
 
 
 class Music(commands.Cog):
-    """Listen to music in any voice channel!\nUse `c.play` to play a song."""
+    """Private music cog. You can't use this, but you can still view the source code."""
 
     def __init__(self, bot):
         self.bot = bot
         self.emoji = ":notes:"
+        self.private = True
         self.players = {}
 
     def get_player(self, ctx: commands.Context):

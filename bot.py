@@ -10,21 +10,30 @@ import traceback
 import json
 
 from cogs.utils import backup
+from cogs.utils.errors import PrivateCog
 
 
-logger = logging.getLogger("discord")
-logger.setLevel(logging.DEBUG)
+file_logger = logging.getLogger("discord")
+file_logger.setLevel(logging.DEBUG)
 handler = logging.FileHandler(filename="clam.log", encoding="utf-8", mode="w")
 handler.setFormatter(
     logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s")
 )
-logger.addHandler(handler)
+file_logger.addHandler(handler)
+
+logger = logging.getLogger("discord")
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler())
 
 
 class Context(commands.Context):
     @property
     def guild_prefix(self):
         return self.bot.guild_prefix(self.guild)
+
+    @property
+    def console(self):
+        return self.bot.console
 
 
 def get_prefix(client, message):
@@ -78,10 +87,16 @@ class Clam(commands.Bot):
         self.default_prefix = "c."
         self.dev = self.get_user(224513210471022592)
         self.previous_error = None
+        self.console = None
+        self.startup_time = None
+        self.session = None
+
+        self.add_check(self.private_cog_check)
 
         self.cogs_to_load = [
             "cogs.meta",
             "cogs.tools",
+            "cogs.games",
             "cogs.reddit",
             "cogs.fun",
             "cogs.moderation",
@@ -89,7 +104,6 @@ class Clam(commands.Bot):
             "cogs.mathematics",
             "cogs.admin",
             "cogs.tags",
-            "cogs.games",
         ]
 
         self.load_extension("jishaku")
@@ -107,16 +121,28 @@ class Clam(commands.Bot):
             return self.guild_prefixes[str(guild)][0]
         return "c."
 
+    def private_cog_check(self, ctx):
+        if (
+            hasattr(ctx.command.cog, "hidden")
+            and ctx.guild.id not in [454469821376102410, 621123303343652867,]
+            and ctx.author.id != self.owner_id
+        ):
+            raise PrivateCog("This is a private cog.")
+
+        return True
+
     async def get_context(self, message, *, cls=None):
         return await super().get_context(message, cls=cls or Context)
 
     async def on_ready(self):
+        if self.console is None:
+            self.console = self.get_channel(711952122132037722)
+        if self.startup_time is None:
+            self.startup_time = d.now()
+        if self.session is None:
+            self.session = aiohttp.ClientSession(loop=self.loop)
 
         self.log.info(f"Logged in as {self.user.name} - {self.user.id}")
-
-        self.startup_time = d.now()
-
-        self.session = aiohttp.ClientSession(loop=self.loop)
 
     def run(self):
         super().run(self.config["bot-token"], reconnect=True, bot=True)

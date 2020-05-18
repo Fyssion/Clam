@@ -17,6 +17,7 @@ from .utils import db
 from .utils.utils import hover_link
 from .utils.checks import has_manage_guild
 from .utils.menus import MenuPages
+from .utils.errors import PrivateCog
 
 
 def strfdelta(tdelta, fmt):
@@ -108,7 +109,11 @@ class ClamHelpCommand(commands.HelpCommand):
 
         cog_names = []
         for cog in bot.ordered_cogs:
-            if hasattr(cog, "hidden") or cog.qualified_name == "Jishaku":
+            if (
+                hasattr(cog, "hidden")
+                or hasattr(cog, "private")
+                or cog.qualified_name == "Jishaku"
+            ):
                 if ctx.author.id != bot.owner_id:
                     continue
 
@@ -263,6 +268,8 @@ class Meta(commands.Cog):
         print("Ignoring exception in command {}:".format(ctx.command), file=sys.stderr)
         traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
         self.bot.previous_error = e
+        if isinstance(e, PrivateCog):
+            return
         if isinstance(e, commands.errors.CommandNotFound):
             return
         if isinstance(e, commands.errors.MissingPermissions):
@@ -300,7 +307,16 @@ class Meta(commands.Cog):
         em.description = description
         em.set_footer(icon_url=self.bot.user.avatar_url)
         await ctx.send(embed=em)
-        # await self.dev.send("Error occured on one of your commands.")
+        extra_info = f"Command name: `{ctx.command.name}`"
+        if ctx.args:
+            args = [str(a) for a in ctx.args]
+            extra_info += f"\nArgs: `{', '.join(args)}`"
+        if ctx.kwargs:
+            kwargs = [str(a) for a in ctx.kwargs]
+            extra_info += f"\nKwargs: `{', '.join(kwargs)}`"
+        extra_info += f"\n\nAn unexpected error has occured: ```py\n{e}```\n"
+        em.description = extra_info
+        await ctx.console.send(embed=em)
 
     def get_guild_prefixes(self, guild):
         if not guild:

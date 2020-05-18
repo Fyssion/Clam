@@ -6,6 +6,7 @@ class Tags(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.emoji = ":bookmark:"
+        self.private = True
         self.lot = self.bot.log
 
 
