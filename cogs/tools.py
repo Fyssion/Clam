@@ -317,13 +317,7 @@ class Tools(commands.Cog):
         invoke_without_command=True,
     )
     async def search(self, ctx):
-        dp = self.bot.guild_prefix(ctx.guild)
-        await ctx.send(
-            "You can use:\n"
-            f"`{dp}search username [username]`\n"
-            f"`{dp}search nickname [nickname]`\n"
-            f"`{dp}search discriminator [discriminator]`"
-        )
+        await ctx.send_help(ctx.command)
 
     def compile_list(self, list):
         msg = (
