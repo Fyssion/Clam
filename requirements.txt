@@ -4,3 +4,7 @@ coloredlogs
 pyyaml
 aiosqlite3
 matplotlib
+jishaku
+git+https://github.com/Rapptz/discord-ext-menus
+youtube_dl
+psutil
