@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://repository-images.githubusercontent.com/218640835/9e891180-4e98-11ea-8926-1e4dbe253380" alt="Logo" title="Clam" height="200" width="200"/>
+</p>
+
 # Clam
 
 Fyssion's personal Discord bot. Does bot things.
