@@ -1,4 +1,4 @@
-discord.py>=1.2.5
+discord.py[voice]>=1.2.5
 praw
 coloredlogs
 pyyaml
@@ -8,3 +8,4 @@ jishaku
 git+https://github.com/Rapptz/discord-ext-menus
 youtube_dl
 psutil
+PILLOW

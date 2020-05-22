@@ -8,6 +8,10 @@ import os
 import ast
 import base64
 import binascii
+import humanize
+import io
+import functools
+from PIL import Image
 
 from .utils import fuzzy
 from .utils.utils import SphinxObjectFileReader
@@ -76,10 +80,10 @@ class Tools(commands.Cog):
         aliases=["memberinfo", "ui", "whois"],
         usage="[user]",
     )
-    async def userinfo_command(self, ctx, *, user: discord.Member = None):
-        user = user or ctx.author
+    async def userinfo_command(self, ctx, *, member: discord.Member = None):
+        member = member or ctx.author
 
-        if user == ctx.author:
+        if member == ctx.author:
             self.log.info(
                 f"{str(ctx.author)} successfully used the "
                 "userinfo command on themself"
@@ -87,10 +91,8 @@ class Tools(commands.Cog):
         else:
             self.log.info(
                 f"{str(ctx.author)} successfully used the "
-                f"userinfo command on '{user}'"
+                f"userinfo command on '{member}'"
             )
-
-        member = ctx.guild.get_member(user.id)
 
         # def time_ago(user, dt):
         #     if dt is None:
@@ -99,13 +101,13 @@ class Tools(commands.Cog):
         #            f"({time.human_timedelta(dt, accuracy=3)})"
 
         desc = ""
-        if user == self.bot.user:
+        if member == self.bot.user:
             desc += "\n:wave:Hey, that's me!"
-        if user.bot is True:
+        if member.bot is True:
             desc += "\n:robot: This user is a bot."
-        if user.id == ctx.guild.owner_id:
+        if member.id == ctx.guild.owner_id:
             desc += "\n<:owner:649355683598303260> " "This user is the server owner."
-        if user.id == self.bot.owner_id:
+        if member.id == self.bot.owner_id:
             desc += "\n:gear: This user owns this bot."
         if member.premium_since:
             formatted = member.premium_since.strftime("%b %d, %Y at %#I:%M %p")
@@ -115,24 +117,42 @@ class Tools(commands.Cog):
                 f"{formatted}."
             )
 
-        author = str(user)
+        author = str(member)
         if member.nick:
             author += f" ({member.nick})"
-        author += f" - {str(user.id)}"
-        em = discord.Embed(description=desc, timestamp=d.utcnow())
-        if user.color.value:
-            em.color = user.color
-        em.set_thumbnail(url=user.avatar_url)
-        em.set_author(name=author, icon_url=user.avatar_url)
+        author += f" - {str(member.id)}"
+
+        icon = member.avatar_url
+        bytes = io.BytesIO(await icon.read())
+        partial = functools.partial(Image.open, bytes)
+        image = await self.bot.loop.run_in_executor(None, partial)
+        partial = functools.partial(image.resize, (1, 1))
+        resized = await self.bot.loop.run_in_executor(None, partial)
+        partial = functools.partial(resized.getpixel, (0, 0))
+        color = await self.bot.loop.run_in_executor(None, partial)
+        hex_string = "0x{:02x}{:02x}{:02x}".format(*color)
+
+        em = discord.Embed(
+            description=desc,
+            color=discord.Color(int(hex_string, 16)),
+            timestamp=d.utcnow(),
+        )
+
+        em.set_thumbnail(url=member.avatar_url)
+        em.set_author(name=author, icon_url=member.avatar_url)
         em.set_footer(
             text=f"Requested by {str(ctx.author)}", icon_url=self.bot.user.avatar_url
         )
+        humanized = humanize.naturaltime(member.created_at)
         em.add_field(
-            name=":clock1: Account Created", value=snowstamp(user.id), inline=True
+            name=":clock1: Account Created",
+            value=f"{humanize.naturaldate(member.created_at)} ({humanized})",
+            inline=True,
         )
+        humanized = humanize.naturaltime(member.joined_at)
         em.add_field(
             name="<:join:649722959958638643> Joined Server",
-            value=member.joined_at.strftime("%b %d, %Y at %#I:%M %p"),
+            value=f"{humanize.naturaldate(member.joined_at)} ({humanized})",
             inline=True,
         )
         members = ctx.guild.members
@@ -152,54 +172,67 @@ class Tools(commands.Cog):
         aliases=["guildinfo"],
     )
     async def serverinfo_command(self, ctx):
-        self.log.info(f"{str(ctx.author)} used the serverinfo command")
-
-        if ctx.guild.unavailable == True:
-            self.log.warning("Woah... {ctx.guild} is unavailable.")
+        guild = ctx.guild
+        if guild.unavailable == True:
             return await ctx.send(
                 "This guild is unavailable.\nWhat does this mean? I don't know either.\nMaybe Discord is having an outage..."
             )
 
         desc = ""
-        if ctx.guild.description:
-            desc += f"\n{ctx.guild.description}\n"
-        if ctx.guild.large == True:
+        if guild.description:
+            desc += f"\n{guild.description}\n"
+        if guild.large == True:
             desc += "\n:information_source: This guild is considered large (over 250 members)."
 
-        em = discord.Embed(description=desc, timestamp=d.utcnow())
+        icon = guild.icon_url
+        bytes = io.BytesIO(await icon.read())
+        partial = functools.partial(Image.open, bytes)
+        image = await self.bot.loop.run_in_executor(None, partial)
+        partial = functools.partial(image.resize, (1, 1))
+        resized = await self.bot.loop.run_in_executor(None, partial)
+        partial = functools.partial(resized.getpixel, (0, 0))
+        color = await self.bot.loop.run_in_executor(None, partial)
+        hex_string = "0x{:02x}{:02x}{:02x}".format(*color)
 
-        em.set_thumbnail(url=ctx.guild.icon_url)
-        if ctx.guild.banner_url:
-            em.set_image(url=ctx.guild.banner_url)
-        em.set_author(
-            name=f"{ctx.guild.name} ({ctx.guild.id})", icon_url=ctx.guild.icon_url
+        em = discord.Embed(
+            description=desc,
+            color=discord.Color(int(hex_string, 16)),
+            timestamp=d.utcnow(),
         )
+
+        em.set_thumbnail(url=guild.icon_url)
+        if guild.banner_url:
+            em.set_image(url=guild.banner_url)
+        em.set_author(name=f"{guild.name} ({guild.id})", icon_url=guild.icon_url)
         em.set_footer(
             text=f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
             icon_url=self.bot.user.avatar_url,
         )
         em.add_field(
             name="<:owner:649355683598303260> Owner",
-            value=ctx.guild.owner.mention,
+            value=guild.owner.mention,
+            inline=True,
+        )
+        humanized = humanize.naturaltime(guild.created_at)
+        em.add_field(
+            name=":clock1: Server Created",
+            value=f"{humanize.naturaldate(guild.created_at)} ({humanized})",
             inline=True,
         )
         em.add_field(
-            name=":clock1: Server Created", value=snowstamp(ctx.guild.id), inline=True
-        )
-        em.add_field(
             name="<:boost:649644112034922516> Nitro Boosts",
-            value=f"Tier {ctx.guild.premium_tier} with {ctx.guild.premium_subscription_count} boosts",
+            value=f"Tier {guild.premium_tier} with {guild.premium_subscription_count} boosts",
             inline=True,
         )
         em.add_field(
             name=":earth_americas: Region",
-            value=str(ctx.guild.region).replace("-", " ").upper(),
+            value=str(guild.region).replace("-", " ").upper(),
             inline=True,
         )
-        em.add_field(name=":family: Members", value=len(ctx.guild.members), inline=True)
+        em.add_field(name=":family: Members", value=len(guild.members), inline=True)
         em.add_field(
             name=":speech_balloon: Channels",
-            value=f"<:text_channel:661798072384225307> {len(ctx.guild.text_channels)} • <:voice_channel:665577300552843294> {len(ctx.guild.voice_channels)}",
+            value=f"<:text_channel:661798072384225307> {len(guild.text_channels)} • <:voice_channel:665577300552843294> {len(guild.voice_channels)}",
             inline=True,
         )
 
