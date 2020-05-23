@@ -125,20 +125,23 @@ class Tools(commands.Cog):
         author += f" - {str(member.id)}"
 
         icon = member.avatar_url
-        bytes = io.BytesIO(await icon.read())
-        partial = functools.partial(Image.open, bytes)
-        image = await self.bot.loop.run_in_executor(None, partial)
-        partial = functools.partial(image.resize, (1, 1))
-        resized = await self.bot.loop.run_in_executor(None, partial)
-        partial = functools.partial(resized.getpixel, (0, 0))
-        color = await self.bot.loop.run_in_executor(None, partial)
-        hex_string = "0x{:02x}{:02x}{:02x}".format(*color)
+        if icon:
+            bytes = io.BytesIO(await icon.read())
+            partial = functools.partial(Image.open, bytes)
+            image = await self.bot.loop.run_in_executor(None, partial)
+            partial = functools.partial(image.resize, (1, 1))
+            resized = await self.bot.loop.run_in_executor(None, partial)
+            partial = functools.partial(resized.getpixel, (0, 0))
+            color = await self.bot.loop.run_in_executor(None, partial)
+            hex_string = "0x{:02x}{:02x}{:02x}".format(*color)
+            color = discord.Color(int(hex_string, 16))
+        else:
+            if member.color:
+                color = member.color
+            else:
+                color = discord.Color.blurple()
 
-        em = discord.Embed(
-            description=desc,
-            color=discord.Color(int(hex_string, 16)),
-            timestamp=d.utcnow(),
-        )
+        em = discord.Embed(description=desc, color=color, timestamp=d.utcnow(),)
 
         em.set_thumbnail(url=member.avatar_url)
         em.set_author(name=author, icon_url=member.avatar_url)
@@ -188,20 +191,20 @@ class Tools(commands.Cog):
             desc += "\n:information_source: This guild is considered large (over 250 members)."
 
         icon = guild.icon_url
-        bytes = io.BytesIO(await icon.read())
-        partial = functools.partial(Image.open, bytes)
-        image = await self.bot.loop.run_in_executor(None, partial)
-        partial = functools.partial(image.resize, (1, 1))
-        resized = await self.bot.loop.run_in_executor(None, partial)
-        partial = functools.partial(resized.getpixel, (0, 0))
-        color = await self.bot.loop.run_in_executor(None, partial)
-        hex_string = "0x{:02x}{:02x}{:02x}".format(*color)
+        if icon:
+            bytes = io.BytesIO(await icon.read())
+            partial = functools.partial(Image.open, bytes)
+            image = await self.bot.loop.run_in_executor(None, partial)
+            partial = functools.partial(image.resize, (1, 1))
+            resized = await self.bot.loop.run_in_executor(None, partial)
+            partial = functools.partial(resized.getpixel, (0, 0))
+            color = await self.bot.loop.run_in_executor(None, partial)
+            hex_string = "0x{:02x}{:02x}{:02x}".format(*color)
+            color = discord.Color(int(hex_string, 16))
+        else:
+            color = discord.Color.blurple()
 
-        em = discord.Embed(
-            description=desc,
-            color=discord.Color(int(hex_string, 16)),
-            timestamp=d.utcnow(),
-        )
+        em = discord.Embed(description=desc, color=color, timestamp=d.utcnow(),)
 
         em.set_thumbnail(url=guild.icon_url)
         if guild.banner_url:
