@@ -81,6 +81,8 @@ class Tools(commands.Cog):
         usage="[user]",
     )
     async def userinfo_command(self, ctx, *, member: discord.Member = None):
+        await ctx.trigger_typing()
+
         member = member or ctx.author
 
         if member == ctx.author:
@@ -172,6 +174,7 @@ class Tools(commands.Cog):
         aliases=["guildinfo"],
     )
     async def serverinfo_command(self, ctx):
+        await ctx.trigger_typing()
         guild = ctx.guild
         if guild.unavailable == True:
             return await ctx.send(
