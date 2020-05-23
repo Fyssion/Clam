@@ -47,10 +47,40 @@ def get_prefix(client, message):
     return commands.when_mentioned_or(*prefixes)(client, message)
 
 
+def dev_prefix(client, message):
+
+    prefixes = ["dev "]
+
+    if not isinstance(message.channel, discord.DMChannel):
+        if str(message.guild.id) in client.guild_prefixes.keys():
+            prefixes = client.guild_prefixes[str(message.guild.id)]
+
+    return prefixes
+
+
 class Clam(commands.Bot):
     def __init__(self):
+        with open("config.yml", "r") as config:
+            try:
+                self.config = yaml.safe_load(config)
+
+            except yaml.YAMLError as exc:
+                self.log.critical("Could not load config.yml")
+                print(exc)
+                import sys
+
+                sys.exit()
+
+        command_prefix = get_prefix
+        self.debug = False
+
+        if "debug" in self.config.keys():
+            if self.config["debug"]:
+                command_prefix = dev_prefix
+                self.debug = True
+
         super().__init__(
-            command_prefix=get_prefix,
+            command_prefix=command_prefix,
             description="Fyssion's personal Discord bot. Does bot things.",
             owner_id=224513210471022592,
             case_insensitive=True,
@@ -65,18 +95,6 @@ class Clam(commands.Bot):
             fmt="(%(asctime)s) %(levelname)s %(message)s",
             datefmt="%m/%d/%y - %H:%M:%S %Z",
         )
-
-        # Config.yml load
-        with open("config.yml", "r") as config:
-            try:
-                self.config = yaml.safe_load(config)
-
-            except yaml.YAMLError as exc:
-                self.log.critical("Could not load config.yml")
-                print(exc)
-                import sys
-
-                sys.exit()
 
         with open("prefixes.json", "r") as f:
             self.guild_prefixes = json.load(f)
@@ -133,6 +151,14 @@ class Clam(commands.Bot):
 
     async def get_context(self, message, *, cls=None):
         return await super().get_context(message, cls=cls or Context)
+
+    async def on_message(self, message):
+        if self.debug and message.guild.id not in [
+            454469821376102410,
+            621123303343652867,
+        ]:
+            return
+        await self.process_commands(message)
 
     async def on_ready(self):
         if self.console is None:

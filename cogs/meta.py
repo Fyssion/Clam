@@ -11,6 +11,7 @@ import json
 import sys
 import asyncio
 import inspect
+import humanize
 
 from .utils.utils import wait_for_deletion
 from .utils import db
@@ -106,6 +107,11 @@ class ClamHelpCommand(commands.HelpCommand):
             f"Use `{bot.guild_prefix(ctx.guild)}prefixes` to view all prefixes for this server.\n"
             f"{self.i_category(ctx)}\n"
         )
+
+        if bot.debug:
+            em.description = (
+                "```css\n[WARNING: DEBUG mode is active]\n```\n" + em.description
+            )
 
         cog_names = []
         for cog in bot.ordered_cogs:
@@ -246,6 +252,8 @@ class Meta(commands.Cog):
 
     @commands.Cog.listener("on_message")
     async def on_mention_msg(self, message):
+        if self.bot.debug:
+            return
         content = message.content
         id = self.bot.user.id
         if content == f"<@{id}>" or content == f"<@!{id}>":
@@ -361,7 +369,7 @@ class Meta(commands.Cog):
 
         dev = self.bot.get_user(224513210471022592)
         up = d.now() - self.bot.startup_time
-        em.add_field(name=":gear: Developer", value=dev.mention)
+        em.add_field(name=":gear: Developer", value=str(dev))
         em.add_field(name=":adult: User Count", value=len(self.bot.users))
         em.add_field(name=":family: Server Count", value=len(self.bot.guilds))
         em.add_field(
@@ -369,39 +377,33 @@ class Meta(commands.Cog):
             value=len(list(self.bot.get_all_channels())),
         )
         em.add_field(
-            name="<:online:649270802088460299> Uptime",
-            value=strfdelta(up, "`{D}D {H}H {M}M {S}S`"),
+            name="<:online:649270802088460299> Uptime", value=humanize.naturaldelta(up),
         )
         em.add_field(name=":page_facing_up: Code", value=await self.get_lines_of_code())
 
         await ctx.send(embed=em)
 
-    @commands.command(name="ping", description="Ping command; replies with 'Pong!'")
+    @commands.command(
+        name="ping", description="Get the bot's latency.", aliases=["latency"]
+    )
     async def ping_command(self, ctx):
-        start = d.timestamp(d.now())
-        msg = await ctx.send("Pinging")
-
-        ping = (d.timestamp(d.now()) - start) * 1000
-        await msg.edit(content=f"Pong!\nOne message round-trip took {ping}ms.")
+        latency = (self.bot.latency) * 1000
+        latency = int(latency)
+        await ctx.send(f"My latency is {latency}ms.")
 
     @commands.command(
-        name="uptime",
-        description="Uptime command; replies with the uptime",
-        aliases=["up"],
+        name="uptime", description="Get the bot's uptime", aliases=["up"],
     )
     async def uptime(self, ctx):
         up = d.now() - self.bot.startup_time
-        up = strfdelta(up, "`{D}D {H}H {M}M {S}S`")
-
-        msg = "<:online:649270802088460299> " f"I have been **online** for {up}"
-        # Attach :02 to a time (Ex: {D:02}) to add the second 0
-        await ctx.send(msg)
+        await ctx.send(
+            f"<:online:649270802088460299> I booted up {humanize.naturaltime(up)}."
+        )
 
     @commands.command(name="invite", description="Invite me to your server")
     async def invite_command(self, ctx):
-        invite = "https://discordapp.com/api/oauth2/authorize?client_id=639234650782564362&permissions=470150358&scope=bot"
+        invite = f"https://discordapp.com/api/oauth2/authorize?client_id={self.bot.user.id}&permissions=470150358&scope=bot"
         await ctx.send(f"Invite:\n{invite}")
-        self.log.info(f"{str(ctx.author)} used the invite command")
 
     @commands.group(
         description="View your prefixes.",
