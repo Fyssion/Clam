@@ -141,7 +141,7 @@ class Clam(commands.Bot):
 
     def private_cog_check(self, ctx):
         if (
-            hasattr(ctx.command.cog, "hidden")
+            hasattr(ctx.command.cog, "private")
             and ctx.guild.id not in [454469821376102410, 621123303343652867,]
             and ctx.author.id != self.owner_id
         ):
