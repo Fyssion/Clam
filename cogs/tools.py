@@ -151,13 +151,13 @@ class Tools(commands.Cog):
         humanized = humanize.naturaltime(member.created_at)
         em.add_field(
             name=":clock1: Account Created",
-            value=f"{humanize.naturaldate(member.created_at)} ({humanized})",
+            value=f"{humanize.naturaldate(member.created_at).capitalize()} ({humanized})",
             inline=True,
         )
         humanized = humanize.naturaltime(member.joined_at)
         em.add_field(
             name="<:join:649722959958638643> Joined Server",
-            value=f"{humanize.naturaldate(member.joined_at)} ({humanized})",
+            value=f"{humanize.naturaldate(member.joined_at).capitalize()} ({humanized})",
             inline=True,
         )
         members = ctx.guild.members
@@ -222,7 +222,7 @@ class Tools(commands.Cog):
         humanized = humanize.naturaltime(guild.created_at)
         em.add_field(
             name=":clock1: Server Created",
-            value=f"{humanize.naturaldate(guild.created_at)} ({humanized})",
+            value=f"{humanize.naturaldate(guild.created_at).capitalize()} ({humanized})",
             inline=True,
         )
         em.add_field(
