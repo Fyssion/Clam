@@ -66,7 +66,10 @@ class HelpPages(menus.ListPageSource):
                 command_help += f" - {command.description}"
             command_info.append(command_help)
         formatted = "\n".join(command_info)
-        em.description += f"\n\n{formatted}\n\n{self.more_info}"
+        if formatted:
+            em.description += f"\n\n{formatted}\n\n{self.more_info}"
+        else:
+            em.description += f"\n\n{self.more_info}"
         return em
 
 
@@ -185,7 +188,8 @@ class ClamHelpCommand(commands.HelpCommand):
                 formatted_alias += alias + "`"
                 formatted_aliases.append(formatted_alias)
             em.description += f"\nAliases: {', '.join(formatted_aliases)}"
-        em.description += f"\n\n**Subcommands ({len(filtered)} total):**"
+        if filtered:
+            em.description += f"\n\n**Subcommands ({len(filtered)} total):**"
 
         more_info = f"{self.arg_help()}\n{self.i_cmd(ctx)}"
 
