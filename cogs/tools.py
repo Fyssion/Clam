@@ -439,13 +439,15 @@ class Tools(commands.Cog):
             try:
                 package = await aiopypi.fetch_package(package)
             except aiopypi.PackageNotFoundError:
-                return await ctx.send(f":x: Package `{package}` not found.")
+                return await ctx.send(
+                    f"Package `{package}` not found. Sorry about that."
+                )
         else:
             try:
                 package = await aiopypi.fetch_package_release(package, release)
             except aiopypi.PackageNotFoundError:
                 return await ctx.send(
-                    f":x: Package `{package}` with release `{release}` not found."
+                    f"Package `{package}` with release `{release}` not found. Sorry about that."
                 )
         title = f"{package} {package.version}"
         em = discord.Embed(
