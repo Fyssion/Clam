@@ -458,9 +458,8 @@ class Tools(commands.Cog):
 
         em.set_author(name=package.author)
 
-        em.description += f"\n\nInstall with: `pip install {package.name}`"
-        if release:
-            em.description += f"=={release}"
+        em.description += f"\n\nInstall with: `pip install {package.name}"
+        em.description += f"=={release}`" if release else "`"
 
         releases_text = []
         release_url = "(https://pypi.org/project/{0.name}/{1})"
