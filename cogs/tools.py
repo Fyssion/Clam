@@ -456,6 +456,8 @@ class Tools(commands.Cog):
             timestamp=d.utcnow(),
         )
 
+        em.set_thumbnail(url="https://i.imgur.com/fGCuXc2.png")
+
         em.set_author(name=package.author)
 
         em.description += f"\n\nInstall with: `pip install {package.name}"
