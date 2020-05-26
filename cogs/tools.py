@@ -458,7 +458,11 @@ class Tools(commands.Cog):
 
         em.set_thumbnail(url="https://i.imgur.com/fGCuXc2.png")
 
-        em.set_author(name=package.author)
+        author = package.author
+        if package.author_email:
+            author += f" ({package.author_email})"
+
+        em.set_author(name=author)
 
         installation = f"**`pip install {package.name}"
         installation += f"=={release}`**\n" if release else "`**\n"
