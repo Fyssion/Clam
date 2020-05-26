@@ -146,7 +146,7 @@ class Admin(commands.Cog):
     @commands.is_owner()
     async def previous(self, ctx):
         try:
-            e = self.bot.error_cache[0]
+            e = self.bot.error_cache[len(self.bot.error_cache) - 1]
         except IndexError:
             return await ctx.send("No previous errors cached.")
         etype = type(e)
@@ -162,7 +162,7 @@ class Admin(commands.Cog):
         if len(self.bot.error_cache) == 0:
             return await ctx.send("No previous errors cached.")
         try:
-            e = self.bot.error_cache[i]
+            e = self.bot.error_cache[len(self.bot.error_cache) - i - 1]
         except IndexError:
             return await ctx.send("There is no error at that index.")
         etype = type(e)
