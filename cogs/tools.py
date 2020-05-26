@@ -460,22 +460,71 @@ class Tools(commands.Cog):
 
         em.set_author(name=package.author)
 
-        em.description += f"\n\nInstall with: `pip install {package.name}"
-        em.description += f"=={release}`" if release else "`"
+        installation = f"**`pip install {package.name}"
+        installation += f"=={release}`**\n" if release else "`**\n"
+
+        em.description = installation + em.description
+
+        useful_info = []
+        if package.home_page:
+            useful_info.append(f"[Homepage]({package.home_page})")
+        if package.bugtrack_url:
+            useful_info.append(f"[Bugtracker]({package.bugtrack_url})")
+        if package.license:
+            useful_info.append(f"License: {package.license}")
+        if package.requires_python:
+            useful_info.append(f"Requires python {package.requires_python}")
+
+        if useful_info:
+            em.add_field(name="Useful Info", value="\n".join(useful_info))
 
         releases_text = []
         release_url = "(https://pypi.org/project/{0.name}/{1})"
         for i, release_ in enumerate(reversed(package.releases)):
             if i > 4:
-                releases_text.append(f"...and {len(package.releases) - i - 1} more.")
+                releases_text.append(f"...and {len(package.releases) - i} more.")
                 break
             releases_text.append(
-                f"[{release_.version}]" + release_url.format(package, release_)
+                f"[{release_.version}{' (latest)' if not i else ''}]"
+                + release_url.format(package, release_)
             )
         em.add_field(
-            name=f"**Releases ({len(package.releases)} total)**",
+            name=f"Releases ({len(package.releases)} total)",
             value="\n".join(releases_text),
         )
+
+        urls_text = []
+        for i, url in enumerate(package.project_urls):
+            if i > 4:
+                urls_text.append(f"...and {len(package.project_urls) - i} more.")
+                break
+            urls_text.append(f"[{url}]({package.project_urls[url]})")
+
+        if urls_text:
+            em.add_field(
+                name=f"Project Links ({len(package.project_urls)} total)",
+                value="\n".join(urls_text),
+            )
+
+        requires_text = []
+        for i, requirement in enumerate(package.requires_dist):
+            if i > 4:
+                requires_text.append(f"...and {len(package.requires_dist) - i} more.")
+                break
+            # words = requirement.split(" ")
+            # requirement = words[0]
+            # if len(requirement) < 18:
+            #     requires_text.append(requirement)
+            # else:
+            #     requires_text.append("".join(requirement[:15]) + "...")
+            requires_text.append(requirement)
+
+        if requires_text:
+            em.add_field(
+                name=f"Requirements ({len(package.requires_dist)} total)",
+                value="\n".join(requires_text),
+                inline=False,
+            )
 
         await ctx.send(embed=em)
 
