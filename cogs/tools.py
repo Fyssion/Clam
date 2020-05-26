@@ -12,8 +12,9 @@ import humanize
 import io
 import functools
 from PIL import Image
+import typing
 
-from .utils import fuzzy
+from .utils import fuzzy, aiopypi
 from .utils.utils import SphinxObjectFileReader
 
 
@@ -426,6 +427,56 @@ class Tools(commands.Cog):
             )
             return await pages.start(ctx)
         await ctx.send("No matches found.")
+
+    @commands.group(
+        description="Fetch a PyPI package.",
+        usage="[package] <version>",
+        aliases=["package"],
+        invoke_without_command=True,
+    )
+    async def pypi(self, ctx, package, release=None):
+        if not release:
+            try:
+                package = await aiopypi.fetch_package(package)
+            except aiopypi.PackageNotFoundError:
+                return await ctx.send(f":x: Package `{package}` not found.")
+        else:
+            try:
+                package = await aiopypi.fetch_package_release(package, release)
+            except aiopypi.PackageNotFoundError:
+                return await ctx.send(
+                    f":x: Package `{package}` with release `{release}` not found."
+                )
+        title = f"{package} {package.version}"
+        em = discord.Embed(
+            title=title,
+            url=package.package_url,
+            description=package.summary,
+            color=0x0073B7,
+            timestamp=d.utcnow(),
+        )
+
+        em.set_author(name=package.author)
+
+        em.description += f"\n\nInstall with: `pip install {package.name}`"
+        if release:
+            em.description += f"=={release}"
+
+        releases_text = []
+        release_url = "(https://pypi.org/project/{0.name}/{1})"
+        for i, release_ in enumerate(reversed(package.releases)):
+            if i > 4:
+                releases_text.append(f"...and {len(package.releases) - i - 1} more.")
+                break
+            releases_text.append(
+                f"[{release_.version}]" + release_url.format(package, release_)
+            )
+        em.add_field(
+            name=f"**Releases ({len(package.releases)} total)**",
+            value="\n".join(releases_text),
+        )
+
+        await ctx.send(embed=em)
 
     def parse_object_inv(self, stream, url):
         # key: URL
