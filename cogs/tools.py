@@ -488,10 +488,12 @@ class Tools(commands.Cog):
             if i > 4:
                 releases_text.append(f"...and {len(package.releases) - i} more.")
                 break
-            releases_text.append(
-                f"[{release_.version}{' (latest)' if not i else ''}]"
-                + release_url.format(package, release_)
-            )
+            text = f"[{release_.version}"
+            if str(release_) == package.version and not release:
+                text += " (latest)"
+            text += "]"
+            releases_text.append(text + release_url.format(package, release_))
+
         em.add_field(
             name=f"Releases ({len(package.releases)} total)",
             value="\n".join(releases_text),
