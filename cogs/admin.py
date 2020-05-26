@@ -1,10 +1,25 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, menus
 
 from datetime import datetime as d
 import traceback
 import json
 import psutil
+
+from .utils.menus import MenuPages
+
+
+class ErrorSource(menus.ListPageSource):
+    def __init__(self, entries):
+        super().__init__(entries, per_page=9)
+
+    def format_page(self, menu, entries):
+        offset = menu.current_page * self.per_page
+        message = f"**Page {menu.current_page + 1}/{self.get_max_pages()}**```py\n"
+        for i, line in enumerate(entries, start=offset):
+            message += line
+        message += "\n```"
+        return message
 
 
 class Admin(commands.Cog):
@@ -17,6 +32,11 @@ class Admin(commands.Cog):
 
         with open("active_dms.json", "r") as f:
             self.active_dms = json.load(f)
+
+    async def cog_check(self, ctx):
+        if not await commands.is_owner().predicate(ctx):
+            raise commands.NotOwner("You do not own this bot.")
+        return True
 
     @commands.command(
         name="reload",
@@ -114,18 +134,43 @@ class Admin(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @commands.group(name="error", hidden=True, aliases=["e"])
+    @commands.group(
+        name="error", hidden=True, aliases=["e"], invoke_without_command=True,
+    )
     @commands.is_owner()
     async def _error(self, ctx):
-        pass
+        cache_len = len(self.bot.error_cache)
+        await ctx.send(f"I have **{cache_len}** cached errors.")
 
-    @_error.command()
+    @_error.command(aliases=["pre", "p", "prev"])
+    @commands.is_owner()
     async def previous(self, ctx):
-        if not self.bot.previous_error:
-            return await ctx.send("No previous error cached.")
-        e = self.bot.previous_error
-        error = "".join(traceback.format_exception(type(e), e, e.__traceback__, 1))
-        await ctx.send(f"```py\n{error}```")
+        try:
+            e = self.bot.error_cache[0]
+        except IndexError:
+            return await ctx.send("No previous errors cached.")
+        etype = type(e)
+        trace = e.__traceback__
+        verbosity = 4
+        lines = traceback.format_exception(etype, e, trace, verbosity)
+        pages = MenuPages(source=ErrorSource(lines), clear_reactions_after=True,)
+        await pages.start(ctx)
+
+    @_error.command(aliases=["i", "find", "get", "search"], usage="[index]")
+    @commands.is_owner()
+    async def index(self, ctx, i: int):
+        if len(self.bot.error_cache) == 0:
+            return await ctx.send("No previous errors cached.")
+        try:
+            e = self.bot.error_cache[i]
+        except IndexError:
+            return await ctx.send("There is no error at that index.")
+        etype = type(e)
+        trace = e.__traceback__
+        verbosity = 4
+        lines = traceback.format_exception(etype, e, trace, verbosity)
+        pages = MenuPages(source=ErrorSource(lines), clear_reactions_after=True,)
+        await pages.start(ctx)
 
     @commands.command(
         name="logout", description="Logs out and shuts down bot", hidden=True

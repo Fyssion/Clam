@@ -8,6 +8,7 @@ from datetime import datetime as d
 import aiohttp
 import traceback
 import json
+import collections
 
 from cogs.utils import backup
 from cogs.utils.errors import PrivateCog
@@ -104,7 +105,7 @@ class Clam(commands.Bot):
         self.prefixes = ["`c.`", "or when mentioned"]
         self.default_prefix = "c."
         self.dev = self.get_user(224513210471022592)
-        self.previous_error = None
+        self.error_cache = collections.deque(maxlen=100)
         self.console = None
         self.startup_time = None
         self.session = None

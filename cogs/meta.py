@@ -275,7 +275,7 @@ class Meta(commands.Cog):
         error = "".join(traceback.format_exception(type(e), e, e.__traceback__, 1))
         print("Ignoring exception in command {}:".format(ctx.command), file=sys.stderr)
         traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
-        self.bot.previous_error = e
+        self.bot.error_cache.append(e)
         if isinstance(e, PrivateCog):
             return
         if isinstance(e, commands.errors.CommandNotFound):
@@ -285,7 +285,7 @@ class Meta(commands.Cog):
         if isinstance(e, commands.errors.BotMissingPermissions):
             perms = ""
             for perm in e.missing_perms:
-                perms += f"\n  - {perm}"
+                perms += f"\n  - {perm}"f
             return await ctx.send(
                 f"**:x: The bot is missing some permissions:**{perms}"
             )
