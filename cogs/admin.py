@@ -5,8 +5,12 @@ from datetime import datetime as d
 import traceback
 import json
 import psutil
+import typing
 
 from .utils.menus import MenuPages
+
+
+CLAM_DMS_CATEGORY = 714981398540451841
 
 
 class ErrorSource(menus.ListPageSource):
@@ -22,6 +26,21 @@ class ErrorSource(menus.ListPageSource):
         return message
 
 
+class DMSession:
+    def __init__(self, user, channel):
+        super().__init__()
+        self.user = user
+        self.channel = channel
+        self.is_closed = False
+
+    async def send(self, *args, **kwargs):
+        return await self.user.send(*args, **kwargs)
+
+    async def close(self):
+        await self.channel.delete(reason="Closing DM Session")
+        self.is_closed = True
+
+
 class Admin(commands.Cog):
     """Admin commands and features"""
 
@@ -30,8 +49,27 @@ class Admin(commands.Cog):
         self.hidden = True
         self.log = self.bot.log
 
-        with open("active_dms.json", "r") as f:
-            self.active_dms = json.load(f)
+        if not hasattr(self.bot, "dm_sessions"):
+            # channel_id: DMSession
+            self.bot.dm_sessions = {}
+
+        self.dm_sessions = self.bot.dm_sessions
+
+    def get_dm_session(self, channel):
+        if channel.id in self.dm_sessions.keys():
+            dm_session = self.dm_sessions[channel.id]
+        else:
+            dm_session = None
+        return dm_session
+
+    def find_session_from_user(self, user):
+        for dm_session in self.dm_sessions.values():
+            if dm_session.user.id == user.id:
+                return dm_session
+        return None
+
+    async def cog_before_invoke(self, ctx):
+        ctx.dm_session = self.get_dm_session(ctx.channel)
 
     async def cog_check(self, ctx):
         if not await commands.is_owner().predicate(ctx):
@@ -187,46 +225,128 @@ class Admin(commands.Cog):
     )
     @commands.is_owner()
     async def dm(self, ctx):
-        await self.all_dms(ctx)
+        await ctx.invoke(self.all_dms)
 
     @dm.command(name="all", description="View all current DMs.")
     @commands.is_owner()
     async def all_dms(self, ctx):
-        if not self.active_dms:
+        if not self.dm_sessions:
             return await ctx.send("No active DMs.")
-        dms = "Current active DMs"
-        for dm in self.active_dms:
-            pass
+        dms = "Current active DMs:"
+        for dm in self.dm_sessions:
+            dms += f"\n{dm.user}"
         await ctx.send(dms)
 
-    @dm.command(description="Create a new DM with a user.", aliases=["new"])
+    @dm.command(
+        description="Create a new DM session with a user.", aliases=["new", "start"]
+    )
     @commands.is_owner()
-    async def create(self, ctx, member: discord.Member):
-        pass
+    async def create(self, ctx, user: typing.Union[discord.User, int]):
+        if type(user) == int:
+            user = self.bot.get_user(user)
+            if not user:
+                return await ctx.send("I couldn't find that user.")
+        category = ctx.guild.get_channel(CLAM_DMS_CATEGORY)
+        channel = await category.create_text_channel(
+            name=str(user), reason="Create DM session"
+        )
+        dm_session = DMSession(user, channel)
+        self.dm_sessions[channel.id] = dm_session
 
-    @dm.command(description="Remove a DM with a user.", aliases=["delete", "stop"])
+    @dm.group(
+        description="Close a DM session with a user.",
+        aliases=["delete", "stop", "remove"],
+        invoke_without_command=True,
+    )
     @commands.is_owner()
-    async def remove(self, ctx, member: discord.Member = None):
-        pass
+    async def close(self, ctx):
+        if not ctx.dm_session:
+            return await ctx.send("You must be in a DM session to invoke this command.")
+        await ctx.dm_session.close()
+        self.dm_sessions.pop(ctx.dm_session.channel.id)
 
-    @dm.command(description="Toggle broadcasting DMs")
-    @commands.is_owner()
-    async def broadcast(self, ctx, state: bool):
-        pass
+    @close.command(name="all", description="Close all DM session")
+    async def close_all(self, ctx):
+        for dm_session in self.dm_sessions.values():
+            await dm_session.close()
+        num_sessions = len(self.dm_sessions)
+        self.bot.dm_sessions = {}
+        await ctx.send(f"Closed {num_sessions} DM session(s)")
+
+    @commands.Cog.listener("on_message")
+    async def dm_sender(self, message):
+        dm_session = self.get_dm_session(message.channel)
+
+        if not dm_session:
+            return
+        if message.author.bot:
+            return
+        if message.content.startswith(self.bot.guild_prefix(message.guild)):
+            return
+
+        try:
+            await dm_session.send(message.content)
+        except discord.Forbidden:
+            return await dm_session.channel.send("Could not send message.")
+
+        channel = self.bot.get_channel(679841169248747696)
+        em = discord.Embed(
+            description=message.clean_content,
+            color=discord.Color.red(),
+            timestamp=d.utcnow(),
+        )
+        em.set_author(
+            name=f"To: {dm_session.user} ({dm_session.user.id})",
+            icon_url=dm_session.user.avatar_url,
+        )
+        em.set_footer(text="Outgoing DM")
+        return await channel.send(embed=em)
 
     @commands.Cog.listener("on_message")
     async def dm_listener(self, message):
-        if isinstance(message.channel, discord.DMChannel) and not message.author.bot:
-            channel = self.bot.get_channel(679841169248747696)
-            em = discord.Embed(
-                description=message.clean_content,
-                color=discord.Color.blue(),
-                timestamp=d.utcnow(),
-            )
-            em.set_author(name=message.author, icon_url=message.author.avatar_url)
-            em.set_footer(text="Incoming DM")
-            return await channel.send(embed=em)
-        pass
+        if not isinstance(message.channel, discord.DMChannel) or message.author.bot:
+            return
+
+        channel = self.bot.get_channel(679841169248747696)
+        em = discord.Embed(
+            description=message.clean_content,
+            color=discord.Color.blue(),
+            timestamp=d.utcnow(),
+        )
+        em.set_author(
+            name=f"From: {message.author} ({message.author.id})",
+            icon_url=message.author.avatar_url,
+        )
+        em.set_footer(text="Incoming DM")
+        await channel.send(embed=em)
+
+        dm_session = self.find_session_from_user(message.author)
+        if not dm_session:
+            return
+
+        await dm_session.channel.send(f"{dm_session.user}: {message.content}")
+
+    @commands.Cog.listener("on_typing")
+    async def typing_send(self, channel, user, when):
+        dm_session = self.get_dm_session(channel)
+
+        if not dm_session:
+            return
+        if user.bot:
+            return
+
+        await dm_session.user.trigger_typing()
+
+    @commands.Cog.listener("on_typing")
+    async def typing_recieve(self, channel, user, when):
+        dm_session = self.find_session_from_user(user)
+
+        if not dm_session:
+            return
+        if user.bot:
+            return
+
+        await dm_session.channel.trigger_typing()
 
 
 def setup(bot):
