@@ -94,7 +94,7 @@ class Package:
                 self.releases.append(Release(release, data["releases"][release]))
 
         self.files = []
-        if data["files"]:
+        if data["urls"]:
             for file_data in data["urls"]:
                 self.files.append(File(file_data))
 
