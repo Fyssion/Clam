@@ -78,7 +78,7 @@ class Package:
         self.project_url = ["project_url"]
         self.project_urls = info["project_urls"]
         self.release_url = info["release_url"]
-        self.requires_dist = info["requires_dist"]
+        self.requires_dist = info["requires_dist"] or []
         self.requires_python = info["requires_python"]
         self.summary = info["summary"]
         self.short_description = self.summary
@@ -89,12 +89,14 @@ class Package:
         self.last_serial = data["last_serial"]
 
         self.releases = []
-        for release in data["releases"]:
-            self.releases.append(Release(release, data["releases"][release]))
+        if data["releases"]:
+            for release in data["releases"]:
+                self.releases.append(Release(release, data["releases"][release]))
 
         self.files = []
-        for file_data in data["urls"]:
-            self.files.append(File(file_data))
+        if data["files"]:
+            for file_data in data["urls"]:
+                self.files.append(File(file_data))
 
     def __str__(self):
         return self.name
