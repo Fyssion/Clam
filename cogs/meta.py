@@ -12,6 +12,7 @@ import sys
 import asyncio
 import inspect
 import humanize
+import functools
 
 from .utils.utils import wait_for_deletion
 from .utils import db
@@ -340,10 +341,14 @@ class Meta(commands.Cog):
             return ", ".join(prefixes)
         return " ".join(self.bot.prefixes)
 
-    async def get_lines_of_code(self):
+    def get_lines_of_code(self, comments=False):
         total = 0
         file_amount = 0
         for path, subdirs, files in os.walk("."):
+            if "venv" in subdirs:
+                subdirs.remove("venv")
+            if "env" in subdirs:
+                subdirs.remove("env")
             for name in files:
                 if name.endswith(".py"):
                     file_amount += 1
@@ -354,10 +359,27 @@ class Meta(commands.Cog):
                             if (
                                 l.strip().startswith("#") or len(l.strip()) == 0
                             ):  # skip commented lines.
+                                if comments:
+                                    total += 1
                                 pass
                             else:
                                 total += 1
-        return f"I am made of {total:,} lines of Python, spread across {file_amount:,} files!"
+        excomments = " (excluding comments)" if not comments else ""
+        return f"I am made of {total:,} lines of Python{excomments}, spread across {file_amount:,} files!"
+
+    @commands.group(
+        description="Find out what I'm made of!", invoke_without_command=True
+    )
+    async def code(self, ctx):
+        partial = functools.partial(self.get_lines_of_code)
+        lines = await self.bot.loop.run_in_executor(None, partial)
+        await ctx.send(lines)
+
+    @code.command(description="Include comments in the search.")
+    async def comments(self, ctx):
+        partial = functools.partial(self.get_lines_of_code, comments=True)
+        lines = await self.bot.loop.run_in_executor(None, partial)
+        await ctx.send(lines)
 
     @commands.command(
         name="stats",
@@ -383,7 +405,10 @@ class Meta(commands.Cog):
         em.add_field(
             name="<:online:649270802088460299> Uptime", value=humanize.naturaldelta(up),
         )
-        em.add_field(name=":page_facing_up: Code", value=await self.get_lines_of_code())
+
+        partial = functools.partial(self.get_lines_of_code)
+        lines = await self.bot.loop.run_in_executor(None, partial)
+        em.add_field(name=":page_facing_up: Code", value=lines, inline=False)
 
         await ctx.send(embed=em)
 
