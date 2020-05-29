@@ -581,7 +581,7 @@ class Meta(commands.Cog):
             )
 
             if reaction.emoji == "✅":
-                self.bot.guild_prefixes[str(ctx.guild.id)].pop()
+                self.bot.guild_prefixes.pop(str(ctx.guild.id))
                 with open("prefixes.json", "w") as f:
                     json.dump(
                         self.bot.guild_prefixes,
