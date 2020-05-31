@@ -322,6 +322,7 @@ class Meta(commands.Cog):
         em.set_footer(icon_url=self.bot.user.avatar_url)
         await ctx.send(embed=em)
         extra_info = f"Command name: `{ctx.command.name}`"
+        extra_info += f"\nError cache position: `{len(self.bot.error_cache) - 1}`"
         if ctx.args:
             args = [str(a) for a in ctx.args]
             extra_info += f"\nArgs: `{', '.join(args)}`"
