@@ -82,7 +82,7 @@ class Clam(commands.Bot):
 
         super().__init__(
             command_prefix=command_prefix,
-            description="Fyssion's personal Discord bot. Does bot things.",
+            description="A multi-purpose Discord bot. Likes to hide in it's shell.",
             owner_id=224513210471022592,
             case_insensitive=True,
             # activity = discord.Activity(name="for robo.help", type = discord.ActivityType.playing)
@@ -113,16 +113,16 @@ class Clam(commands.Bot):
         self.add_check(self.private_cog_check)
 
         self.cogs_to_load = [
-            "cogs.meta",
-            "cogs.tools",
-            "cogs.games",
-            "cogs.reddit",
+            "cogs.admin",
             "cogs.fun",
+            "cogs.games",
+            "cogs.mathematics",
+            "cogs.meta",
             "cogs.moderation",
             "cogs.music",
-            "cogs.mathematics",
-            "cogs.admin",
+            "cogs.reddit",
             "cogs.tags",
+            "cogs.tools",
         ]
 
         self.load_extension("jishaku")
