@@ -4,7 +4,7 @@
 
 # Clam
 
-Fyssion's personal Discord bot. Does bot things.
+A multi-purpose Discord bot. Likes to hide in it's shell.
 
 Please don't run it yourself. Instead, [invite the bot](https://discordapp.com/api/oauth2/authorize?client_id=639234650782564362&permissions=470150358&scope=bot).
 
