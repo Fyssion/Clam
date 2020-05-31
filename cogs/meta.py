@@ -262,9 +262,10 @@ class Meta(commands.Cog):
         content = message.content
         id = self.bot.user.id
         if content == f"<@{id}>" or content == f"<@!{id}>":
+            dev = self.bot.get_user(224513210471022592)
             await message.channel.send(
-                "Hey there! I'm a bot. :robot:\n"
-                "To find out more about me, type:"
+                f"Hi there! :wave: I'm a bot made by {dev}."
+                "\nTo find out more about me, type:"
                 f" `{self.bot.guild_prefix(message.guild)}help`"
             )
 
@@ -280,7 +281,6 @@ class Meta(commands.Cog):
         error = "".join(traceback.format_exception(type(e), e, e.__traceback__, 1))
         print("Ignoring exception in command {}:".format(ctx.command), file=sys.stderr)
         traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
-        self.bot.error_cache.append(e)
         if isinstance(e, PrivateCog):
             return
         if isinstance(e, commands.errors.CommandNotFound):
@@ -308,6 +308,7 @@ class Meta(commands.Cog):
             return await ctx.send(
                 f"**You are on cooldown.** Try again after {e.retry_after} seconds."
             )
+        self.bot.error_cache.append(e)
         em = discord.Embed(
             title=":warning: Unexpected Error",
             color=discord.Color.gold(),
@@ -340,6 +341,14 @@ class Meta(commands.Cog):
             prefixes.append("or when mentioned")
             return ", ".join(prefixes)
         return " ".join(self.bot.prefixes)
+
+    @commands.command(description="Greet me!", aliases=["hello"])
+    async def hi(self, ctx):
+        dev = self.bot.get_user(224513210471022592)
+        await ctx.send(
+            f"Hi there! :wave: I'm a bot made by {dev}."
+            f"\nTo find out more about me, type: `{ctx.guild_prefix}help`"
+        )
 
     def get_lines_of_code(self, comments=False):
         total = 0
@@ -432,7 +441,7 @@ class Meta(commands.Cog):
     @commands.command(name="invite", description="Invite me to your server")
     async def invite_command(self, ctx):
         invite = f"https://discordapp.com/api/oauth2/authorize?client_id={self.bot.user.id}&permissions=470150358&scope=bot"
-        await ctx.send(f"Invite:\n{invite}")
+        await ctx.send(f"Invite:\n<{invite}>")
 
     @commands.group(
         description="View your prefixes.",
@@ -611,7 +620,7 @@ class Meta(commands.Cog):
         periods, e.g. tag.create for the create subcommand of the tag command
         or by spaces.
         """
-        source_url = "https://github.com/Clam-Bot/Clam"
+        source_url = "<https://github.com/Clam-Bot/Clam>"
         branch = "master"
         if command is None:
             return await ctx.send(source_url)
