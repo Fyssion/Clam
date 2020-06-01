@@ -14,16 +14,42 @@ CLAM_DMS_CATEGORY = 714981398540451841
 
 
 class ErrorSource(menus.ListPageSource):
-    def __init__(self, entries):
+    def __init__(self, entries, error_id):
         super().__init__(entries, per_page=9)
+        self.error_id = error_id
 
     def format_page(self, menu, entries):
         offset = menu.current_page * self.per_page
-        message = f"**Page {menu.current_page + 1}/{self.get_max_pages()}**```py\n"
+        message = f"**Page {menu.current_page + 1}/{self.get_max_pages()} | Error {self.error_id}**```py\n"
         for i, line in enumerate(entries, start=offset):
             message += line
         message += "\n```"
         return message
+
+
+class AllErrorsSource(menus.ListPageSource):
+    def __init__(self, entries):
+        super().__init__(entries, per_page=6)
+
+    def format_page(self, menu, entries):
+        offset = menu.current_page * self.per_page
+        em = discord.Embed(
+            title=f"{len(self.entries)} Errors Cached", color=discord.Color.blurple()
+        )
+        em.set_footer(text=f"Page {menu.current_page + 1}/{self.get_max_pages()}")
+
+        description = []
+
+        for i, error in enumerate(entries, start=offset):
+            if str(error).startswith("Command raised an exception: "):
+                e_formatted = str(error)[29:]
+            else:
+                e_formatted = str(error)
+            description.append(f"`{len(self.entries) - 1 - i}.` {e_formatted}")
+
+        em.description = "\n".join(description)
+
+        return em
 
 
 class DMSession:
@@ -177,8 +203,10 @@ class Admin(commands.Cog):
     )
     @commands.is_owner()
     async def _error(self, ctx):
-        cache_len = len(self.bot.error_cache)
-        await ctx.send(f"I have **{cache_len}** cached errors.")
+        first_step = list(self.bot.error_cache)
+        errors = first_step[::-1]
+        pages = MenuPages(source=AllErrorsSource(errors), clear_reactions_after=True,)
+        await pages.start(ctx)
 
     @_error.command(aliases=["pre", "p", "prev"])
     @commands.is_owner()
@@ -191,7 +219,10 @@ class Admin(commands.Cog):
         trace = e.__traceback__
         verbosity = 4
         lines = traceback.format_exception(etype, e, trace, verbosity)
-        pages = MenuPages(source=ErrorSource(lines), clear_reactions_after=True,)
+        pages = MenuPages(
+            source=ErrorSource(lines, len(self.bot.error_cache) - 1),
+            clear_reactions_after=True,
+        )
         await pages.start(ctx)
 
     @_error.command(aliases=["i", "find", "get", "search"], usage="[index]")
@@ -207,7 +238,7 @@ class Admin(commands.Cog):
         trace = e.__traceback__
         verbosity = 4
         lines = traceback.format_exception(etype, e, trace, verbosity)
-        pages = MenuPages(source=ErrorSource(lines), clear_reactions_after=True,)
+        pages = MenuPages(source=ErrorSource(lines, i), clear_reactions_after=True,)
         await pages.start(ctx)
 
     @commands.command(
