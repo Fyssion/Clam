@@ -224,6 +224,11 @@ class ClamHelpCommand(commands.HelpCommand):
             em.description += f"\nAliases: {', '.join(formatted_aliases)}"
         await ctx.send(embed=em)
 
+    async def on_help_command_error(self, ctx, error):
+        print(type(error))
+        if isinstance(error, commands.CommandInvokeError):
+            return await ctx.send("You don't have access to that cog.")
+
 
 class Meta(commands.Cog):
     """Everything to do with the bot itself."""
@@ -282,6 +287,8 @@ class Meta(commands.Cog):
         print("Ignoring exception in command {}:".format(ctx.command), file=sys.stderr)
         traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
         if isinstance(e, PrivateCog):
+            return
+        if isinstance(e, commands.CommandInvokeError) and str(ctx.command) == "help":
             return
         if isinstance(e, commands.errors.CommandNotFound):
             return
