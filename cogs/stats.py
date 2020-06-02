@@ -117,7 +117,7 @@ class Stats(commands.Cog):
             em = discord.Embed(
                 title=f"Command Usage Stats for {ctx.guild}",
                 color=colors.PRIMARY,
-                timestamp=count[1] or datetime.datetime.utcnow(),
+                timestamp=count[1] or datetime.utcnow(),
             )
 
             em.description = f"There have been **{count[0]} commands used**."
