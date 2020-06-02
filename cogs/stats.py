@@ -9,7 +9,7 @@ import asyncpg
 import humanize
 
 from .utils.utils import get_lines_of_code
-from .utils import db
+from .utils import db, colors
 
 
 class Commands(db.Table):
@@ -97,10 +97,129 @@ class Stats(commands.Cog):
                 }
             )
 
+    @commands.group(
+        description="View usage statistics for the current guild or a specified member.",
+        usage="<member>",
+        aliases=["statistics"],
+        invoke_without_command=True,
+    )
+    @commands.guild_only()
+    @commands.cooldown(1, 30.0, type=commands.BucketType.member)
+    async def stats(self, ctx, member: discord.Member = None):
+        await ctx.trigger_typing()
+
+        if not member:
+            query = """SELECT COUNT(*), MIN(invoked_at)
+                    FROM commands
+                    WHERE guild_id=$1;"""
+            count = await ctx.db.fetchrow(query, ctx.guild.id)
+
+            em = discord.Embed(
+                title=f"Command Usage Stats for {ctx.guild}",
+                color=colors.PRIMARY,
+                timestamp=count[1] or datetime.datetime.utcnow(),
+            )
+
+            em.description = f"There have been **{count[0]} commands used**."
+            em.set_footer(text=f"Tracking command usage since")
+
+            query = """SELECT name,
+                        COUNT(*) as "uses"
+                FROM commands
+                WHERE guild_id=$1
+                GROUP BY name
+                ORDER BY "uses" DESC
+                LIMIT 5;
+            """
+
+            places = (
+                "`1.`",
+                "`2.`",
+                "`3.`",
+                "`4.`",
+                "`5.`",
+            )
+
+            records = await ctx.db.fetch(query, ctx.guild.id)
+
+            formatted = []
+            for (index, (command, uses)) in enumerate(records):
+                formatted.append(f"{places[index]} **{command}** ({uses} uses)")
+
+            value = "\n".join(formatted) or "No Commands"
+
+            em.add_field(name="Top Commands", value=value, inline=True)
+
+            query = """SELECT name,
+                            COUNT(*) as "uses"
+                    FROM commands
+                    WHERE guild_id=$1
+                    AND invoked_at > (CURRENT_TIMESTAMP - INTERVAL '1 day')
+                    GROUP BY name
+                    ORDER BY "uses" DESC
+                    LIMIT 5;
+                    """
+
+            records = await ctx.db.fetch(query, ctx.guild.id)
+
+            formatted = []
+            for (index, (command, uses)) in enumerate(records):
+                formatted.append(f"{places[index]} **{command}** ({uses} uses)")
+
+            value = "\n".join(formatted) or "No Commands."
+            em.add_field(name="Top Commands Today", value=value, inline=True)
+            em.add_field(name="\u200b", value="\u200b", inline=True)
+
+            query = """SELECT author_id,
+                            COUNT(*) AS "uses"
+                    FROM commands
+                    WHERE guild_id=$1
+                    GROUP BY author_id
+                    ORDER BY "uses" DESC
+                    LIMIT 5;
+                    """
+            records = await ctx.db.fetch(query, ctx.guild.id)
+
+            formatted = []
+            for (index, (author_id, uses)) in enumerate(records):
+                author = ctx.guild.get_member(author_id)
+                authorf = str(author) if author else f"<@!{author_id}>"
+                formatted.append(f"{places[index]} **{authorf}** ({uses} uses)")
+
+            value = "\n".join(formatted) or "None"
+
+            em.add_field(name="Top Command Users", value=value, inline=True)
+
+            query = """SELECT author_id,
+                            COUNT(*) AS "uses"
+                    FROM commands
+                    WHERE guild_id=$1
+                    AND invoked_at > (CURRENT_TIMESTAMP - INTERVAL '1 day')
+                    GROUP BY author_id
+                    ORDER BY "uses" DESC
+                    LIMIT 5;
+                    """
+            records = await ctx.db.fetch(query, ctx.guild.id)
+
+            formatted = []
+            for (index, (author_id, uses)) in enumerate(records):
+                author = ctx.guild.get_member(author_id)
+                authorf = str(author) if author else f"<@!{author_id}>"
+                formatted.append(f"{places[index]} **{authorf}** ({uses} uses)")
+
+            value = "\n".join(formatted) or "None"
+
+            em.add_field(name="Top Command Users Today", value=value, inline=True)
+
+            await ctx.send(embed=em)
+
+        else:
+            pass
+
     @commands.command(
         name="about", description="Display info about the bot", aliases=["info"],
     )
-    async def stats(self, ctx):
+    async def about(self, ctx):
         em = discord.Embed(title="About", color=0xFF95B0, timestamp=datetime.utcnow())
         em.set_thumbnail(url=self.bot.user.avatar_url)
         em.set_footer(

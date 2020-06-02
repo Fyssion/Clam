@@ -36,6 +36,10 @@ class Context(commands.Context):
     def console(self):
         return self.bot.console
 
+    @property
+    def db(self):
+        return self.bot.pool
+
 
 def get_prefix(client, message):
 
