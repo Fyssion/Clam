@@ -14,7 +14,7 @@ import inspect
 import humanize
 import functools
 
-from .utils.utils import wait_for_deletion
+from .utils.utils import wait_for_deletion, get_lines_of_code
 from .utils import db
 from .utils.utils import hover_link
 from .utils.checks import has_manage_guild
@@ -286,6 +286,9 @@ class Meta(commands.Cog):
         error = "".join(traceback.format_exception(type(e), e, e.__traceback__, 1))
         print("Ignoring exception in command {}:".format(ctx.command), file=sys.stderr)
         traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
+        stats = self.bot.get_cog("Stats")
+        if stats:
+            await stats.register_command(ctx)
         if isinstance(e, PrivateCog):
             return
         if isinstance(e, commands.CommandInvokeError) and str(ctx.command) == "help":
@@ -358,32 +361,6 @@ class Meta(commands.Cog):
             f"\nTo find out more about me, type: `{ctx.guild_prefix}help`"
         )
 
-    def get_lines_of_code(self, comments=False):
-        total = 0
-        file_amount = 0
-        for path, subdirs, files in os.walk("."):
-            if "venv" in subdirs:
-                subdirs.remove("venv")
-            if "env" in subdirs:
-                subdirs.remove("env")
-            for name in files:
-                if name.endswith(".py"):
-                    file_amount += 1
-                    with codecs.open(
-                        "./" + str(pathlib.PurePath(path, name)), "r", "utf-8"
-                    ) as f:
-                        for i, l in enumerate(f):
-                            if (
-                                l.strip().startswith("#") or len(l.strip()) == 0
-                            ):  # skip commented lines.
-                                if comments:
-                                    total += 1
-                                pass
-                            else:
-                                total += 1
-        excomments = " (excluding comments)" if not comments else ""
-        return f"I am made of {total:,} lines of Python{excomments}, spread across {file_amount:,} files!"
-
     @commands.group(
         description="Find out what I'm made of!", invoke_without_command=True
     )
@@ -397,54 +374,6 @@ class Meta(commands.Cog):
         partial = functools.partial(self.get_lines_of_code, comments=True)
         lines = await self.bot.loop.run_in_executor(None, partial)
         await ctx.send(lines)
-
-    @commands.command(
-        name="stats",
-        description="Display statistics about the bot",
-        aliases=["statistics", "about", "info"],
-    )
-    async def stats(self, ctx):
-        em = discord.Embed(title="Statistics", color=0xFF95B0, timestamp=d.utcnow())
-        em.set_thumbnail(url=self.bot.user.avatar_url)
-        em.set_footer(
-            text=f"Requested by {str(ctx.author)}", icon_url=self.bot.user.avatar_url
-        )
-
-        dev = self.bot.get_user(224513210471022592)
-        up = d.now() - self.bot.startup_time
-        em.add_field(name=":gear: Developer", value=str(dev))
-        em.add_field(name=":adult: User Count", value=len(self.bot.users))
-        em.add_field(name=":family: Server Count", value=len(self.bot.guilds))
-        em.add_field(
-            name=":speech_balloon: Channel Count",
-            value=len(list(self.bot.get_all_channels())),
-        )
-        em.add_field(
-            name="<:online:649270802088460299> Uptime", value=humanize.naturaldelta(up),
-        )
-
-        partial = functools.partial(self.get_lines_of_code)
-        lines = await self.bot.loop.run_in_executor(None, partial)
-        em.add_field(name=":page_facing_up: Code", value=lines, inline=False)
-
-        await ctx.send(embed=em)
-
-    @commands.command(
-        name="ping", description="Get the bot's latency.", aliases=["latency"]
-    )
-    async def ping_command(self, ctx):
-        latency = (self.bot.latency) * 1000
-        latency = int(latency)
-        await ctx.send(f"My latency is {latency}ms.")
-
-    @commands.command(
-        name="uptime", description="Get the bot's uptime", aliases=["up"],
-    )
-    async def uptime(self, ctx):
-        up = d.now() - self.bot.startup_time
-        await ctx.send(
-            f"<:online:649270802088460299> I booted up {humanize.naturaltime(up)}."
-        )
 
     @commands.command(name="invite", description="Invite me to your server")
     async def invite_command(self, ctx):

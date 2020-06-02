@@ -10,6 +10,36 @@ from discord.abc import Snowflake
 from typing import Optional, Sequence, Union
 import io
 import zlib
+import codecs
+import pathlib
+import os
+
+
+def get_lines_of_code(self, comments=False):
+    total = 0
+    file_amount = 0
+    for path, subdirs, files in os.walk("."):
+        if "venv" in subdirs:
+            subdirs.remove("venv")
+        if "env" in subdirs:
+            subdirs.remove("env")
+        for name in files:
+            if name.endswith(".py"):
+                file_amount += 1
+                with codecs.open(
+                    "./" + str(pathlib.PurePath(path, name)), "r", "utf-8"
+                ) as f:
+                    for i, l in enumerate(f):
+                        if (
+                            l.strip().startswith("#") or len(l.strip()) == 0
+                        ):  # skip commented lines.
+                            if comments:
+                                total += 1
+                            pass
+                        else:
+                            total += 1
+    excomments = " (excluding comments)" if not comments else ""
+    return f"I am made of {total:,} lines of Python{excomments}, spread across {file_amount:,} files!"
 
 
 class SphinxObjectFileReader:

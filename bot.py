@@ -10,7 +10,7 @@ import traceback
 import json
 import collections
 
-from cogs.utils import backup
+from cogs.utils import backup, db
 from cogs.utils.errors import PrivateCog
 
 
@@ -57,6 +57,21 @@ def dev_prefix(client, message):
             prefixes = client.guild_prefixes[str(message.guild.id)]
 
     return prefixes
+
+
+initial_extensions = [
+    "cogs.admin",
+    "cogs.fun",
+    "cogs.games",
+    "cogs.mathematics",
+    "cogs.meta",
+    "cogs.moderation",
+    "cogs.music",
+    "cogs.reddit",
+    "cogs.stats",
+    "cogs.tags",
+    "cogs.tools",
+]
 
 
 class Clam(commands.Bot):
@@ -109,25 +124,15 @@ class Clam(commands.Bot):
         self.console = None
         self.startup_time = None
         self.session = None
+        self.pool = None
+
+        self.cogs_to_load = initial_extensions
 
         self.add_check(self.private_cog_check)
 
-        self.cogs_to_load = [
-            "cogs.admin",
-            "cogs.fun",
-            "cogs.games",
-            "cogs.mathematics",
-            "cogs.meta",
-            "cogs.moderation",
-            "cogs.music",
-            "cogs.reddit",
-            "cogs.tags",
-            "cogs.tools",
-        ]
-
         self.load_extension("jishaku")
 
-        for cog in self.cogs_to_load:
+        for cog in initial_extensions:
             self.load_extension(cog)
 
         self.ordered_cogs = [c for c in self.cogs.values()]
@@ -168,12 +173,19 @@ class Clam(commands.Bot):
             self.startup_time = d.now()
         if self.session is None:
             self.session = aiohttp.ClientSession(loop=self.loop)
+        if self.pool is None:
+            self.pool = await db.Table.create_pool(self.config["database-uri"])
 
         self.log.info(f"Logged in as {self.user.name} - {self.user.id}")
+
+    async def logout(self):
+        await super().logout()
+        await self.pool.close()
 
     def run(self):
         super().run(self.config["bot-token"], reconnect=True, bot=True)
 
 
-bot = Clam()
-bot.run()
+if __name__ == "__main__":
+    bot = Clam()
+    bot.run()
