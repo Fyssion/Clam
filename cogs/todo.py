@@ -196,7 +196,7 @@ class Todo(commands.Cog):
         for todo_id, name in records:
             all_todos.append(f":black_large_square: {name} `({todo_id})`")
 
-        description = "name `(id)`\n\n" + "\n".join(all_todos)
+        description = "Key: name `(id)`\n\n" + "\n".join(all_todos)
 
         em = discord.Embed(
             title="Your Todo List",
