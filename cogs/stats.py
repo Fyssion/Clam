@@ -123,12 +123,13 @@ class Stats(commands.Cog):
             count = await ctx.db.fetchrow(query, ctx.guild.id)
 
             em = discord.Embed(
-                title=f"Command Usage Stats for {ctx.guild}",
+                title="Server Command Usage Stats",
                 color=colors.PRIMARY,
                 timestamp=count[1] or datetime.utcnow(),
             )
 
             em.description = f"There have been **{count[0]} commands used**."
+            em.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
             em.set_footer(text=f"Tracking command usage since")
 
             query = """SELECT name,
