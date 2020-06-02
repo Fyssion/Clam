@@ -389,6 +389,10 @@ class Meta(commands.Cog):
             f"\nTo find out more about me, type: `{ctx.guild_prefix}help`"
         )
 
+    @commands.command(description="Get a link to my website", aliases=["site"])
+    async def website(self, ctx):
+        await ctx.send("My website: https://clambot.xyz")
+
     @commands.group(
         description="Find out what I'm made of!", invoke_without_command=True
     )
