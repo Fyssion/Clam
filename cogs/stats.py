@@ -198,13 +198,13 @@ class Stats(commands.Cog):
             query = """SELECT author_id,
                             COUNT(*) AS "uses"
                     FROM commands
-                    WHERE author_id=$1 AND guild_id=$2
+                    WHERE guild_id=$2
                     AND invoked_at > (CURRENT_TIMESTAMP - INTERVAL '1 day')
                     GROUP BY author_id
                     ORDER BY "uses" DESC
                     LIMIT 5;
                     """
-            records = await ctx.db.fetch(query, member.id, ctx.guild.id)
+            records = await ctx.db.fetch(query, ctx.guild.id)
 
             value = []
             for (index, (author_id, uses)) in enumerate(records):
