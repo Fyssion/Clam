@@ -254,8 +254,21 @@ class Meta(commands.Cog):
     def cooldown_check(self, ctx):
         bucket = self.bot._cd.get_bucket(ctx.message)
         retry_after = bucket.update_rate_limit()
-        if retry_after:
+        spammers = self.bot.spammers
+        if retry_after and ctx.author.id != self.bot.owner_id:
+            if ctx.author.id in spammers:
+                spammers[ctx.author.id] += 1
+            else:
+                spammers[ctx.author.id] = 1
+            if spammers[ctx.author.id] > 5:
+                self.bot.add_to_blacklist(ctx.author)
+                raise Blacklisted("You are blacklisted.")
             raise commands.CommandOnCooldown(self.bot._cd, retry_after)
+        else:
+            try:
+                del spammers[ctx.author.id]
+            except KeyError:
+                pass
         return True
 
     def i_category(self, ctx):

@@ -9,6 +9,7 @@ import aiohttp
 import traceback
 import json
 import collections
+import os
 
 from cogs.utils import backup, db
 from cogs.utils.errors import PrivateCog
@@ -116,6 +117,13 @@ class Clam(commands.Bot):
         with open("prefixes.json", "r") as f:
             self.guild_prefixes = json.load(f)
 
+        if not os.path.isfile("blacklist.json"):
+            with open("blacklist.json", "w") as f:
+                json.dump([], f)
+
+        with open("blacklist.json", "r") as f:
+            self.blacklist = json.load(f)
+
         self.reddit_id = self.config["reddit-id"]
         self.reddit_secret = self.config["reddit-secret"]
         self.prefixes = ["`c.`", "or when mentioned"]
@@ -127,6 +135,8 @@ class Clam(commands.Bot):
         self.session = None
         self.pool = None
 
+        # user_id: spam_amount
+        self.spammers = {}
         self._cd = commands.CooldownMapping.from_cooldown(
             5.0, 30.0, commands.BucketType.user
         )
@@ -141,6 +151,25 @@ class Clam(commands.Bot):
             self.load_extension(cog)
 
         self.ordered_cogs = [c for c in self.cogs.values()]
+
+    def add_to_blacklist(self, user):
+        self.blacklist.append(str(user.id))
+
+        with open("blacklist.json", "w") as f:
+            json.dump(self.blacklist, f)
+
+        self.log.info(f"Added {user} to the blacklist.")
+
+    def remove_from_blacklist(self, user_id):
+        try:
+            self.blacklist.pop(self.blacklist.index(str(user_id)))
+        except ValueError:
+            pass
+
+        with open("blacklist.json", "w") as f:
+            json.dump(self.blacklist, f)
+
+        self.log.info(f"Removed {user_id} from the blacklist.")
 
     def guild_prefix(self, guild):
         if not guild:
@@ -162,6 +191,17 @@ class Clam(commands.Bot):
 
     async def get_context(self, message, *, cls=None):
         return await super().get_context(message, cls=cls or Context)
+
+    async def process_commands(self, message):
+        if message.author.bot:
+            return
+
+        ctx = await self.get_context(message)
+
+        if str(ctx.author.id) in self.blacklist:
+            return
+
+        await self.invoke(ctx)
 
     async def on_message(self, message):
         if self.debug and message.guild.id not in [

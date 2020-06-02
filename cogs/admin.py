@@ -102,6 +102,41 @@ class Admin(commands.Cog):
             raise commands.NotOwner("You do not own this bot.")
         return True
 
+    @commands.group(
+        description="View the blacklist", hidden=True, invoke_without_command=True
+    )
+    async def blacklist(self, ctx):
+        formatted = "\n".join(self.bot.blacklist)
+        await ctx.send(f"Blacklisted Users:\n{formatted}")
+
+    @blacklist.command(
+        name="add",
+        description="Add someone to the blacklist",
+        hidden=True,
+        invoke_without_command=True,
+    )
+    async def blacklist_add(self, ctx, *, user: discord.User):
+        if str(user.id) in self.bot.blacklist:
+            return await ctx.send("That user is already blacklisted.")
+
+        self.bot.add_to_blacklist(user)
+
+        await ctx.send(f"Added **`{user}`** to the blacklist.")
+
+    @blacklist.command(
+        name="remove",
+        description="Remove someone from the blacklist",
+        hidden=True,
+        invoke_without_command=True,
+    )
+    async def blacklist_remove(self, ctx, user: int):
+        if str(user) not in self.bot.blacklist:
+            return await ctx.send("That user isn't blacklisted.")
+
+        self.bot.remove_from_blacklist(user)
+
+        await ctx.send(f"Removed **`{user}`** from the blacklist.")
+
     @commands.command(
         name="reload",
         description="Reload an extension",
