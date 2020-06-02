@@ -262,6 +262,7 @@ class Meta(commands.Cog):
                 spammers[ctx.author.id] = 1
             if spammers[ctx.author.id] > 5:
                 self.bot.add_to_blacklist(ctx.author)
+                del spammers[ctx.author.id]
                 raise Blacklisted("You are blacklisted.")
             raise commands.CommandOnCooldown(self.bot._cd, retry_after)
         else:
@@ -312,6 +313,8 @@ class Meta(commands.Cog):
         stats = self.bot.get_cog("Stats")
         if stats:
             await stats.register_command(ctx)
+        if hasattr(ctx, "handled"):
+            return
         if isinstance(e, Blacklisted):
             return
         if isinstance(e, PrivateCog):
