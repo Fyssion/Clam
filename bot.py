@@ -75,6 +75,7 @@ initial_extensions = [
     "cogs.reddit",
     "cogs.stats",
     "cogs.tags",
+    "cogs.todo",
     "cogs.tools",
 ]
 
