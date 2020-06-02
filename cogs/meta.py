@@ -557,10 +557,10 @@ class Meta(commands.Cog):
         periods, e.g. tag.create for the create subcommand of the tag command
         or by spaces.
         """
-        source_url = "<https://github.com/Clam-Bot/Clam>"
+        source_url = "https://github.com/Clam-Bot/Clam"
         branch = "master"
         if command is None:
-            return await ctx.send(source_url)
+            return await ctx.send(f"<{source_url}>")
 
         if command == "help":
             src = type(self.bot.help_command)
