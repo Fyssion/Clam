@@ -316,7 +316,7 @@ class Meta(commands.Cog):
             )
         if isinstance(e, commands.CommandOnCooldown):
             return await ctx.send(
-                f"**You are on cooldown.** Try again after {e.retry_after} seconds."
+                f"**You are on cooldown.** Try again after {int(e.retry_after)} seconds."
             )
         self.bot.error_cache.append(e)
         em = discord.Embed(
