@@ -127,6 +127,10 @@ class Clam(commands.Bot):
         self.session = None
         self.pool = None
 
+        self._cd = commands.CooldownMapping.from_cooldown(
+            5.0, 30.0, commands.BucketType.user
+        )
+
         self.cogs_to_load = initial_extensions
 
         self.add_check(self.private_cog_check)

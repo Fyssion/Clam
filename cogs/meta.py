@@ -19,7 +19,7 @@ from .utils import db
 from .utils.utils import hover_link
 from .utils.checks import has_manage_guild
 from .utils.menus import MenuPages
-from .utils.errors import PrivateCog
+from .utils.errors import PrivateCog, Blacklisted
 
 
 def strfdelta(tdelta, fmt):
@@ -245,8 +245,18 @@ class Meta(commands.Cog):
         bot.help_command = ClamHelpCommand()
         bot.help_command.cog = self
 
+        bot.add_check(self.cooldown_check)
+
     def cog_unload(self):
         self.bot.help_command = self._original_help_command
+        self.bot.remove_check(self.cooldown_check)
+
+    def cooldown_check(self, ctx):
+        bucket = self.bot._cd.get_bucket(ctx.message)
+        retry_after = bucket.update_rate_limit()
+        if retry_after:
+            raise commands.CommandOnCooldown(self.bot._cd, retry_after)
+        return True
 
     def i_category(self, ctx):
         return (
@@ -289,6 +299,8 @@ class Meta(commands.Cog):
         stats = self.bot.get_cog("Stats")
         if stats:
             await stats.register_command(ctx)
+        if isinstance(e, Blacklisted):
+            return
         if isinstance(e, PrivateCog):
             return
         if isinstance(e, commands.CommandInvokeError) and str(ctx.command) == "help":
