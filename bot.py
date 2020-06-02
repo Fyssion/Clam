@@ -104,10 +104,7 @@ class Clam(commands.Bot):
             description="A multi-purpose Discord bot. Likes to hide in it's shell.",
             owner_id=224513210471022592,
             case_insensitive=True,
-            # activity = discord.Activity(name="for robo.help", type = discord.ActivityType.playing)
         )
-        # self.session = aiohttp.ClientSession(loop=self.loop)
-
         self.log = logging.getLogger(__name__)
         coloredlogs.install(
             level="DEBUG",
