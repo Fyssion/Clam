@@ -14,6 +14,7 @@ Source code is only provided for educational purposes.
 
 - Awesome utilities and tools
 - Custom prefixes
+- Todo lists!
 - Fun games to play with your friends (more to come!)
 - Tons more features in development (including moderation, tags, reminders, and events)
 - Open source so you know you aren't being tracked
