@@ -324,7 +324,8 @@ class Stats(commands.Cog):
 
         value = []
         for i, (guild_id, count) in enumerate(records):
-            value.append(f"{places[i]} **{guild_id}** ({count} uses)")
+            guild = self.bot.get_guild(guild_id) or guild_id
+            value.append(f"{places[i]} **{guild}** ({count} uses)")
 
         em.add_field(name="Top Guilds", value="\n".join(value) or "None")
 
@@ -338,7 +339,80 @@ class Stats(commands.Cog):
 
         value = []
         for i, (author_id, count) in enumerate(records):
-            value.append(f"{places[i]} **{author_id}** ({count} uses)")
+            author = self.bot.get_user(author_id) or author_id
+            value.append(f"{places[i]} **{author}** ({count} uses)")
+
+        em.add_field(name="Top Users", value="\n".join(value) or "None")
+
+        await ctx.send(embed=em)
+
+    @stats.command(description="Get global stats for today")
+    @commands.is_owner()
+    async def today(self, ctx):
+        query = """SELECT COUNT(*)
+                   FROM commands
+                   WHERE invoked_at > (CURRENT_TIMESTAMP - INTERVAL '1 day');
+                """
+        count = await ctx.db.fetchrow(query)
+
+        em = discord.Embed(
+            title="Global Command Usage Stats For Today",
+            description=f"Total commands used today: **`{count[0]}`**",
+            color=colors.PRIMARY,
+        )
+
+        places = (
+            "`1.`",
+            "`2.`",
+            "`3.`",
+            "`4.`",
+            "`5.`",
+        )
+
+        query = """SELECT name, COUNT(*) as "uses"
+                   FROM commands
+                   WHERE invoked_at > (CURRENT_TIMESTAMP - INTERVAL '1 day')
+                   GROUP BY name
+                   ORDER BY "uses" DESC
+                   LIMIT 5;
+                """
+        records = await ctx.db.fetch(query)
+
+        value = []
+        for i, (name, count) in enumerate(records):
+            value.append(f"{places[i]} **{name}** ({count} uses)")
+
+        em.add_field(name="Top Commands", value="\n".join(value) or "None")
+
+        query = """SELECT guild_id, COUNT(*) as "uses"
+                   FROM commands
+                   WHERE invoked_at > (CURRENT_TIMESTAMP - INTERVAL '1 day')
+                   GROUP BY guild_id
+                   ORDER BY "uses" DESC
+                   LIMIT 5;
+                """
+        records = await ctx.db.fetch(query)
+
+        value = []
+        for i, (guild_id, count) in enumerate(records):
+            guild = self.bot.get_guild(guild_id) or guild_id
+            value.append(f"{places[i]} **{guild}** ({count} uses)")
+
+        em.add_field(name="Top Guilds", value="\n".join(value) or "None")
+
+        query = """SELECT author_id, COUNT(*) as "uses"
+                   FROM commands
+                   WHERE invoked_at > (CURRENT_TIMESTAMP - INTERVAL '1 day')
+                   GROUP BY author_id
+                   ORDER BY "uses" DESC
+                   LIMIT 5;
+                """
+        records = await ctx.db.fetch(query)
+
+        value = []
+        for i, (author_id, count) in enumerate(records):
+            author = self.bot.get_user(author_id) or author_id
+            value.append(f"{places[i]} **{author}** ({count} uses)")
 
         em.add_field(name="Top Users", value="\n".join(value) or "None")
 
