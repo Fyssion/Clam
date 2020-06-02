@@ -1,8 +1,6 @@
 discord.py[voice]>=1.2.5
-praw
 coloredlogs
 pyyaml
-aiosqlite3
 matplotlib
 jishaku
 git+https://github.com/Rapptz/discord-ext-menus
