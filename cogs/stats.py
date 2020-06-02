@@ -198,7 +198,7 @@ class Stats(commands.Cog):
             query = """SELECT author_id,
                             COUNT(*) AS "uses"
                     FROM commands
-                    WHERE guild_id=$2
+                    WHERE guild_id=$1
                     AND invoked_at > (CURRENT_TIMESTAMP - INTERVAL '1 day')
                     GROUP BY author_id
                     ORDER BY "uses" DESC
