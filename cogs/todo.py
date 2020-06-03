@@ -50,7 +50,7 @@ class TodoTaskConverter(commands.Converter):
         result = await ctx.db.fetchrow(query, argument, ctx.author.id)
 
         if not result:
-            raise TodoNotFound("Todo task was not found.")
+            raise TodoNotFound("Task was not found.")
 
         return result
 
@@ -65,7 +65,7 @@ class Todo(commands.Cog):
 
     async def cog_command_error(self, ctx, error):
         if isinstance(error, TodoNotFound):
-            await ctx.send("Todo task was not found.")
+            await ctx.send("Task was not found.")
             ctx.handled = True
 
     @commands.group(description="Manage your todo list", invoke_without_command=True)
@@ -96,13 +96,15 @@ class Todo(commands.Cog):
                 await ctx.db.execute(query, name, ctx.author.id)
             except asyncpg.UniqueViolationError:
                 await tr.rollback()
-                await ctx.send("You already have a todo task with this name.")
+                await ctx.send("You already have a task with this name.")
             except:
                 await tr.rollback()
-                await ctx.send("Could not create todo task.")
+                await ctx.send("Could not create task.")
             else:
                 await tr.commit()
-                await ctx.send(":page_facing_up: Added task to your todo list.")
+                await ctx.send(
+                    f":page_facing_up: Added **`{name}`** to your todo list."
+                )
 
     @todo.command(
         name="done",
@@ -126,9 +128,9 @@ class Todo(commands.Cog):
 
         result = await ctx.db.execute(sql, datetime.utcnow(), ctx.author.id, task)
         if result.split(" ")[1] == "0":
-            return await ctx.send("Todo task was not found.")
+            return await ctx.send("Task was not found.")
 
-        await ctx.send(":ballot_box_with_check: Todo task marked as done")
+        await ctx.send(":ballot_box_with_check: Task marked as done")
 
     @todo.command(
         name="delete",
@@ -146,13 +148,13 @@ class Todo(commands.Cog):
 
         result = await ctx.db.execute(query, task, ctx.author.id)
         if result.split(" ")[1] == "0":
-            return await ctx.send("Todo task was not found.")
+            return await ctx.send("Task was not found.")
 
-        await ctx.send(":wastebasket: Todo task deleted.")
+        await ctx.send(":wastebasket: Task deleted.")
 
     @todo.command(
         name="info",
-        description="View info about a todo task",
+        description="View info about a task",
         usage="[name or id]",
         aliases=["information"],
     )
@@ -165,7 +167,7 @@ class Todo(commands.Cog):
             description = f":black_large_square: {name} ({todo_id})"
 
         em = discord.Embed(
-            title="Todo Task Info",
+            title="Task Info",
             description=description,
             color=discord.Color.blurple(),
             timestamp=created_at,
@@ -177,9 +179,7 @@ class Todo(commands.Cog):
         await ctx.send(embed=em)
 
     @todo.command(
-        name="list",
-        description="List all incomplete todo tasks",
-        aliases=["incomplete"],
+        name="list", description="List all incomplete tasks", aliases=["incomplete"],
     )
     async def todo_list(self, ctx):
         query = """SELECT id, name
@@ -208,7 +208,7 @@ class Todo(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @todo.command(name="all", description="View all todo tasks")
+    @todo.command(name="all", description="View all tasks")
     async def todo_all(self, ctx):
         query = """SELECT id, name, completed_at
                    FROM todos
@@ -219,7 +219,7 @@ class Todo(commands.Cog):
         records = await ctx.db.fetch(query, ctx.author.id)
 
         if not records:
-            return await ctx.send("You have no todo tasks.")
+            return await ctx.send("You have no tasks.")
 
         all_todos = []
         for todo_id, name, completed_at in records:
