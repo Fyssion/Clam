@@ -39,6 +39,7 @@ class Stats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.log = bot.log
+        self.emoji = ":bar_chart:"
         self._batch_lock = asyncio.Lock(loop=bot.loop)
         self._data_batch = []
         self.bulk_insert_loop.add_exception_type(asyncpg.PostgresConnectionError)

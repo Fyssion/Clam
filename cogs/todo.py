@@ -61,6 +61,7 @@ class Todo(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.log = bot.log
+        self.emoji = ":page_facing_up:"
 
     async def cog_command_error(self, ctx, error):
         if isinstance(error, TodoNotFound):
