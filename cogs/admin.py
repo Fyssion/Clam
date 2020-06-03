@@ -8,6 +8,7 @@ import psutil
 import typing
 
 from .utils.menus import MenuPages
+from .utils import colors
 
 
 CLAM_DMS_CATEGORY = 714981398540451841
@@ -34,7 +35,7 @@ class AllErrorsSource(menus.ListPageSource):
     def format_page(self, menu, entries):
         offset = menu.current_page * self.per_page
         em = discord.Embed(
-            title=f"{len(self.entries)} Errors Cached", color=discord.Color.blurple()
+            title=f"{len(self.entries)} Errors Cached", color=colors.PRIMARY
         )
         em.set_footer(text=f"Page {menu.current_page + 1}/{self.get_max_pages()}")
 
@@ -130,7 +131,7 @@ class Admin(commands.Cog):
         invoke_without_command=True,
     )
     async def blacklist_remove(self, ctx, user: int):
-        if str(user) not in self.bot.blacklist:
+        if str(user.id) not in self.bot.blacklist:
             return await ctx.send("That user isn't blacklisted.")
 
         self.bot.remove_from_blacklist(user)

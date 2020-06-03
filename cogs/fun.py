@@ -10,7 +10,7 @@ import asyncio
 
 from random import choice
 
-from .utils import aioxkcd
+from .utils import aioxkcd, colors
 from .utils.utils import is_int
 
 # from .utils.utils import thesaurize

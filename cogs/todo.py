@@ -2,19 +2,56 @@ import discord
 from discord.ext import commands, menus
 
 from datetime import datetime
+from datetime import timezone
 import traceback
 import json
 import psutil
 import typing
 import asyncio
 import asyncpg
+import humanize
 
 from .utils.menus import MenuPages
-from .utils import db
+from .utils import db, colors
 
 
 class TodoNotFound(commands.BadArgument):
     pass
+
+
+class TodoTaskSource(menus.ListPageSource):
+    def __init__(self, data, ctx, list_type):
+        super().__init__(data, per_page=10)
+        self.ctx = ctx
+        self.list_type = list_type
+
+    def format_page(self, menu, entries):
+        offset = menu.current_page * self.per_page
+        all_todos = []
+        if self.list_type == "all":
+            for i, (todo_id, name, completed_at) in enumerate(entries, start=offset):
+                if completed_at:
+                    all_todos.append(
+                        f":ballot_box_with_check: ~~{name}~~ `({todo_id})`"
+                    )
+                else:
+                    all_todos.append(f":black_large_square: {name} `({todo_id})`")
+        else:
+            for i, (todo_id, name) in enumerate(entries, start=offset):
+                all_todos.append(f":black_large_square: {name} `({todo_id})`")
+
+        description = (
+            f"Total tasks: **{len(self.entries)}**\nKey: name `(id)`\n\n"
+            + "\n".join(all_todos)
+        )
+
+        em = discord.Embed(
+            title="Your Todo List", description=description, color=colors.PRIMARY,
+        )
+        em.set_author(name=str(self.ctx.author), icon_url=self.ctx.author.avatar_url)
+        em.set_footer(text=f"Page {menu.current_page + 1}/{self.get_max_pages()}")
+
+        return em
 
 
 class Todos(db.Table):
@@ -116,17 +153,17 @@ class Todo(commands.Cog):
         try:
             task = int(task)
             sql = """UPDATE todos
-                     SET completed_at=$1
-                     WHERE author_id=$2 AND id=$3;
+                     SET completed_at=NOW() AT TIME ZONE 'UTC'
+                     WHERE author_id=$1 AND id=$2;
                   """
         except ValueError:
             task = task
             sql = """UPDATE todos
-                     SET completed_at=$1
-                     WHERE author_id=$2 AND name=$3;
+                     SET completed_at=NOW() AT TIME ZONE 'UTC'
+                     WHERE author_id=$1 AND name=$2;
                   """
 
-        result = await ctx.db.execute(sql, datetime.utcnow(), ctx.author.id, task)
+        result = await ctx.db.execute(sql, ctx.author.id, task)
         if result.split(" ")[1] == "0":
             return await ctx.send("Task was not found.")
 
@@ -162,18 +199,21 @@ class Todo(commands.Cog):
         todo_id, name, created_at, completed_at = task
 
         if completed_at:
-            description = f":ballot_box_with_check: ~~{name}~~ ({todo_id})"
+            description = f":ballot_box_with_check: ~~{name}~~ `({todo_id})`"
+            description += f"\nCreated {humanize.naturaldate(created_at)}."
+            description += f"\nCompleted {humanize.naturaldate(completed_at)}."
         else:
-            description = f":black_large_square: {name} ({todo_id})"
+            description = f":black_large_square: {name} `({todo_id})`"
+            description += f"\nCreated {humanize.naturaldate(created_at)}."
 
         em = discord.Embed(
             title="Task Info",
             description=description,
-            color=discord.Color.blurple(),
+            color=colors.PRIMARY,
             timestamp=created_at,
         )
 
-        em.set_author(name=ctx.author.id, icon_url=ctx.author.avatar_url)
+        em.set_author(name=str(ctx.author), icon_url=ctx.author.avatar_url)
         em.set_footer(text="Task created")
 
         await ctx.send(embed=em)
@@ -193,20 +233,10 @@ class Todo(commands.Cog):
         if not records:
             return await ctx.send("You have nothing on your todo list.")
 
-        all_todos = []
-        for todo_id, name in records:
-            all_todos.append(f":black_large_square: {name} `({todo_id})`")
-
-        description = "Key: name `(id)`\n\n" + "\n".join(all_todos)
-
-        em = discord.Embed(
-            title="Your Todo List",
-            description=description,
-            color=discord.Color.blurple(),
+        pages = MenuPages(
+            source=TodoTaskSource(records, ctx, "list"), clear_reactions_after=True,
         )
-        em.set_author(name=str(ctx.author), icon_url=ctx.author.avatar_url)
-
-        await ctx.send(embed=em)
+        await pages.start(ctx)
 
     @todo.command(name="all", description="View all tasks")
     async def todo_all(self, ctx):
@@ -221,23 +251,10 @@ class Todo(commands.Cog):
         if not records:
             return await ctx.send("You have no tasks.")
 
-        all_todos = []
-        for todo_id, name, completed_at in records:
-            if completed_at:
-                all_todos.append(f":ballot_box_with_check: ~~{name}~~ `({todo_id})`")
-            else:
-                all_todos.append(f":black_large_square: {name} `({todo_id})`")
-
-        description = "Key: name `(id)`\n\n" + "\n".join(all_todos)
-
-        em = discord.Embed(
-            title="Your Todo List",
-            description=description,
-            color=discord.Color.blurple(),
+        pages = MenuPages(
+            source=TodoTaskSource(records, ctx, "all"), clear_reactions_after=True,
         )
-        em.set_author(name=str(ctx.author), icon_url=ctx.author.avatar_url)
-
-        await ctx.send(embed=em)
+        await pages.start(ctx)
 
 
 def setup(bot):
