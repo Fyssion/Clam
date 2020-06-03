@@ -245,32 +245,9 @@ class Meta(commands.Cog):
         bot.help_command = ClamHelpCommand()
         bot.help_command.cog = self
 
-        bot.add_check(self.cooldown_check)
 
     def cog_unload(self):
         self.bot.help_command = self._original_help_command
-        self.bot.remove_check(self.cooldown_check)
-
-    def cooldown_check(self, ctx):
-        bucket = self.bot._cd.get_bucket(ctx.message)
-        retry_after = bucket.update_rate_limit()
-        spammers = self.bot.spammers
-        if retry_after and ctx.author.id != self.bot.owner_id:
-            if ctx.author.id in spammers:
-                spammers[ctx.author.id] += 1
-            else:
-                spammers[ctx.author.id] = 1
-            if spammers[ctx.author.id] > 5:
-                self.bot.add_to_blacklist(ctx.author)
-                del spammers[ctx.author.id]
-                raise Blacklisted("You are blacklisted.")
-            raise commands.CommandOnCooldown(self.bot._cd, retry_after)
-        else:
-            try:
-                del spammers[ctx.author.id]
-            except KeyError:
-                pass
-        return True
 
     def i_category(self, ctx):
         return (

@@ -12,7 +12,7 @@ import collections
 import os
 
 from cogs.utils import backup, db
-from cogs.utils.errors import PrivateCog
+from cogs.utils.errors import PrivateCog, Blacklisted
 
 
 file_logger = logging.getLogger("discord")
@@ -201,6 +201,25 @@ class Clam(commands.Bot):
 
         if str(ctx.author.id) in self.blacklist:
             return
+
+        bucket = self._cd.get_bucket(ctx.message)
+        retry_after = bucket.update_rate_limit()
+        spammers = self.spammers
+        if retry_after and ctx.author.id != self.owner_id:
+            if ctx.author.id in spammers:
+                spammers[ctx.author.id] += 1
+            else:
+                spammers[ctx.author.id] = 1
+            if spammers[ctx.author.id] > 5:
+                self.add_to_blacklist(ctx.author)
+                del spammers[ctx.author.id]
+                raise Blacklisted("You are blacklisted.")
+            raise commands.CommandOnCooldown(self._cd, retry_after)
+        else:
+            try:
+                del spammers[ctx.author.id]
+            except KeyError:
+                pass
 
         await self.invoke(ctx)
 
