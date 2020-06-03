@@ -33,7 +33,7 @@ class Todos(db.Table):
         return statement + "\n" + sql
 
 
-class TodoItemConverter(commands.Converter):
+class TodoTaskConverter(commands.Converter):
     async def convert(self, ctx, argument):
         try:
             argument = int(argument)
@@ -50,7 +50,7 @@ class TodoItemConverter(commands.Converter):
         result = await ctx.db.fetchrow(query, argument, ctx.author.id)
 
         if not result:
-            raise TodoNotFound("Todo item was not found.")
+            raise TodoNotFound("Todo task was not found.")
 
         return result
 
@@ -64,16 +64,16 @@ class Todo(commands.Cog):
 
     async def cog_command_error(self, ctx, error):
         if isinstance(error, TodoNotFound):
-            await ctx.send("Todo item was not found.")
+            await ctx.send("Todo task was not found.")
             ctx.handled = True
 
-    @commands.group(description="Manage a todo list", invoke_without_command=True)
+    @commands.group(description="Manage your todo list", invoke_without_command=True)
     async def todo(self, ctx):
         await ctx.invoke(self.todo_list)
 
     @todo.command(
         name="add",
-        description="Add an item to your todo list",
+        description="Add an task to your todo list",
         usage="[name]",
         aliases=["create", "new"],
     )
@@ -95,68 +95,68 @@ class Todo(commands.Cog):
                 await ctx.db.execute(query, name, ctx.author.id)
             except asyncpg.UniqueViolationError:
                 await tr.rollback()
-                await ctx.send("You already have a todo item with this name.")
+                await ctx.send("You already have a todo task with this name.")
             except:
                 await tr.rollback()
-                await ctx.send("Could not create todo item.")
+                await ctx.send("Could not create todo task.")
             else:
                 await tr.commit()
-                await ctx.send(":page_facing_up: Added item to your todo list.")
+                await ctx.send(":page_facing_up: Added task to your todo list.")
 
     @todo.command(
         name="done",
-        description="Mark an item from your todo list as done",
+        description="Mark an task from your todo list as done",
         usage="[name or id]",
         aliases=["check", "complete"],
     )
-    async def todo_done(self, ctx, *, item):
+    async def todo_done(self, ctx, *, task):
         try:
-            item = int(item)
+            task = int(task)
             sql = """UPDATE todos
                      SET completed_at=$1
                      WHERE author_id=$2 AND id=$3;
                   """
         except ValueError:
-            item = item
+            task = task
             sql = """UPDATE todos
                      SET completed_at=$1
                      WHERE author_id=$2 AND name=$3;
                   """
 
-        result = await ctx.db.execute(sql, datetime.utcnow(), ctx.author.id, item)
+        result = await ctx.db.execute(sql, datetime.utcnow(), ctx.author.id, task)
         if result.split(" ")[1] == "0":
-            return await ctx.send("Todo item was not found.")
+            return await ctx.send("Todo task was not found.")
 
-        await ctx.send(":ballot_box_with_check: Todo item marked as done")
+        await ctx.send(":ballot_box_with_check: Todo task marked as done")
 
     @todo.command(
         name="delete",
-        description="Delete an item from your todo list",
+        description="Delete a task from your todo list",
         usage="[name or id]",
         aliases=["remove"],
     )
-    async def todo_delete(self, ctx, *, item):
+    async def todo_delete(self, ctx, *, task):
         try:
-            item = int(item)
+            task = int(task)
             query = "DELETE FROM todos WHERE id=$1 AND author_id=$2;"
         except ValueError:
-            item = item
+            task = task
             query = "DELETE FROM todos WHERE name=$1 AND author_id=$2;"
 
-        result = await ctx.db.execute(query, item, ctx.author.id)
+        result = await ctx.db.execute(query, task, ctx.author.id)
         if result.split(" ")[1] == "0":
-            return await ctx.send("Todo item was not found.")
+            return await ctx.send("Todo task was not found.")
 
-        await ctx.send(":wastebasket: Todo item deleted.")
+        await ctx.send(":wastebasket: Todo task deleted.")
 
     @todo.command(
         name="info",
-        description="View info about a todo item",
+        description="View info about a todo task",
         usage="[name or id]",
         aliases=["information"],
     )
-    async def todo_info(self, ctx, *, item: TodoItemConverter):
-        todo_id, name, created_at, completed_at = item
+    async def todo_info(self, ctx, *, task: TodoTaskConverter):
+        todo_id, name, created_at, completed_at = task
 
         if completed_at:
             description = f":ballot_box_with_check: ~~{name}~~ ({todo_id})"
@@ -164,20 +164,20 @@ class Todo(commands.Cog):
             description = f":black_large_square: {name} ({todo_id})"
 
         em = discord.Embed(
-            title="Todo Item Info",
+            title="Todo Task Info",
             description=description,
             color=discord.Color.blurple(),
             timestamp=created_at,
         )
 
         em.set_author(name=ctx.author.id, icon_url=ctx.author.avatar_url)
-        em.set_footer(text="Item created")
+        em.set_footer(text="Task created")
 
         await ctx.send(embed=em)
 
     @todo.command(
         name="list",
-        description="List all incomplete todo items",
+        description="List all incomplete todo tasks",
         aliases=["incomplete"],
     )
     async def todo_list(self, ctx):
@@ -207,7 +207,7 @@ class Todo(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @todo.command(name="all", description="View all todo items")
+    @todo.command(name="all", description="View all todo tasks")
     async def todo_all(self, ctx):
         query = """SELECT id, name, completed_at
                    FROM todos
@@ -218,7 +218,7 @@ class Todo(commands.Cog):
         records = await ctx.db.fetch(query, ctx.author.id)
 
         if not records:
-            return await ctx.send("You have no todo items.")
+            return await ctx.send("You have no todo tasks.")
 
         all_todos = []
         for todo_id, name, completed_at in records:
