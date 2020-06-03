@@ -245,7 +245,6 @@ class Meta(commands.Cog):
         bot.help_command = ClamHelpCommand()
         bot.help_command.cog = self
 
-
     def cog_unload(self):
         self.bot.help_command = self._original_help_command
 
@@ -374,13 +373,13 @@ class Meta(commands.Cog):
         description="Find out what I'm made of!", invoke_without_command=True
     )
     async def code(self, ctx):
-        partial = functools.partial(self.get_lines_of_code)
+        partial = functools.partial(get_lines_of_code)
         lines = await self.bot.loop.run_in_executor(None, partial)
         await ctx.send(lines)
 
     @code.command(description="Include comments in the search.")
     async def comments(self, ctx):
-        partial = functools.partial(self.get_lines_of_code, comments=True)
+        partial = functools.partial(get_lines_of_code, comments=True)
         lines = await self.bot.loop.run_in_executor(None, partial)
         await ctx.send(lines)
 

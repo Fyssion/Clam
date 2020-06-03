@@ -443,7 +443,7 @@ class Stats(commands.Cog):
             name="<:online:649270802088460299> Uptime", value=humanize.naturaldelta(up),
         )
 
-        partial = functools.partial(self.get_lines_of_code)
+        partial = functools.partial(get_lines_of_code)
         lines = await self.bot.loop.run_in_executor(None, partial)
         em.add_field(name=":page_facing_up: Code", value=lines, inline=False)
 
