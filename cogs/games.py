@@ -4,6 +4,8 @@ import random
 import discord
 from discord.ext import commands, menus
 
+from .utils import colors
+
 
 class Piece:
     def __init__(self, name, emoji_name, custom=False, id=None, animated=False):
@@ -30,8 +32,7 @@ class TenSeconds(SinglePlayerGame):
 
     async def send_initial_message(self, ctx, channel):
         em = discord.Embed(
-            description="Click the reaction after 10 seconds!",
-            color=discord.Color.blurple(),
+            description="Click the reaction after 10 seconds!", color=colors.PRIMARY,
         )
         msg = await channel.send(embed=em)
         self.ten_seconds = datetime.utcnow() + timedelta(seconds=10)

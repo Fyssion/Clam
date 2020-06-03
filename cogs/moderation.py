@@ -1,4 +1,5 @@
 from discord.ext import commands
+from discord.flags import BaseFlags, fill_with_flags, flag_value
 import discord
 
 import json
@@ -8,8 +9,35 @@ import re
 from urllib.parse import urlparse
 from async_timeout import timeout
 
+from .utils import db
 from .utils.checks import has_manage_guild
 from .utils.utils import is_int
+
+
+@fill_with_flags()
+class LoggingFlags(BaseFlags):
+    """Describes what to log"""
+
+    @flag_value
+    def message_edit(self):
+        return 1 << 0
+
+    @flag_value
+    def message_delete(self):
+        return 1 << 1
+
+    @flag_value
+    def guild_join(self):
+        return 1 << 2
+
+    @flag_value
+    def guild_leave(self):
+        return 1 << 3
+
+
+class Logs(db.Table):
+    id = db.PrimaryKeyColumn()
+    guild_id = db.Column(db.Integer(big=True), index=True)
 
 
 class Moderation(commands.Cog):
@@ -457,7 +485,7 @@ class Moderation(commands.Cog):
         )
         em.set_author(name=str(message.author), icon_url=message.author.avatar_url)
         em.set_footer(text=f"Message sent at")
-        em.description = f"In {message.channel.mention}:\n>>> {message.content}"
+        em.description = f"In {message.channel.mention}:\n{message.content}"
         await log.send(embed=em)
 
     @commands.Cog.listener("on_message_edit")
@@ -478,8 +506,8 @@ class Moderation(commands.Cog):
             f"[Jump](https://www.discordapp.com/channels/{before.guild.id}/{before.channel.id}/{before.id})\n"
             f"In {before.channel.mention}:"
         )
-        em.add_field(name="Before", value=f">>> {before.content}")
-        em.add_field(name="After", value=f">>> {after.content}")
+        em.add_field(name="Before", value=before.content)
+        em.add_field(name="After", value=after.content)
         await log.send(embed=em)
 
     @commands.Cog.listener("on_member_join")
