@@ -15,7 +15,7 @@ import pathlib
 import os
 
 
-def get_lines_of_code(self, comments=False):
+def get_lines_of_code(comments=False):
     total = 0
     file_amount = 0
     for path, subdirs, files in os.walk("."):
