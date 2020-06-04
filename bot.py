@@ -139,7 +139,7 @@ class Clam(commands.Bot):
         # user_id: spam_amount
         self.spammers = {}
         self._cd = commands.CooldownMapping.from_cooldown(
-            10.0, 30.0, commands.BucketType.user
+            10.0, 15.0, commands.BucketType.user
         )
 
         self.cogs_to_load = initial_extensions
