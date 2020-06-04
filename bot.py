@@ -140,7 +140,7 @@ class Clam(commands.Bot):
         # user_id: spam_amount
         self.spammers = {}
         self._cd = commands.CooldownMapping.from_cooldown(
-            10.0, 30.0, commands.BucketType.user
+            10.0, 15.0, commands.BucketType.user
         )
 
         self.cogs_to_load = initial_extensions
@@ -200,6 +200,9 @@ class Clam(commands.Bot):
 
         ctx = await self.get_context(message)
 
+        if ctx.command is None:
+            return
+
         if str(ctx.author.id) in self.blacklist:
             return
 
@@ -215,7 +218,9 @@ class Clam(commands.Bot):
                 self.add_to_blacklist(ctx.author)
                 del spammers[ctx.author.id]
                 raise Blacklisted("You are blacklisted.")
-            raise commands.CommandOnCooldown(self._cd, retry_after)
+            return await ctx.send(
+                f"**You are on cooldown.** Try again after {int(retry_after)} seconds."
+            )
         else:
             try:
                 del spammers[ctx.author.id]

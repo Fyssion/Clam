@@ -295,6 +295,10 @@ class Meta(commands.Cog):
             return
         if isinstance(e, PrivateCog):
             return
+        if isinstance(e, commands.CommandOnCooldown):
+            return await ctx.send(
+                f"**You are on cooldown.** Try again after {int(e.retry_after)} seconds."
+            )
         if isinstance(e, commands.CommandInvokeError) and str(ctx.command) == "help":
             return
         if isinstance(e, commands.errors.CommandNotFound):
@@ -317,10 +321,6 @@ class Meta(commands.Cog):
         if isinstance(e, commands.errors.MissingRequiredArgument):
             return await ctx.send(
                 f"**:x: Missing a required argument: `{e.param.name}`**"
-            )
-        if isinstance(e, commands.CommandOnCooldown):
-            return await ctx.send(
-                f"**You are on cooldown.** Try again after {int(e.retry_after)} seconds."
             )
         self.bot.error_cache.append(e)
         em = discord.Embed(
