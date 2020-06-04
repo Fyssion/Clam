@@ -199,6 +199,9 @@ class Clam(commands.Bot):
 
         ctx = await self.get_context(message)
 
+        if ctx.command is None:
+            return
+
         if str(ctx.author.id) in self.blacklist:
             return
 
@@ -214,7 +217,9 @@ class Clam(commands.Bot):
                 self.add_to_blacklist(ctx.author)
                 del spammers[ctx.author.id]
                 raise Blacklisted("You are blacklisted.")
-            raise commands.CommandOnCooldown(self._cd, retry_after)
+            return await ctx.send(
+                f"**You are on cooldown.** Try again after {int(retry_after)} seconds."
+            )
         else:
             try:
                 del spammers[ctx.author.id]
