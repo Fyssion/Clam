@@ -295,12 +295,12 @@ class Meta(commands.Cog):
             return
         if isinstance(e, PrivateCog):
             return
+        if isinstance(e, commands.NoPrivateMessage):
+            return await ctx.send("Sorry, this command can't be used in DMs.")
         if isinstance(e, commands.CommandOnCooldown):
             return await ctx.send(
                 f"**You are on cooldown.** Try again after {int(e.retry_after)} seconds."
             )
-        if isinstance(e, commands.CommandInvokeError) and str(ctx.command) == "help":
-            return
         if isinstance(e, commands.errors.CommandNotFound):
             return
         if isinstance(e, commands.errors.MissingPermissions):
@@ -317,11 +317,13 @@ class Meta(commands.Cog):
         if isinstance(e, commands.errors.NotOwner):
             return
         if isinstance(e, commands.errors.BadArgument):
-            return await ctx.send(f"**:x: You provided a bad argument.**")
+            return await ctx.send(f"**:x: You provided a bad argument:** {e}")
         if isinstance(e, commands.errors.MissingRequiredArgument):
             return await ctx.send(
                 f"**:x: Missing a required argument: `{e.param.name}`**"
             )
+        if isinstance(e, commands.CommandInvokeError) and str(ctx.command) == "help":
+            return
         self.bot.error_cache.append(e)
         em = discord.Embed(
             title=":warning: Unexpected Error",
