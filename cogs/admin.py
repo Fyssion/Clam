@@ -131,7 +131,7 @@ class Admin(commands.Cog):
         invoke_without_command=True,
     )
     async def blacklist_remove(self, ctx, user: int):
-        if str(user.id) not in self.bot.blacklist:
+        if str(user) not in self.bot.blacklist:
             return await ctx.send("That user isn't blacklisted.")
 
         self.bot.remove_from_blacklist(user)
