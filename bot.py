@@ -66,6 +66,7 @@ def dev_prefix(client, message):
 
 initial_extensions = [
     "cogs.admin",
+    "cogs.events",
     "cogs.fun",
     "cogs.games",
     "cogs.mathematics",

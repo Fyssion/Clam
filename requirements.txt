@@ -9,3 +9,5 @@ psutil
 PILLOW
 asyncpg
 click
+dateparser
+pytz
