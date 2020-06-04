@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://i.imgur.com/lo1IkFL.png" alt="Logo" title="Clam" height="200" width="200"/>
+  <img src="https://clambot.xyz/images/logo.png" alt="Logo" title="Clam" height="200" width="200"/>
 </p>
 
 # Clam
