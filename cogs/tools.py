@@ -513,7 +513,7 @@ class Tools(commands.Cog):
             if i > 4:
                 urls_text.append(f"...and {len(package.project_urls) - i} more.")
                 break
-            urls_text.append(f"[{html_url}]({package.project_urls[url]})")
+            urls_text.append(f"[{url}]({package.project_urls[url]})")
 
         if urls_text:
             em.add_field(
