@@ -140,7 +140,7 @@ class Todo(commands.Cog):
             else:
                 await tr.commit()
                 await ctx.send(
-                    f":page_facing_up: Added **`{name}`** to your todo list."
+                    f":page_facing_up: Added **`{discord.utils.escape_mentions(name)}`** to your todo list."
                 )
 
     @todo.command(
