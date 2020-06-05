@@ -513,7 +513,7 @@ class Tools(commands.Cog):
             if i > 4:
                 urls_text.append(f"...and {len(package.project_urls) - i} more.")
                 break
-            urls_text.append(f"[{url}]({package.project_urls[url]})")
+            urls_text.append(f"[{html_url}]({package.project_urls[url]})")
 
         if urls_text:
             em.add_field(
@@ -555,7 +555,7 @@ class Tools(commands.Cog):
             title=name,
             description=data["bio"],
             color=0x4078C0,
-            url=data["url"],
+            url=data["html_url"],
             timestamp=created_at,
         )
 
@@ -604,7 +604,7 @@ class Tools(commands.Cog):
         em = discord.Embed(
             title=data["full_name"],
             color=0x4078C0,
-            url=data["url"],
+            url=data["html_url"],
             timestamp=created_at,
         )
 
@@ -615,7 +615,7 @@ class Tools(commands.Cog):
         owner = data["owner"]
 
         em.set_author(
-            name=owner["login"], url=owner["url"], icon_url=owner["avatar_url"],
+            name=owner["login"], url=owner["html_url"], icon_url=owner["avatar_url"],
         )
         em.set_thumbnail(url=owner["avatar_url"])
 
@@ -623,7 +623,7 @@ class Tools(commands.Cog):
         if data["fork"]:
             parent = data["parent"]
             description = (
-                f"Forked from [{parent['full_name']}]({parent['url']})\n\n"
+                f"Forked from [{parent['full_name']}]({parent['html_url']})\n\n"
                 + description
             )
 
