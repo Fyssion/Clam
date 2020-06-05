@@ -13,6 +13,7 @@ import io
 import functools
 from PIL import Image
 import typing
+import dateparser
 
 from .utils import fuzzy, aiopypi
 from .utils.utils import SphinxObjectFileReader
@@ -541,6 +542,143 @@ class Tools(commands.Cog):
             )
 
         await ctx.send(embed=em)
+
+    async def send_user_info(self, ctx, data):
+        if data["name"]:
+            name = f"{data['name']} ({data['login']})"
+        else:
+            name = data["login"]
+
+        created_at = dateparser.parse(data["created_at"])
+
+        em = discord.Embed(
+            title=name,
+            description=data["bio"],
+            color=0x4078C0,
+            url=data["url"],
+            timestamp=created_at,
+        )
+
+        em.set_footer(text="Joined")
+
+        em.set_thumbnail(url=data["avatar_url"])
+
+        em.add_field(
+            name="Public Repos",
+            value=data["public_repos"] or "No public repos",
+            inline=True,
+        )
+
+        if data["public_gists"]:
+            em.add_field(name="Public Gists", value=data["public_gists"], inline=True)
+
+        value = [
+            "Followers: " + str(data["followers"])
+            if data["followers"]
+            else "Followers: no followers"
+        ]
+        value.append(
+            "Following: " + str(data["following"])
+            if data["following"]
+            else "Following: not following anyone"
+        )
+
+        em.add_field(name="Followers/Following", value="\n".join(value), inline=True)
+
+        if data["location"]:
+            em.add_field(name="Location", value=data["location"], inline=True)
+        if data["company"]:
+            em.add_field(name="Company", value=data["company"], inline=True)
+        if data["blog"]:
+            blog = data["blog"]
+            if blog.startswith("https://") or blog.startswith("http://"):
+                pass
+            else:
+                blog = "https://" + blog
+            em.add_field(name="Website", value=blog, inline=True)
+
+        await ctx.send(embed=em)
+
+    async def send_repo_info(self, ctx, data):
+        created_at = dateparser.parse(data["created_at"])
+        em = discord.Embed(
+            title=data["full_name"],
+            color=0x4078C0,
+            url=data["url"],
+            timestamp=created_at,
+        )
+
+        # 2008-01-14T04:33:35Z
+
+        em.set_footer(text="Created")
+
+        owner = data["owner"]
+
+        em.set_author(
+            name=owner["login"], url=owner["url"], icon_url=owner["avatar_url"],
+        )
+        em.set_thumbnail(url=owner["avatar_url"])
+
+        description = data["description"]
+        if data["fork"]:
+            parent = data["parent"]
+            description = (
+                f"Forked from [{parent['full_name']}]({parent['url']})\n\n"
+                + description
+            )
+
+        if data["homepage"]:
+            description += "\n" + data["homepage"]
+
+        em.description = description
+
+        em.add_field(name="Language", value=data["language"] or "No language")
+        em.add_field(
+            name="Stars", value=data["stargazers_count"] or "No Stars", inline=True
+        )
+        em.add_field(
+            name="Watchers", value=data["watchers_count"] or "No watchers", inline=True
+        )
+        em.add_field(name="Forks", value=data["forks_count"] or "No forks", inline=True)
+
+        await ctx.send(embed=em)
+
+    async def fetch_from_github(self, url):
+        GITHUB_API = "https://api.github.com/"
+
+        async with self.bot.session.get(GITHUB_API + url) as resp:
+            if resp.status == 200:
+                data = await resp.json()
+                return data
+            return None
+
+    @commands.command(
+        description="Fetch a repo or user from GitHub and display info about it.",
+        usage="[repo or user]",
+        aliases=["gh"],
+    )
+    @commands.cooldown(2, 5.0, commands.BucketType.member)
+    async def github(self, ctx, item):
+
+        # Basically, this command checks if a / was found in
+        # the requested item. If there was a /, it searches for
+        # a repo.
+        # If not, it searches for a user.
+        # This is because I want this command to be dynamic.
+        # To prevent API abuse, I have this command on a cooldown.
+
+        if "/" in item:
+            data = await self.fetch_from_github("repos/" + item)
+            if data:
+                return await self.send_repo_info(ctx, data)
+            else:
+                return await ctx.send(f"Could not find a repo called `{item}`. Sorry.")
+
+        data = await self.fetch_from_github("users/" + item)
+        if data:
+            return await self.send_user_info(ctx, data)
+
+        await ctx.send(f"Could not find a user called `{item}`. Sorry.")
 
     def parse_object_inv(self, stream, url):
         # key: URL
