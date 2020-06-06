@@ -24,37 +24,6 @@ class EventNotFound(commands.BadArgument):
     pass
 
 
-class EventSource(menus.ListPageSource):
-    def __init__(self, data, ctx):
-        super().__init__(data, per_page=10)
-        self.ctx = ctx
-
-    def format_page(self, menu, entries):
-        offset = menu.current_page * self.per_page
-        all_events = []
-        for i, (todo_id, name, starts_at, participants) in enumerate(
-            entries, start=offset
-        ):
-            formatted = starts_at.strftime("%b %d, %Y at %#I:%M %p UTC")
-            joined = ":white_check_mark: " if self.ctx.author.id in participants else ""
-            all_events.append(f"{joined}{name} `({todo_id})` - {formatted}")
-
-        description = (
-            f"Total: **{len(self.entries)}**\nKey: name `(id)` - date\n\n"
-            + "\n".join(all_events)
-        )
-
-        em = discord.Embed(
-            title="Events in this Server",
-            description=description,
-            color=colors.PRIMARY,
-        )
-        em.set_author(name=str(self.ctx.author), icon_url=self.ctx.author.avatar_url)
-        em.set_footer(text=f"Page {menu.current_page + 1}/{self.get_max_pages()}")
-
-        return em
-
-
 class Events(db.Table):
     id = db.PrimaryKeyColumn()
     name = db.Column(db.String(length=64), index=True)
@@ -69,7 +38,7 @@ class Events(db.Table):
         db.Datetime(), default="now() at time zone 'utc'", index=True
     )
     starts_at = db.Column(db.Datetime(), index=True)
-    timezone = db.Column(db.String(length=5))
+    timezone = db.Column(db.String(length=20))
 
 
 class Event:
@@ -96,6 +65,50 @@ class Event:
         return self.starts_at.strftime("%b %d, %Y at %#I:%M %p %z")
 
 
+class EventSource(menus.ListPageSource):
+    def __init__(self, data, ctx, all=False):
+        super().__init__(data, per_page=10)
+        self.ctx = ctx
+        self.all = all
+
+    def format_page(self, menu, entries):
+        offset = menu.current_page * self.per_page
+        all_events = []
+        ctx = self.ctx
+        for (i, record) in enumerate(entries, start=offset):
+            event = Event.from_record(record)
+            formatted = ctx.cog.format_event_time(event)
+            joined = (
+                ":white_check_mark: "
+                if self.ctx.author.id in event.participants
+                else ""
+            )
+            author_is_reminded = discord.utils.get(
+                ctx.author.roles, id=event.notify_role
+            )
+            reminded = " :alarm_clock:" if author_is_reminded else ""
+            all_events.append(
+                f"{joined}{event.name} `({event.id})` - {formatted}{reminded}"
+            )
+
+        emoji_key = ":white_check_mark: | RSVP'd\n:alarm_clock: | Reminder set"
+
+        description = (
+            f"Total: **{len(self.entries)}**\nKey: name `(id)` - date\n{emoji_key}\n\n"
+            + "\n".join(all_events)
+        )
+
+        em = discord.Embed(
+            title="Events in this Server" if not self.all else "All Events",
+            description=description,
+            color=colors.PRIMARY,
+        )
+        em.set_author(name=str(self.ctx.author), icon_url=self.ctx.author.avatar_url)
+        em.set_footer(text=f"Page {menu.current_page + 1}/{self.get_max_pages()}")
+
+        return em
+
+
 class EventConverter(commands.Converter):
     async def convert(self, ctx, argument):
         try:
@@ -119,6 +132,7 @@ class EventConverter(commands.Converter):
 class PartialEvent:
     def __init__(
         self,
+        id,
         name,
         description,
         owner_id,
@@ -130,6 +144,7 @@ class PartialEvent:
         notify_role,
         timezone="UTC",
     ):
+        self.id = id
         self.name = name
         self.description = description
         self.owner_id = owner_id
@@ -207,6 +222,7 @@ class Events(commands.Cog):
         em = message.embeds[0]
         em.color = discord.Color.orange()
         em.description = (event.description or "") + "\n\nSorry, the event has started."
+        em.set_footer(text="Event time")
 
         await message.edit(embed=em)
 
@@ -216,7 +232,7 @@ class Events(commands.Cog):
                 await channel.send(
                     f"{notify_role.mention}\nEvent `{event.name}` has started!"
                 )
-                await notify_role.delete()
+                await self.delete_event_role(notify_role)
 
         else:
             await channel.send(
@@ -257,6 +273,55 @@ class Events(commands.Cog):
     async def delete_event(self, event):
         pass
 
+    def format_event_time(self, event):
+        when = event.starts_at
+        localized = utc.localize(when).astimezone(pytz.timezone(event.timezone))
+        return localized.strftime("%b %d, %Y at %#I:%M %p %Z")
+
+    async def update_event_field(self, event, field, value):
+        channel = self.bot.get_channel(event.channel_id)
+
+        print(channel)
+
+        if not channel:
+            return
+
+        message = await channel.fetch_message(event.message_id)
+
+        embed = message.embeds[0]
+
+        old = embed.fields[field]
+
+        embed.set_field_at(field, name=old.name, value=value, inline=False)
+
+        await message.edit(embed=embed)
+
+    async def delete_event_role(self, role):
+        timers = self.bot.get_cog("Timers")
+
+        if not timers:
+            return await role.delete()
+
+        when = datetime.utcnow() + timedelta(hours=5)
+
+        await timers.create_timer(when, "event_role_delete", role.guild.id, role.id)
+
+    @commands.Cog.listener()
+    async def on_event_role_delete_timer_complete(self, timer):  # wowza
+        guild_id, role_id = timer.args
+
+        guild = self.bot.get_guild(guild_id)
+
+        if not guild:
+            return
+
+        role = guild.get_role(role_id)
+
+        if not role:
+            return
+
+        await role.delete()
+
     def create_event_embed(self, event):
         em = discord.Embed(
             title=event.name,
@@ -273,8 +338,13 @@ class Events(commands.Cog):
         participants = "\n".join(
             [guild.get_member(m).mention for m in event.participants]
         )
+
+        when = pytz.timezone(event.timezone).localize(event.starts_at)
+        em.add_field(
+            name="When", value=when.strftime("%b %d, %Y at %#I:%M %p %Z"), inline=False
+        )
         em.add_field(name="Participants", value=participants or "\u200b")
-        em.set_footer(text="Event starts")
+        em.set_footer(text=f"ID: {event.id} | Event starts")
 
         return em
 
@@ -320,13 +390,18 @@ class Events(commands.Cog):
                 em = event_message.embeds[0]
                 if option == "name":
                     em.title = message.content
+                    old = event.title
                 elif option == "description":
-                    em.description.replace(event.description, message.content)
+                    if event.description:
+                        em.description.replace(event.description, message.content)
+                    else:
+                        em.description = message.content + "\n\n" + em.description
+                    old = event.description or "No description"
                 await event_message.edit(embed=em)
 
-        await channel.send(
-            f":white_check_mark: Updated event name from `{event.name}` to `{message.content}`"
-        )
+            await channel.send(
+                f":white_check_mark: Updated event {option} from `{old}` to `{message.content}`"
+            )
 
     async def edit_event(self, event, member, channel, dm=True):
         if member.id != event.owner_id:
@@ -349,7 +424,7 @@ class Events(commands.Cog):
         em = discord.Embed(
             title=f":pencil: Edit Options",
             description=description,
-            color=discord.Color.yellow(),
+            color=discord.Color.orange(),
         )
 
         if dm:
@@ -384,7 +459,65 @@ class Events(commands.Cog):
             await self.update_event_name_or_description(event, option, channel, check)
 
         elif option == "timezone":
-            pass
+            description = (
+                "Alright, so computers and timezones don't really go together."
+                "\nBecause of this, I need to explain a few things:"
+                "\nYou need to either specify a timezone in the [tz database](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)"
+                ", or specify a timezone abbreviation *and* your [country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) separated by a space."
+            )
+
+            embed = discord.Embed(description=description, color=colors.PRIMARY)
+
+            examples = [
+                '"America/Chicago"',
+                '"PST US"',
+                '"Europe/Amsterdam"',
+                '"CST US"',
+            ]
+
+            embed.add_field(name="Examples", value="\n".join(examples))
+
+            await channel.send(embed=embed)
+            try:
+                message = await self.bot.wait_for("message", timeout=60.0, check=check)
+
+            except asyncio.TimeoutError:
+                return await channel.send("You took too long. Aborting.")
+
+            if message.content in pytz.all_timezones:
+                timezone = message.content
+
+            else:
+                args = message.content.split(" ")
+                if len(args) != 2:
+                    return await channel.send(
+                        "I couldn't find a timezone and country code in your input."
+                        "If you specified a timezone from the tz database, please make sure you didn't misspell it,"
+                        "as I couldn't find a matching timezone."
+                    )
+
+                tz, country_code = args
+
+                timezone = human_time.tz_name(tz, country_code)
+
+            if not timezone:
+                return await channel.send(
+                    "Sorry, I couldn't find that timezone."
+                    "Make sure you are following the instrucitons above."
+                )
+
+            query = """UPDATE events
+                        SET timezone=$1
+                        WHERE id=$2;
+                    """
+
+            await self.bot.pool.execute(query, timezone, event.id)
+
+            event.timezone = timezone
+
+            await self.update_event_field(event, 0, self.format_event_time(event))
+
+            await channel.send(":white_check_mark: Updated your event's timezone.")
 
     async def reaction_edit_event(self, payload):
         if not payload.guild_id:
@@ -473,7 +606,7 @@ class Events(commands.Cog):
             return
 
         members_mentioned = "\n".join([f"<@{m}>" for m in event.participants])
-        em.set_field_at(0, name="Participants", value=members_mentioned or "\u200b")
+        em.set_field_at(1, name="Participants", value=members_mentioned or "\u200b")
 
         query = """UPDATE events
                    SET participants=$1
@@ -493,15 +626,16 @@ class Events(commands.Cog):
         if not join:
             return
 
-        def check(reaction, user):
-            return (
-                reaction.emoji == "⏰"
-                and user == member
-                and reaction.message.channel == member.dm_channel
-            )
-
         try:
             bot_msg = await member.send(embed=em)
+
+            def check(reaction, user):
+                return (
+                    reaction.emoji == "⏰"
+                    and user == member
+                    and reaction.message.channel == member.dm_channel
+                    and reaction.message.id == bot_msg.id
+                )
 
             await bot_msg.add_reaction("\N{ALARM CLOCK}")
 
@@ -569,7 +703,8 @@ class Events(commands.Cog):
 
         Example command input:
 
-        - Game night in two hours
+        - in two hours Game Night
+        - Tour in a week
         - 5d Birthday party
         - Party on 9/12/2020 at 2 PM
         """
@@ -584,6 +719,44 @@ class Events(commands.Cog):
                 "That name is too long. Must be 64 characters or less."
             )
 
+        # So I want to default the timezone to
+        # the guild's voice region. However, I have
+        # to manually map each region to it's timezone.
+        # I don't really know these timezones, so sorry
+        # if they're super off :(
+
+        # region_mapping = {
+        #     "amsterdam": "Europe/Amsterdam",
+        #     "brazil": "America/Fortaleza",
+        #     "dubai": "Asia/Dubai",
+        #     "eu_central": "Europe/Paris",
+        #     "eu_west": "GMT",
+        #     "europe": "Europe/Paris",
+        #     "frankfurt": "Europe/Paris",
+        #     "hongkong": "Asia/Hong_Kong",
+        #     "india": "Asia/Calcutta",
+        #     "japan": "Japan",
+        #     "london": "Europe/London",
+        #     "russia": "Europe/Moscow",
+        #     "singapore": "Asia/Singapore",
+        #     "southafrica": "Africa/Cairo",
+        #     "sydney": "Australia/Sydney",
+        #     "us_central": "America/Chicago",
+        #     "us_east": "America/New_York",
+        #     "us_south": "America/Chicago",
+        #     "us_west": "America/Tijuana",
+        #     "vip_amsterdam": "Europe/Amsterdam",
+        #     "vip_us_east": "America/New_York",
+        #     "vip_us_west": "America/Tijuana",
+        # }
+
+        # if str(ctx.guild.region) in region_mapping.keys():
+        #     timezone = region_mapping[ctx.guild.region]
+        # else:
+        #     timezone = "UTC"
+
+        timezone = "UTC"
+
         role_name = name[:20] if len(name) > 20 else name
         notify_role = await ctx.guild.create_role(
             name=f"EVENT: {role_name}", mentionable=True
@@ -594,8 +767,8 @@ class Events(commands.Cog):
         )
         msg = await ctx.send(embed=embed)
 
-        query = """INSERT INTO events (name, description, owner_id, starts_at, message_id, guild_id, channel_id, participants, notify_role)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        query = """INSERT INTO events (name, description, owner_id, starts_at, message_id, guild_id, channel_id, participants, notify_role, timezone)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                    RETURNING id;
                 """
 
@@ -609,11 +782,12 @@ class Events(commands.Cog):
             ctx.channel.id,
             [ctx.author.id],
             notify_role.id,
+            timezone,
         )
 
-        result = await ctx.db.execute(query, *event_args)
+        record = await ctx.db.fetchrow(query, *event_args)
 
-        partial_event = PartialEvent(*event_args)
+        partial_event = PartialEvent(record[0], *event_args)
 
         delta = (date - datetime.utcnow()).total_seconds()
 
@@ -668,7 +842,9 @@ class Events(commands.Cog):
                 delete_after=10.0,
             )
 
-    @event.command(name="join", description="Join an event", usage="[name or id]")
+    @event.command(
+        name="join", description="Join an event", usage="[name or id]", aliases=["rsvp"]
+    )
     async def event_join(self, ctx, event: EventConverter):
         pass
 
@@ -679,25 +855,8 @@ class Events(commands.Cog):
     @event.command(
         name="edit", description="Edit an event", usage="[name or id]",
     )
-    async def event_edit(self, ctx, *, task):
-        try:
-            task = int(task)
-            sql = """UPDATE todos
-                     SET completed_at=NOW() AT TIME ZONE 'UTC'
-                     WHERE author_id=$1 AND id=$2;
-                  """
-        except ValueError:
-            task = task
-            sql = """UPDATE todos
-                     SET completed_at=NOW() AT TIME ZONE 'UTC'
-                     WHERE author_id=$1 AND name=$2;
-                  """
-
-        result = await ctx.db.execute(sql, ctx.author.id, task)
-        if result.split(" ")[1] == "0":
-            return await ctx.send("Task was not found.")
-
-        await ctx.send(":ballot_box_with_check: Task marked as done")
+    async def event_edit(self, ctx, *, event: EventConverter):
+        await self.edit_event(event, ctx.author, ctx.channel, dm=False)
 
     @event.command(
         name="delete",
@@ -743,6 +902,7 @@ class Events(commands.Cog):
         description="View info about an event",
         usage="[name or id]",
         aliases=["information"],
+        hidden=True,
     )
     async def event_info(self, ctx, *, task: EventConverter):
         todo_id, name, created_at, completed_at = task
@@ -763,7 +923,7 @@ class Events(commands.Cog):
         )
 
         em.set_author(name=str(ctx.author), icon_url=ctx.author.avatar_url)
-        em.set_footer(text="Event starts")
+        em.set_footer(text=f"Event starts")
 
         await ctx.send(embed=em)
 
@@ -771,7 +931,7 @@ class Events(commands.Cog):
         name="list", description="List all upcoming events", aliases=["upcoming"],
     )
     async def event_list(self, ctx):
-        query = """SELECT id, name, starts_at, participants
+        query = """SELECT *
                    FROM events
                    WHERE guild_id=$1
                    ORDER BY starts_at DESC
@@ -785,21 +945,21 @@ class Events(commands.Cog):
         pages = MenuPages(source=EventSource(records, ctx), clear_reactions_after=True,)
         await pages.start(ctx)
 
-    @event.command(name="all", description="View all events for this guild")
+    @event.command(name="all", description="View all events")
+    @commands.is_owner()
     async def event_all(self, ctx):
-        query = """SELECT id, name, completed_at
-                   FROM todos
-                   WHERE author_id=$1
-                   ORDER BY created_at DESC
+        query = """SELECT *
+                   FROM events
+                   ORDER BY starts_at DESC
                 """
 
-        records = await ctx.db.fetch(query, ctx.author.id)
+        records = await ctx.db.fetch(query)
 
         if not records:
-            return await ctx.send("You have no tasks.")
+            return await ctx.send("There are no events :(")
 
         pages = MenuPages(
-            source=EventSource(records, ctx, "all"), clear_reactions_after=True,
+            source=EventSource(records, ctx, all=True), clear_reactions_after=True,
         )
         await pages.start(ctx)
 
