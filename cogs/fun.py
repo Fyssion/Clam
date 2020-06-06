@@ -220,6 +220,7 @@ class Fun(commands.Cog):
         name="downvote",
         description="Downvotes previous message or specified message",
         usage="[optional message id]",
+        hidden=True,
     )
     async def downvote_commmand(self, ctx, *args):
 
