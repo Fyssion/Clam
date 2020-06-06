@@ -163,7 +163,7 @@ class Events(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.log = bot.log
-        self.emoji = ":page_facing_up:"
+        self.emoji = ":fireworks:"
 
         self._current_event = None
         self._event_ready = asyncio.Event()
