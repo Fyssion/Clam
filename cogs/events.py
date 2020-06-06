@@ -12,12 +12,10 @@ import typing
 import asyncio
 import asyncpg
 import humanize
-import dateparser
-from dateparser.search import search_dates
 import pytz
 
 from .utils.menus import MenuPages
-from .utils import db, colors
+from .utils import db, colors, human_time
 
 utc = pytz.UTC
 
@@ -34,9 +32,11 @@ class EventSource(menus.ListPageSource):
     def format_page(self, menu, entries):
         offset = menu.current_page * self.per_page
         all_events = []
-        for i, (todo_id, name, starts_at, members) in enumerate(entries, start=offset):
+        for i, (todo_id, name, starts_at, participants) in enumerate(
+            entries, start=offset
+        ):
             formatted = starts_at.strftime("%b %d, %Y at %#I:%M %p UTC")
-            joined = ":white_check_mark: " if self.ctx.author.id in members else ""
+            joined = ":white_check_mark: " if self.ctx.author.id in participants else ""
             all_events.append(f"{joined}{name} `({todo_id})` - {formatted}")
 
         description = (
@@ -63,12 +63,13 @@ class Events(db.Table):
     channel_id = db.Column(db.Integer(big=True))
     guild_id = db.Column(db.Integer(big=True), index=True)
     owner_id = db.Column(db.Integer(big=True), index=True)
-    members = db.Column(db.Array(db.Integer(big=True)), index=True)
-    notify = db.Column(db.Integer(big=True))
+    participants = db.Column(db.Array(db.Integer(big=True)), index=True)
+    notify_role = db.Column(db.Integer(big=True))
     created_at = db.Column(
         db.Datetime(), default="now() at time zone 'utc'", index=True
     )
     starts_at = db.Column(db.Datetime(), index=True)
+    timezone = db.Column(db.String(length=5))
 
 
 class Event:
@@ -83,12 +84,16 @@ class Event:
         self.channel_id = record["channel_id"]
         self.guild_id = record["guild_id"]
         self.owner_id = record["owner_id"]
-        self.members = record["members"]
-        self.notify = record["notify"]
+        self.participants = record["participants"]
+        self.notify_role = record["notify_role"]
         self.created_at = record["created_at"]
         self.starts_at = record["starts_at"]
+        self.timezone = record["timezone"]
 
         return self
+
+    def format_time(self):
+        return self.starts_at.strftime("%b %d, %Y at %#I:%M %p %z")
 
 
 class EventConverter(commands.Converter):
@@ -121,8 +126,9 @@ class PartialEvent:
         message_id,
         guild_id,
         channel_id,
-        members,
-        notify,
+        participants,
+        notify_role,
+        timezone="UTC",
     ):
         self.name = name
         self.description = description
@@ -131,8 +137,9 @@ class PartialEvent:
         self.message_id = message_id
         self.guild_id = guild_id
         self.channel_id = channel_id
-        self.members = members
-        self.notify = notify
+        self.participants = participants
+        self.notify_role = notify_role
+        self.timezone = timezone
 
 
 class Events(commands.Cog):
@@ -142,14 +149,6 @@ class Events(commands.Cog):
         self.bot = bot
         self.log = bot.log
         self.emoji = ":page_facing_up:"
-
-        # guild_id: List[(member_id, insertion)]
-        # A batch of data for bulk inserting event changes
-        # True - insert, False - remove
-        self._data_batch = defaultdict(list)
-        self._batch_lock = asyncio.Lock(loop=bot.loop)
-        self.batch_updates.add_exception_type(asyncpg.PostgresConnectionError)
-        self.batch_updates.start()
 
         self._current_event = None
         self._event_ready = asyncio.Event()
@@ -164,37 +163,7 @@ class Events(commands.Cog):
             ctx.handled = True
 
     def cog_unload(self):
-        self.batch_updates.stop()
         self._event_dispatch_task.cancel()
-
-    async def bulk_insert(self):
-        query = """UPDATE events
-                   SET members = x.result_array
-                   FROM jsonb_to_recordset($1::jsonb) AS
-                   x(event_id BIGINT, result_array BIGINT[])
-                   WHERE events.id = x.event_id;
-                """
-
-        if not self._data_batch:
-            return
-
-        final_data = []
-        for event_id, data in self._data_batch.items():
-            event = await self.get_event(event_id)
-            as_set = set(event.members)
-            for member_id, insertion in data:
-                func = as_set.add if insertion else as_set.discard
-                func(member_id)
-
-            final_data.append({"event_id": event_id, "result_array": list(as_set)})
-
-        await self.bot.pool.execute(query, final_data)
-        self._data_batch.clear()
-
-    @tasks.loop(seconds=10.0)
-    async def batch_updates(self):
-        async with self._batch_lock:
-            await self.bulk_insert()
 
     async def get_first_active_event(self, days=7):
         query = """SELECT *
@@ -208,15 +177,11 @@ class Events(commands.Cog):
         return Event.from_record(record) if record else None
 
     async def get_active_events(self, days=40):
-        print(1, 0)
         event = await self.get_first_active_event(days)
-        print(1, 1)
         if event is not None:
-            print(1, 2)
             self._event_ready.set()
             return event
 
-        print(1, 3)
         self._event_ready.clear()
         self._current_event = None
         await self._event_ready.wait()
@@ -245,8 +210,8 @@ class Events(commands.Cog):
 
         await message.edit(embed=em)
 
-        if event.notify:
-            notify_role = guild.get_role(event.notify)
+        if event.notify_role:
+            notify_role = guild.get_role(event.notify_role)
             if notify_role:
                 await channel.send(
                     f"{notify_role.mention}\nEvent `{event.name}` has started!"
@@ -261,20 +226,15 @@ class Events(commands.Cog):
     async def event_dispatch_loop(self):
         try:
             while not self.bot.is_closed():
-                print(1)
                 event = await self.get_active_events()
                 self._current_event = event
                 now = datetime.utcnow()
-                print(2)
 
                 if utc.localize(event.starts_at) >= utc.localize(now):
-                    print(3)
                     to_sleep = (
                         utc.localize(event.starts_at) - utc.localize(now)
                     ).total_seconds()
-                    print(4)
                     await asyncio.sleep(to_sleep)
-                print(5)
                 await self.end_event(event)
         except asyncio.CancelledError:
             raise
@@ -301,18 +261,167 @@ class Events(commands.Cog):
         em = discord.Embed(
             title=event.name,
             description=(event.description or "")
-            + "\n\nClick :white_check_mark: to join/leave!",
+            + (
+                "\n\nReact with :white_check_mark: to RSVP! "
+                "(You can click it again to leave.)"
+                "\nReact with :pencil: to edit the event."
+            ),
             color=discord.Color.green(),
             timestamp=event.starts_at,
         )
         guild = self.bot.get_guild(event.guild_id)
-        members = "\n".join([guild.get_member(m).mention for m in event.members])
-        em.add_field(name="Participants", value=members or "\u200b")
+        participants = "\n".join(
+            [guild.get_member(m).mention for m in event.participants]
+        )
+        em.add_field(name="Participants", value=participants or "\u200b")
         em.set_footer(text="Event starts")
 
         return em
 
-    async def handle_reaction(self, payload):
+    async def update_event_name_or_description(self, event, option, channel, check):
+        await channel.send(f"What would you like to change the {option} to?")
+
+        try:
+            message = await self.bot.wait_for("message", timeout=60.0, check=check)
+
+        except asyncio.TimeoutError:
+            return await channel.send("You took too long. Aborting.")
+
+        if len(message.content) > 60 and option == "name":
+            return await channel.send("The name must be under 60 characters.")
+
+        if len(message.content) > 120 and option == "description":
+            return await channel.send("The description must be under 120 characters.")
+
+        query = f"""UPDATE events
+                    SET {option}=$1
+                    WHERE id=$2
+                """
+
+        await self.bot.pool.execute(query, message.content, event.id)
+
+        event_channel = self.bot.get_channel(event.channel_id)
+
+        if not event_channel:
+            await channel.send(
+                "I couldn't find that event's channel. Was it deleted or hidden?"
+            )
+
+        else:
+
+            try:
+                event_message = await event_channel.fetch_message(event.message_id)
+
+            except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+                await channel.send(
+                    "I couldn't find that event's message. Was it deleted?"
+                )
+            else:
+                em = event_message.embeds[0]
+                if option == "name":
+                    em.title = message.content
+                elif option == "description":
+                    em.description.replace(event.description, message.content)
+                await event_message.edit(embed=em)
+
+        await channel.send(
+            f":white_check_mark: Updated event name from `{event.name}` to `{message.content}`"
+        )
+
+    async def edit_event(self, event, member, channel, dm=True):
+        if member.id != event.owner_id:
+            return await channel.send(
+                f"{member.mention}: Only the event creator can make edits.",
+                delete_after=5.0,
+            )
+
+        options = {
+            "timezone": "\N{CLOCK FACE ONE OCLOCK}",
+            "name": "\N{LEFT SPEECH BUBBLE}",
+            "description": "\N{PAGE FACING UP}",
+            # "time": "\N{CLOCK FACE TEN OCLOCK}",
+        }
+
+        description = "\n".join(
+            [f"{options[o]} {o.capitalize()}" for o in options.keys()]
+        )
+
+        em = discord.Embed(
+            title=f":pencil: Edit Options",
+            description=description,
+            color=discord.Color.yellow(),
+        )
+
+        if dm:
+            channel = member.dm_channel
+
+        try:
+            await channel.send(
+                "Please respond with one of the options below.", embed=em
+            )
+
+        except discord.Forbidden:
+            return await channel.send(
+                f"{member.mention}: You must have DMs enabled to edit events.",
+                delete_after=10.0,
+            )
+
+        def check(ms):
+            return ms.author == member and ms.channel == channel
+
+        try:
+            message = await self.bot.wait_for("message", timeout=60.0, check=check)
+
+        except asyncio.TimeoutError:
+            return await channel.send("You took too long. Aborting.")
+
+        option = message.content.lower()
+
+        if option not in options.keys():
+            return await channel.send("That isn't a vaild option.")
+
+        if option in ["name", "description"]:
+            await self.update_event_name_or_description(event, option, channel, check)
+
+        elif option == "timezone":
+            pass
+
+    async def reaction_edit_event(self, payload):
+        if not payload.guild_id:
+            return
+
+        guild = self.bot.get_guild(payload.guild_id)
+
+        if not guild:
+            return
+
+        member = guild.get_member(payload.user_id)
+        channel = guild.get_channel(payload.channel_id)
+
+        if not channel:
+            return
+
+        if not member:
+            return
+
+        if member.bot:
+            return
+
+        query = """SELECT *
+                   FROM events
+                   WHERE message_id=$1 AND channel_id=$2;
+                """
+
+        record = await self.bot.pool.fetchrow(query, payload.message_id, channel.id)
+
+        if not record:
+            return
+
+        event = Event.from_record(record)
+
+        await self.edit_event(event, member, channel)
+
+    async def member_join_event(self, payload):
         if not payload.guild_id:
             return
         guild = self.bot.get_guild(payload.guild_id)
@@ -332,39 +441,29 @@ class Events(commands.Cog):
         if member.bot:
             return
 
-        query = """SELECT id, members, notify
+        query = """SELECT *
                    FROM events
                    WHERE message_id=$1 AND channel_id=$2;
                 """
 
-        result = await self.bot.pool.fetchrow(query, payload.message_id, channel.id)
+        record = await self.bot.pool.fetchrow(query, payload.message_id, channel.id)
 
-        if not result:
+        if not record:
             return
 
-        event_id, members, notify = result
+        event = Event.from_record(record)
 
-        notify_role = guild.get_role(notify)
+        notify_role = guild.get_role(event.notify_role)
 
         if not notify_role:
             return
 
-        if event_id in self._data_batch.keys():
-            data = self._data_batch[event_id]
-            as_set = set(members)
-            for member_id, insertion in data:
-                func = as_set.add if insertion else as_set.discard
-                func(member_id)
-            members = list(as_set)
-
-        if member.id in members:
-            members.pop(members.index(member.id))
-            await member.remove_roles(notify_role)
-            add = False
+        if member.id in event.participants:
+            event.participants.pop(event.participants.index(member.id))
+            join = False
         else:
-            members.append(member.id)
-            await member.add_roles(notify_role)
-            add = True
+            event.participants.append(member.id)
+            join = True
 
         message = await channel.fetch_message(payload.message_id)
 
@@ -373,13 +472,64 @@ class Events(commands.Cog):
         if not em.fields:
             return
 
-        members_mentioned = "\n".join([guild.get_member(m).mention for m in members])
+        members_mentioned = "\n".join([f"<@{m}>" for m in event.participants])
         em.set_field_at(0, name="Participants", value=members_mentioned or "\u200b")
 
-        async with self._batch_lock:
-            self._data_batch[event_id].append((member.id, add))
+        query = """UPDATE events
+                   SET participants=$1
+                   WHERE id=$2;
+                """
+
+        await self.bot.pool.execute(query, event.participants, event.id)
 
         await message.edit(embed=em)
+
+        em = discord.Embed(
+            title=f"Successfully RSVP'd to {event.name}",
+            description=f"Click :alarm_clock: to be notifed when the event starts.",
+            color=discord.Color.red(),
+        )
+
+        if not join:
+            return
+
+        def check(reaction, user):
+            return (
+                reaction.emoji == "⏰"
+                and user == member
+                and reaction.message.channel == member.dm_channel
+            )
+
+        try:
+            bot_msg = await member.send(embed=em)
+
+            await bot_msg.add_reaction("\N{ALARM CLOCK}")
+
+            try:
+                # 24 hour timeout
+                reaction, user = await self.bot.wait_for(
+                    "reaction_add", check=check, timeout=86400.0
+                )
+
+                await member.add_roles(notify_role)
+
+                await member.send("You will be notified when the event starts.")
+
+            except asyncio.TimeoutError:
+                pass
+
+        except discord.Forbidden:
+            await channel.send(
+                f"{member.mention}: Please enable DMs in the future so I can send you event confirmation messages.",
+                delete_after=10.0,
+            )
+
+    async def handle_reaction(self, payload):
+        if str(payload.emoji) == "✅":
+            await self.member_join_event(payload)
+
+        elif str(payload.emoji) == "📝":
+            await self.reaction_edit_event(payload)
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
@@ -389,131 +539,88 @@ class Events(commands.Cog):
     async def on_raw_reaction_remove(self, payload):
         await self.handle_reaction(payload)
 
-    @commands.group(
-        description="Create and manage events in Discord!", invoke_without_command=True
-    )
+    @commands.group(invoke_without_command=True)
     async def event(self, ctx):
+        """Create and manage events in Discord!
+
+        Features:
+
+        - Easily create events with a single command
+        - Ability to edit the event
+        - Set a reminder for the event
+        """
         await ctx.send_help(ctx.command)
 
     @event.command(
-        name="new",
-        description="Create a new event",
-        usage="[name]",
-        aliases=["create", "add"],
+        name="new", usage="[name]", aliases=["create", "add"],
     )
     @commands.bot_has_permissions(manage_roles=True, manage_messages=True)
-    async def event_new(self, ctx, *, event):
-        try:
-            parsed_dates = search_dates(event, settings={"TIMEZONE": "UTC"})
-        except ValueError:
-            return await ctx.send(
-                "Could not find a date or time. Please specify a date or time."
-            )
-        if not parsed_dates:
-            return await ctx.send(
-                "Could not find a date or time. Please specify a valid date or time."
-            )
-        date_string, date = parsed_dates[0]
+    async def event_new(
+        self,
+        ctx,
+        *,
+        event: human_time.UserFriendlyTime(converter=commands.clean_content),
+    ):
+        """Create a new event
 
-        if utc.localize(date) < utc.localize(datetime.utcnow()):
-            return await ctx.send("Please specify a date in the future.")
+        Create a new event with a name and a date/time.
+        The default timezone is UTC. You can change the timezone
+        after you have created the event.
 
-        name = event.replace(date_string, "").strip()
+        Example command input:
+
+        - Game night in two hours
+        - 5d Birthday party
+        - Party on 9/12/2020 at 2 PM
+        """
+        date = event.dt
+        name = event.arg
+
+        if not name:
+            raise commands.BadArgument("You must specify a name for the event.")
 
         if len(name) > 64:
             return await ctx.send(
                 "That name is too long. Must be 64 characters or less."
             )
 
-        def check(ms):
-            return ms.author == ctx.author and ms.channel == ctx.channel
-
-        bot_msg = await ctx.send(
-            "Would you like to set a description? Reply with `no` to leave it blank."
+        role_name = name[:20] if len(name) > 20 else name
+        notify_role = await ctx.guild.create_role(
+            name=f"EVENT: {role_name}", mentionable=True
         )
-
-        try:
-            description_msg = await self.bot.wait_for(
-                "message", check=check, timeout=60.0
-            )
-        except asyncio.TimeoutError:
-            return await ctx.send("You timed out. Sorry, please try again.")
-
-        if description_msg.content.lower() == "no":
-            description = None
-        else:
-            description = description_msg.content
-            if len(description) > 120:
-                return await ctx.send(
-                    "Sorry, that description is too long. It must be under 120 characters."
-                )
-
-        await bot_msg.delete()
-        await description_msg.delete()
-
-        bot_msg = await ctx.send(
-            "Would you like to notify members when the event begins? (y/n)"
-        )
-
-        try:
-            notify_msg = await self.bot.wait_for("message", check=check, timeout=60.0)
-        except asyncio.TimeoutError:
-            return await ctx.send("You timed out. Sorry, please try again.")
-
-        await bot_msg.delete()
-        await notify_msg.delete()
-
-        if notify_msg.content.lower().startswith("y"):
-            role_name = name[:20] if len(name) > 20 else name
-            notify_role = await ctx.guild.create_role(
-                name=f"EVENT: {role_name}", mentionable=True
-            )
-        elif notify_msg.content.lower().startswith("n"):
-            notify_role = None
-        else:
-            return await ctx.send("Please answer with `y` or `n`. Try again.")
 
         embed = discord.Embed(
             description="Creating your event...", color=discord.Color.green()
         )
         msg = await ctx.send(embed=embed)
 
-        query = """INSERT INTO events (name, description, owner_id, starts_at, message_id, guild_id, channel_id, members, notify)
+        query = """INSERT INTO events (name, description, owner_id, starts_at, message_id, guild_id, channel_id, participants, notify_role)
                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                    RETURNING id;
                 """
 
-        result = await ctx.db.execute(
-            query,
+        event_args = (
             name,
-            description,
+            None,
             ctx.author.id,
             date,
             msg.id,
             ctx.guild.id,
             ctx.channel.id,
             [ctx.author.id],
-            notify_role.id if notify_role else None,
+            notify_role.id,
         )
 
-        partial_event = PartialEvent(
-            name,
-            description,
-            ctx.author.id,
-            date,
-            msg.id,
-            ctx.guild.id,
-            ctx.channel.id,
-            [ctx.author.id],
-            notify_role.id if notify_role else None,
-        )
+        result = await ctx.db.execute(query, *event_args)
 
-        delta = (utc.localize(date) - utc.localize(datetime.utcnow())).total_seconds()
+        partial_event = PartialEvent(*event_args)
+
+        delta = (date - datetime.utcnow()).total_seconds()
 
         if delta <= (86400 * 7):  # 7 days
             self._event_ready.set()
 
-        if self._current_event and date < self._current_event.start_at:
+        if self._current_event and date < self._current_event.starts_at:
             self._event_dispatch_task.cancel()
             self._event_dispatch_task = self.bot.loop.create_task(
                 self.event_dispatch_loop()
@@ -521,9 +628,45 @@ class Events(commands.Cog):
 
         embed = self.create_event_embed(partial_event)
         await msg.edit(embed=embed)
-        if notify_role:
-            await ctx.author.add_roles(notify_role)
         await msg.add_reaction("\N{WHITE HEAVY CHECK MARK}")
+        await msg.add_reaction("\N{MEMO}")
+
+        em = discord.Embed(
+            title=f"Successfully created and RSVP'd to {name}",
+            description=f"Click :alarm_clock: to be notifed when the event starts.",
+            color=discord.Color.red(),
+        )
+
+        def check(reaction, user):
+            return (
+                reaction.emoji == "⏰"
+                and user == ctx.author
+                and reaction.message.channel == ctx.author.dm_channel
+            )
+
+        try:
+            bot_msg = await ctx.author.send(embed=em)
+
+            await bot_msg.add_reaction("\N{ALARM CLOCK}")
+
+            try:
+                # 24 hour timeout
+                reaction, user = await self.bot.wait_for(
+                    "reaction_add", check=check, timeout=86400.0
+                )
+
+                await ctx.author.add_roles(notify_role)
+
+                await ctx.author.send("You will be notified when the event starts.")
+
+            except asyncio.TimeoutError:
+                pass
+
+        except discord.Forbidden:
+            await ctx.send(
+                f"{ctx.author.mention}: Please enable DMs in the future so I can send you event confirmation messages.",
+                delete_after=10.0,
+            )
 
     @event.command(name="join", description="Join an event", usage="[name or id]")
     async def event_join(self, ctx, event: EventConverter):
@@ -574,8 +717,22 @@ class Events(commands.Cog):
                 f"An event called `{event}` with you as the owner was not found."
             )
 
-        if event.notify:
-            role = ctx.guild.get_role(event.notify)
+        channel = self.bot.get_channel(event.channel_id)
+        try:
+            message = await channel.fetch_message(event.message_id)
+
+            em = message.embeds[0]
+            em.description = (
+                event.description or ""
+            ) + "Sorry, this event has been cancelled."
+            em.color = discord.Color.orange()
+
+            await message.edit(embed=em)
+        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+            pass
+
+        if event.notify_role:
+            role = ctx.guild.get_role(event.notify_role)
             if role:
                 await role.delete()
 
@@ -614,7 +771,7 @@ class Events(commands.Cog):
         name="list", description="List all upcoming events", aliases=["upcoming"],
     )
     async def event_list(self, ctx):
-        query = """SELECT id, name, starts_at, members
+        query = """SELECT id, name, starts_at, participants
                    FROM events
                    WHERE guild_id=$1
                    ORDER BY starts_at DESC
