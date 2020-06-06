@@ -128,6 +128,7 @@ class Timers(commands.Cog):
         self.bot.dispatch(event_name, timer)
 
     async def dispatch_timers(self):
+        await self.bot.wait_until_ready()
         try:
             while not self.bot.is_closed():
                 # can only asyncio.sleep for up to ~48 days reliably
