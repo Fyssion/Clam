@@ -490,6 +490,8 @@ class Moderation(commands.Cog):
 
     @commands.Cog.listener("on_message_edit")
     async def _edit_detector(self, before, after):
+        if not before.guild:
+            return
         log = self.get_log(before.guild.id)
         if not log or log.id == before.id or before.author.id == self.bot.user.id:
             return
