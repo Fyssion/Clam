@@ -407,6 +407,8 @@ class Fun(commands.Cog):
             name = member
 
         emoji = "<a:typing:702612001733738517>"
+
+        name = discord.utils.escape_mentions(name)
         await ctx.send(f"{emoji} **{name}** is typing...")
 
     # async def do_thethaurize(self, sentence):
