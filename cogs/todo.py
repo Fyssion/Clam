@@ -105,8 +105,18 @@ class Todo(commands.Cog):
             await ctx.send("Task was not found.")
             ctx.handled = True
 
-    @commands.group(description="Manage your todo list", invoke_without_command=True)
+    @commands.group(invoke_without_command=True)
     async def todo(self, ctx):
+        """Manage your todo list
+
+        This command houses a series of subcommands used for
+        managing a todo list. Each item on your todo list
+        is referred to as a task.
+
+        You can create tasks, view your todo list, check
+        off tasks, and more. View the subcommands below for
+        more info.
+        """
         await ctx.invoke(self.todo_list)
 
     @todo.command(
