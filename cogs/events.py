@@ -240,6 +240,7 @@ class Events(commands.Cog):
             )
 
     async def event_dispatch_loop(self):
+        await self.bot.wait_until_ready()
         try:
             while not self.bot.is_closed():
                 event = await self.get_active_events()
