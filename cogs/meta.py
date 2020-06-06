@@ -211,7 +211,7 @@ class ClamHelpCommand(commands.HelpCommand):
         if command.description:
             em.description += f" - {command.description}"
         if command.help:
-            em.description += "\n" + command.help
+            em.description += "\n" + command.help + "\n"
         if command.aliases:
             formatted_aliases = []
             for alias in command.aliases:
