@@ -69,6 +69,7 @@ initial_extensions = [
     "cogs.events",
     "cogs.fun",
     "cogs.games",
+    "cogs.internet",
     "cogs.mathematics",
     "cogs.meta",
     "cogs.moderation",

@@ -10,7 +10,7 @@ import asyncio
 
 from random import choice
 
-from .utils import aioxkcd, colors
+from .utils import colors
 from .utils.utils import is_int
 
 # from .utils.utils import thesaurize
@@ -327,69 +327,6 @@ class Fun(commands.Cog):
                     "Message not found! "
                     "Please use a vaild message ID.~~"
                 )
-
-    @commands.command(hidden=True)
-    @commands.is_owner()
-    async def reload_xkcd(self, ctx):
-        importlib.reload(aioxkcd)
-        await ctx.send("It has been done.")
-
-    @commands.group(
-        name="xkcd",
-        description="Fetch an xdcd comic",
-        usage="<comic> (random if left blank)",
-        invoke_without_command=True,
-    )
-    async def _xkcd(self, ctx, number: int = None):
-        if not number:
-            return await self._random_xkcd(ctx)
-        try:
-            comic = await aioxkcd.get_comic(number)
-        except aioxkcd.XkcdError:
-            return await ctx.send("That comic does not exist!")
-        em = discord.Embed(
-            title=f"#{comic.number} - {comic.title}",
-            description=comic.alt_text,
-            color=discord.Color.blurple(),
-            url=comic.url,
-        )
-        em.set_image(url=comic.image_url)
-        em.set_footer(
-            text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url
-        )
-        await ctx.send(embed=em)
-
-    @_xkcd.command(
-        name="random", description="Fetch a random xdcd comic", aliases=["r"]
-    )
-    async def _random_xkcd(self, ctx):
-        comic = await aioxkcd.get_random_comic()
-        em = discord.Embed(
-            title=f"#{comic.number} - {comic.title}",
-            description=comic.alt_text,
-            color=discord.Color.blurple(),
-            url=comic.url,
-        )
-        em.set_image(url=comic.image_url)
-        em.set_footer(
-            text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url
-        )
-        await ctx.send(embed=em)
-
-    @_xkcd.command(name="latest", description="Fetch the latest xkcd comic")
-    async def _latest_xkcd(self, ctx):
-        comic = await aioxkcd.get_latest_comic()
-        em = discord.Embed(
-            title=f"#{comic.number} - {comic.title}",
-            description=comic.alt_text,
-            color=discord.Color.blurple(),
-            url=comic.url,
-        )
-        em.set_image(url=comic.image_url)
-        em.set_footer(
-            text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url
-        )
-        await ctx.send(embed=em)
 
     @commands.command(
         description="Generate a typing message for a name", usage="[name]"
