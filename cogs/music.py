@@ -1075,10 +1075,6 @@ class Music(commands.Cog):
             )
 
         em.description = description
-        em.set_footer(
-            text=f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
-            icon_url=self.bot.user.avatar_url,
-        )
         await ctx.send(embed=em)
 
     async def fetch_yt_playlist(self, ctx, url):
@@ -1124,10 +1120,6 @@ class Music(commands.Cog):
                 )
 
             em.description = description
-            em.set_footer(
-                text=f"Requested by {ctx.message.author.name}#{ctx.message.author.discriminator}",
-                icon_url=self.bot.user.avatar_url,
-            )
             await ctx.send(embed=em)
 
     @commands.command(
