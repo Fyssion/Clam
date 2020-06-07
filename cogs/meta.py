@@ -63,8 +63,10 @@ class HelpPages(menus.ListPageSource):
             command_help += (
                 f" {command.usage}`**" if command.usage is not None else "`**"
             )
-            if command.description:
-                command_help += f" - {command.description}"
+            if command.description or command.brief or command.short_doc:
+                command_help += (
+                    f" - {command.description or command.brief or command.short_doc}"
+                )
             command_info.append(command_help)
         formatted = "\n".join(command_info)
         if formatted:
