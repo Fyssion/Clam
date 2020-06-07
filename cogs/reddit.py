@@ -66,10 +66,6 @@ class Reddit(commands.Cog):
                 color=reddit_color,
                 timestamp=d.utcnow(),
             )
-            em.set_footer(
-                text=f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
-                icon_url=self.bot.user.avatar_url,
-            )
             try:
                 embed_msg = await ctx.channel.send(embed=em)
             except discord.errors.Forbidden:
@@ -140,10 +136,6 @@ class Reddit(commands.Cog):
                     self.ico_img = self.subreddit.icon_img
 
                 em.set_thumbnail(url=self.ico_img)
-                em.set_footer(
-                    text=f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
-                    icon_url=self.bot.user.avatar_url,
-                )
 
                 try:
                     await embed_msg.edit(embed=em)
@@ -161,11 +153,6 @@ class Reddit(commands.Cog):
                     + self.isnsfw
                     + self.wosh,
                     color=warning_color,
-                )
-
-                em.set_footer(
-                    text=f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
-                    icon_url=self.bot.user.avatar_url,
                 )
 
                 self.log.warning("Subreddit '" + sub + "' does not exist!")
@@ -200,10 +187,6 @@ class Reddit(commands.Cog):
                 color=reddit_color,
                 timestamp=d.utcnow(),
             )
-            em.set_footer(
-                text=f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
-                icon_url=self.bot.user.avatar_url,
-            )
             try:
                 embed_msg = await ctx.channel.send(embed=em)
             except discord.errors.Forbidden:
@@ -230,10 +213,6 @@ class Reddit(commands.Cog):
                     title=":warning:Redditor not found!",
                     description=f"'{self.usr}'' is not a redditor.",
                     color=warning_color,
-                )
-                em.set_footer(
-                    text=f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
-                    icon_url=self.bot.user.avatar_url,
                 )
 
                 self.log.warning("Redditor '" + self.usr + "' does not exist!")
@@ -266,10 +245,6 @@ class Reddit(commands.Cog):
                 )
                 em.add_field(name="Karma:", value=str(self.tkarma))
                 em.set_thumbnail(url=self.user.icon_img)
-                em.set_footer(
-                    text=f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
-                    icon_url=self.bot.user.avatar_url,
-                )
 
                 try:
                     await embed_msg.edit(embed=em)

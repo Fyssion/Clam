@@ -307,10 +307,6 @@ class Fun(commands.Cog):
                          [What's this?](https://www.reddit.com/r/copypasta/comments/dfcuzs/i_just_downvoted_your_comment/)",
                 inline=False,
             )
-            em.set_footer(
-                text=f"Requested by {str(ctx.author)}",
-                icon_url=self.bot.user.avatar_url,
-            )
 
             await ctx.send(embed=em)
 

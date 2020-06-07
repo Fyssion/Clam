@@ -549,9 +549,6 @@ class Stats(commands.Cog):
     async def about(self, ctx):
         em = discord.Embed(title="About", color=0xFF95B0, timestamp=datetime.utcnow())
         em.set_thumbnail(url=self.bot.user.avatar_url)
-        em.set_footer(
-            text=f"Requested by {str(ctx.author)}", icon_url=self.bot.user.avatar_url
-        )
 
         dev = self.bot.get_user(224513210471022592)
         up = datetime.now() - self.bot.startup_time

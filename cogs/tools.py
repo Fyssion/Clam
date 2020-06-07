@@ -15,7 +15,7 @@ from PIL import Image
 import typing
 import dateparser
 
-from .utils import fuzzy, aiopypi
+from .utils import fuzzy, aiopypi, colors
 from .utils.utils import SphinxObjectFileReader
 
 
@@ -76,12 +76,52 @@ class Tools(commands.Cog):
         self.emoji = ":tools:"
         self.log = self.bot.log
 
+    async def get_average_color(self, icon):
+        bytes = io.BytesIO(await icon.read())
+        partial = functools.partial(Image.open, bytes)
+        image = await self.bot.loop.run_in_executor(None, partial)
+        partial = functools.partial(image.resize, (1, 1))
+        resized = await self.bot.loop.run_in_executor(None, partial)
+        partial = functools.partial(resized.getpixel, (0, 0))
+        color = await self.bot.loop.run_in_executor(None, partial)
+        try:
+            hex_string = "0x{:02x}{:02x}{:02x}".format(*color)
+            return discord.Color(int(hex_string, 16))
+        except TypeError:
+            return None
+
+    @commands.command(
+        description="Get the avatar of a member.",
+        usage="<member>",
+        aliases=["profilepic"],
+    )
+    async def avatar(self, ctx, *, member: discord.Member = None):
+        if not member:
+            member = ctx.author
+
+        icon = member.avatar_url
+        color = await self.get_average_color(icon) if icon else None
+        color = color or member.color or colors.PRIMARY
+
+        em = discord.Embed(color=color)
+
+        if member.nick:
+            name = f"{member.nick} ({str(member)})"
+        else:
+            name = str(member)
+
+        em.set_author(name=name, icon_url=member.avatar_url)
+        em.set_image(url=member.avatar_url)
+
+        await ctx.send(embed=em)
+
     @commands.command(
         name="userinfo",
         description="Get information about a user",
         aliases=["memberinfo", "ui", "whois"],
-        usage="[user]",
+        usage="<member>",
     )
+    @commands.guild_only()
     async def userinfo_command(self, ctx, *, member: discord.Member = None):
         await ctx.trigger_typing()
 
@@ -127,32 +167,13 @@ class Tools(commands.Cog):
         author += f" - {str(member.id)}"
 
         icon = member.avatar_url
-        if icon:
-            bytes = io.BytesIO(await icon.read())
-            partial = functools.partial(Image.open, bytes)
-            image = await self.bot.loop.run_in_executor(None, partial)
-            partial = functools.partial(image.resize, (1, 1))
-            resized = await self.bot.loop.run_in_executor(None, partial)
-            partial = functools.partial(resized.getpixel, (0, 0))
-            color = await self.bot.loop.run_in_executor(None, partial)
-            try:
-                hex_string = "0x{:02x}{:02x}{:02x}".format(*color)
-                color = discord.Color(int(hex_string, 16))
-            except TypeError:
-                color = member.color or discord.Color.blurple()
-        else:
-            if member.color:
-                color = member.color
-            else:
-                color = discord.Color.blurple()
+        color = await self.get_average_color(icon) if icon else None
+        color = color or member.color or colors.PRIMARY
 
         em = discord.Embed(description=desc, color=color, timestamp=d.utcnow(),)
 
         em.set_thumbnail(url=member.avatar_url)
         em.set_author(name=author, icon_url=member.avatar_url)
-        em.set_footer(
-            text=f"Requested by {str(ctx.author)}", icon_url=self.bot.user.avatar_url
-        )
         humanized = humanize.naturaltime(member.created_at)
         em.add_field(
             name=":clock1: Account Created",
@@ -196,21 +217,8 @@ class Tools(commands.Cog):
             desc += "\n:information_source: This guild is considered large (over 250 members)."
 
         icon = guild.icon_url
-        if icon:
-            bytes = io.BytesIO(await icon.read())
-            partial = functools.partial(Image.open, bytes)
-            image = await self.bot.loop.run_in_executor(None, partial)
-            partial = functools.partial(image.resize, (1, 1))
-            resized = await self.bot.loop.run_in_executor(None, partial)
-            partial = functools.partial(resized.getpixel, (0, 0))
-            color = await self.bot.loop.run_in_executor(None, partial)
-            try:
-                hex_string = "0x{:02x}{:02x}{:02x}".format(*color)
-                color = discord.Color(int(hex_string, 16))
-            except TypeError:
-                color = discord.Color.blurple()
-        else:
-            color = discord.Color.blurple()
+        color = await self.get_average_color(icon) if icon else None
+        color = color or colors.PRIMARY
 
         em = discord.Embed(description=desc, color=color, timestamp=d.utcnow(),)
 
@@ -218,10 +226,6 @@ class Tools(commands.Cog):
         if guild.banner_url:
             em.set_image(url=guild.banner_url)
         em.set_author(name=f"{guild.name} ({guild.id})", icon_url=guild.icon_url)
-        em.set_footer(
-            text=f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
-            icon_url=self.bot.user.avatar_url,
-        )
         em.add_field(
             name="<:owner:649355683598303260> Owner",
             value=guild.owner.mention,
@@ -794,10 +798,6 @@ class Tools(commands.Cog):
         em.add_field(
             name=f"`Results for '{obj}'`",
             value="\n".join(f"[`{key}`]({url})" for key, url in matches),
-        )
-        em.set_footer(
-            text=f"Requested by {ctx.author.name}#{ctx.author.discriminator}",
-            icon_url=self.bot.user.avatar_url,
         )
         # em.description = '\n'.join(f'[`{key}`]({url})' for key, url in matches)
         # await bot_msg.edit(embed = em)
