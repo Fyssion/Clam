@@ -78,6 +78,8 @@ class PointsConverter(commands.Converter):
 
 
 class Math(commands.Cog):
+    """Math commands to help with homework or to mess around with."""
+
     def __init__(self, bot):
         self.bot = bot
         self.emoji = ":triangular_ruler:"
@@ -107,7 +109,7 @@ class Math(commands.Cog):
     async def distance(self, ctx, *, points: PointsConverter(max_points=2)):
         """Calculate the distance between two points.
 
-        Examples:
+        Example point inputs:
 
         - "(2, 6) (5, 4)"
         - "(8,9) (10,5)"
@@ -124,11 +126,11 @@ class Math(commands.Cog):
     async def midpoint(self, ctx, *, points: PointsConverter(max_points=5)):
         """Calculate the midpoint when given two or more points.
 
-        Examples:
+        Example point inputs:
 
         - "(2, 6) (5, 4)"
         - "(8,9) (10,5)"
-        - "(15, 22) (5, 7) (14, 18)
+        - "(15, 22) (5, 7) (14, 18)"
         """
         total_x = 0
         total_y = 0
