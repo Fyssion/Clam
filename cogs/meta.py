@@ -15,7 +15,7 @@ import humanize
 import functools
 
 from .utils.utils import wait_for_deletion, get_lines_of_code
-from .utils import db
+from .utils import db, colors
 from .utils.utils import hover_link
 from .utils.checks import has_manage_guild
 from .utils.menus import MenuPages
@@ -96,7 +96,9 @@ class ClamHelpCommand(commands.HelpCommand):
         ctx = self.context
         bot = ctx.bot
         em = discord.Embed(
-            title=f"Help for {bot.user.name}", color=0xFF95B0, timestamp=d.utcnow(),
+            title=f"Help for {bot.user.name}",
+            color=colors.PRIMARY,
+            timestamp=d.utcnow(),
         )
         em.set_thumbnail(url=ctx.bot.user.avatar_url)
         return em

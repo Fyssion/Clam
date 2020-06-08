@@ -547,7 +547,9 @@ class Stats(commands.Cog):
         name="about", description="Display info about the bot", aliases=["info"],
     )
     async def about(self, ctx):
-        em = discord.Embed(title="About", color=0xFF95B0, timestamp=datetime.utcnow())
+        em = discord.Embed(
+            title="About", color=colors.PRIMARY, timestamp=datetime.utcnow()
+        )
         em.set_thumbnail(url=self.bot.user.avatar_url)
 
         dev = self.bot.get_user(224513210471022592)
