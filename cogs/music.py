@@ -311,9 +311,7 @@ class Song:
     def create_embed(self, title="Now playing", duration=None):
         src = self.source
         em = discord.Embed(
-            title=title,
-            description=f"```css\n{src.title}\n```",
-            color=discord.Color.blurple(),
+            title=title, description=f"```css\n{src.title}\n```", color=colors.PRIMARY,
         )
         if not duration:
             em.add_field(name="Duration", value=src.duration)
@@ -1051,7 +1049,7 @@ class Music(commands.Cog):
         em = discord.Embed(
             title="**:page_facing_up: Enqueued:**",
             timestamp=d.utcnow(),
-            color=discord.Color.blurple(),
+            color=colors.PRIMARY,
         )
         description = ""
         total_duration = 0
