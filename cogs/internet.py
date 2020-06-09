@@ -9,7 +9,7 @@ import re
 import os
 import ast
 
-from .utils import aiopypi, aioxkcd, fuzzy
+from .utils import aiopypi, aioxkcd, fuzzy, colors
 from .utils.utils import SphinxObjectFileReader
 
 
@@ -293,7 +293,7 @@ class Internet(commands.Cog):
         em = discord.Embed(
             title=f"#{comic.number} - {comic.title}",
             description=comic.alt_text,
-            color=discord.Color.blurple(),
+            color=colors.PRIMARY,
             url=comic.url,
         )
         em.set_image(url=comic.image_url)
@@ -310,7 +310,7 @@ class Internet(commands.Cog):
         em = discord.Embed(
             title=f"#{comic.number} - {comic.title}",
             description=comic.alt_text,
-            color=discord.Color.blurple(),
+            color=colors.PRIMARY,
             url=comic.url,
         )
         em.set_image(url=comic.image_url)
@@ -325,7 +325,7 @@ class Internet(commands.Cog):
         em = discord.Embed(
             title=f"#{comic.number} - {comic.title}",
             description=comic.alt_text,
-            color=discord.Color.blurple(),
+            color=colors.PRIMARY,
             url=comic.url,
         )
         em.set_image(url=comic.image_url)
@@ -418,7 +418,7 @@ class Internet(commands.Cog):
 
         if not hasattr(self, "_rtfm_cache"):
             await ctx.trigger_typing()
-            # em = discord.Embed(colour = discord.Colour.blurple())
+            # em = discord.Embed(colour = colors.PRIMARY)
             # em.add_field(name = "\u200b", value = ":mag: `Searching the docs...`")
             # bot_msg = await ctx.send(embed = em)
             await self.build_rtfm_lookup_table(page_types)
@@ -442,7 +442,7 @@ class Internet(commands.Cog):
 
         matches = fuzzy.finder(obj, cache, key=lambda t: t[0], lazy=False)[:7]
 
-        em = discord.Embed(colour=discord.Colour.blurple())
+        em = discord.Embed(colour=colors.PRIMARY)
         if len(matches) == 0:
             return await ctx.send("Could not find anything. Sorry.")
         em.add_field(
