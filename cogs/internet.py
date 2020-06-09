@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, menus
 
 from datetime import datetime
 import dateparser
@@ -10,7 +10,32 @@ import os
 import ast
 
 from .utils import aiopypi, aioxkcd, fuzzy, colors
+from .utils.menus import MenuPages
 from .utils.utils import SphinxObjectFileReader
+
+
+class DocsSource(menus.ListPageSource):
+    def __init__(self, entries, obj):
+        super().__init__(entries, per_page=6)
+        self.object = obj
+
+    def format_page(self, menu, entries):
+        offset = menu.current_page * self.per_page
+
+        em = discord.Embed(colour=colors.PRIMARY)
+        em.set_footer(
+            text=f"{len(self.entries)} results | Page {menu.current_page + 1}/{self.get_max_pages()}"
+        )
+
+        matches = []
+
+        for i, (key, url) in enumerate(entries, start=offset):
+            matches.append(f"[`{key}`]({url})")
+
+        em.add_field(
+            name=f"`Results for '{self.object}'`", value="\n".join(matches),
+        )
+        return em
 
 
 class Internet(commands.Cog):
@@ -334,6 +359,7 @@ class Internet(commands.Cog):
         )
         await ctx.send(embed=em)
 
+    # https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/api.py#L198-L345
     def parse_object_inv(self, stream, url):
         # key: URL
         # n.b.: key doesn't have `discord` or `discord.ext.commands` namespaces
@@ -389,43 +415,41 @@ class Internet(commands.Cog):
 
         return result
 
-    async def build_rtfm_lookup_table(self, page_types):
+    async def build_docs_lookup_table(self, page_types):
         cache = {}
         for key, page in page_types.items():
             sub = cache[key] = {}
             async with self.bot.session.get(page + "/objects.inv") as resp:
                 if resp.status != 200:
                     raise RuntimeError(
-                        "Cannot build rtfm lookup table, try again later."
+                        "Cannot build docs lookup table, try again later."
                     )
 
                 stream = SphinxObjectFileReader(await resp.read())
                 cache[key] = self.parse_object_inv(stream, page)
 
-        self._rtfm_cache = cache
+        self._docs_cache = cache
 
-    async def do_rtfm(self, ctx, key, obj):
+    async def do_docs(self, ctx, key, obj):
         page_types = {
             "latest": "https://discordpy.readthedocs.io/en/latest",
-            "latest-jp": "https://discordpy.readthedocs.io/ja/latest",
+            "stable": "https://discordpy.readthedocs.io/en/stable",
             "python": "https://docs.python.org/3",
-            "python-jp": "https://docs.python.org/ja/3",
+            "aiohttp": "https://docs.aiohttp.org/en/stable/",
+            "asyncpg": "https://magicstack.github.io/asyncpg/current",
         }
 
         if obj is None:
             await ctx.send(page_types[key])
             return
 
-        if not hasattr(self, "_rtfm_cache"):
+        if not hasattr(self, "_docs_cache"):
             await ctx.trigger_typing()
-            # em = discord.Embed(colour = colors.PRIMARY)
-            # em.add_field(name = "\u200b", value = ":mag: `Searching the docs...`")
-            # bot_msg = await ctx.send(embed = em)
-            await self.build_rtfm_lookup_table(page_types)
+            await self.build_docs_lookup_table(page_types)
 
         obj = re.sub(r"^(?:discord\.(?:ext\.)?)?(?:commands\.)?(.+)", r"\1", obj)
 
-        if key.startswith("latest"):
+        if key.startswith("latest") or key.startswith("stable"):
             # point the abc.Messageable types properly:
             q = obj.lower()
             for name in dir(discord.abc.Messageable):
@@ -435,67 +459,48 @@ class Internet(commands.Cog):
                     obj = f"abc.Messageable.{name}"
                     break
 
-        cache = list(self._rtfm_cache[key].items())
+        cache = list(self._docs_cache[key].items())
 
         def transform(tup):
             return tup[0]
 
-        matches = fuzzy.finder(obj, cache, key=lambda t: t[0], lazy=False)[:7]
+        matches = fuzzy.finder(obj, cache, key=lambda t: t[0], lazy=False)
 
-        em = discord.Embed(colour=colors.PRIMARY)
         if len(matches) == 0:
             return await ctx.send("Could not find anything. Sorry.")
-        em.add_field(
-            name=f"`Results for '{obj}'`",
-            value="\n".join(f"[`{key}`]({url})" for key, url in matches),
-        )
-        # em.description = '\n'.join(f'[`{key}`]({url})' for key, url in matches)
-        # await bot_msg.edit(embed = em)
-        await ctx.send(embed=em)
 
-    def transform_rtfm_language_key(self, ctx, prefix):
-        if ctx.guild is not None:
-            #                             日本語 category
-            if ctx.channel.category_id == 490287576670928914:
-                return prefix + "-jp"
-            #                    d.py unofficial JP
-            elif ctx.guild.id == 463986890190749698:
-                return prefix + "-jp"
-        return prefix
+        pages = MenuPages(source=DocsSource(matches, obj), clear_reactions_after=True)
+        await pages.start(ctx)
 
     @commands.group(
-        aliases=["rtfm", "rtfd"],
-        invoke_without_command=True,
-        description="Gives you a documentation link for a discord.py entity.",
+        aliases=["rtfm", "rtfd"], invoke_without_command=True,
     )
     async def docs(self, ctx, *, obj: str = None):
-        """Gives you a documentation link for a discord.py entity.
+        """Searches discord.py documentation and returns a list of matching entities.
         Events, objects, and functions are all supported through a
         a cruddy fuzzy algorithm.
         """
-        key = self.transform_rtfm_language_key(ctx, "latest")
-        await self.do_rtfm(ctx, key, obj)
+        await self.do_docs(ctx, "latest", obj)
+
+    @docs.command(name="stable", aliases=["st"])
+    async def docs_stable(self, ctx, *, obj: str = None):
+        """Gives you a documentation link for a discord.py stable entity."""
+        await self.do_docs(ctx, "stable", obj)
 
     @docs.command(name="python", aliases=["py"])
     async def docs_python(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a Python entity."""
-        key = self.transform_rtfm_language_key(ctx, "python")
-        await self.do_rtfm(ctx, key, obj)
+        await self.do_docs(ctx, "python", obj)
 
-    def insert_returns(self, body):
-        # insert return stmt if the last expression is a expression statement
-        if isinstance(body[-1], ast.Expr):
-            body[-1] = ast.Return(body[-1].value)
-            ast.fix_missing_locations(body[-1])
+    @docs.command(name="aiohttp", aliases=["ah"])
+    async def docs_aiohttp(self, ctx, *, obj: str = None):
+        """Gives you a documentation link for an aiohttp entity."""
+        await self.do_docs(ctx, "aiohttp", obj)
 
-        # for if statements, we insert returns into the body and the orelse
-        if isinstance(body[-1], ast.If):
-            insert_returns(body[-1].body)
-            insert_returns(body[-1].orelse)
-
-        # for with blocks, again we insert returns into the body
-        if isinstance(body[-1], ast.With):
-            insert_returns(body[-1].body)
+    @docs.command(name="asyncpg", aliases=["pg"])
+    async def docs_asyncpg(self, ctx, *, obj: str = None):
+        """Gives you a documentation link for an asyncpg entity."""
+        await self.do_docs(ctx, "asyncpg", obj)
 
 
 def setup(bot):
