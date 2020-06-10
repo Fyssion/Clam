@@ -435,8 +435,9 @@ class Internet(commands.Cog):
             "latest": "https://discordpy.readthedocs.io/en/latest",
             "stable": "https://discordpy.readthedocs.io/en/stable",
             "python": "https://docs.python.org/3",
-            "aiohttp": "https://docs.aiohttp.org/en/stable/",
+            "aiohttp": "https://docs.aiohttp.org/en/stable",
             "asyncpg": "https://magicstack.github.io/asyncpg/current",
+            "flask": "https://flask.palletsprojects.com/en/1.1.x",
         }
 
         if obj is None:
@@ -501,6 +502,11 @@ class Internet(commands.Cog):
     async def docs_asyncpg(self, ctx, *, obj: str = None):
         """Gives you a documentation link for an asyncpg entity."""
         await self.do_docs(ctx, "asyncpg", obj)
+
+    @docs.command(name="flask", aliases=["fl"])
+    async def docs_flask(self, ctx, *, obj: str = None):
+        """Gives you a documentation link for a Flask entity."""
+        await self.do_docs(ctx, "flask", obj)
 
 
 def setup(bot):
