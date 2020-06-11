@@ -278,7 +278,9 @@ class Tags(commands.Cog):
 
         self._in_progress_tags[ctx.guild.id].append(name)
 
-        await ctx.send("What would you like the content of your tag to be?")
+        await ctx.send(
+            f"What would you like the content of your tag to be? (Type `{ctx.prefix}abort` to abort)"
+        )
 
         try:
             message = await self.bot.wait_for(
@@ -286,6 +288,12 @@ class Tags(commands.Cog):
             )  # 3 minutes
         except asyncio.TimeoutError:
             return await ctx.send("You timed out. Aborting.")
+
+        if message.content == f"{ctx.prefix}abort":
+            await ctx.send("Aborting tag creation.")
+            ipt = self._in_progress_tags[ctx.guild.id]
+            ipt.pop(ipt.index(name))
+            return
 
         content = await TagContentConverter().convert(ctx, message.content)
 
