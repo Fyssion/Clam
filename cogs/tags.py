@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 
 import asyncpg
+import asyncio
 
 from .utils import db, checks, colors
 
@@ -74,7 +75,7 @@ class Tag:
 
 class TagConverter(commands.Converter):
     async def convert(self, ctx, arg):
-        arg = arg.lower()
+        arg = arg.lower().strip()
         query = """SELECT tags.name, tags.content
                    FROM tag_aliases
                    INNER JOIN tags ON tags.id = tag_aliases.tag_id
@@ -156,13 +157,16 @@ class Tags(commands.Cog):
         self.emoji = ":bookmark:"
         self.log = self.bot.log
 
+        # guild_id: List[tag_name]
+        self._in_progress_tags = {}
+
     async def cog_command_error(self, ctx, error):
         if isinstance(error, commands.BadArgument):
             await ctx.send(str(error))
             ctx.handled = True
 
     @commands.group(usage="<tag>", invoke_without_command=True)
-    async def tag(self, ctx, name=None):
+    async def tag(self, ctx, *, name=None):
         """Tag stuff and retrieve it later
 
         You can create, edit, delete, and alias
@@ -177,6 +181,33 @@ class Tags(commands.Cog):
 
         query = "UPDATE tags SET uses = uses + 1 WHERE name=$1 AND guild_id=$2;"
         await ctx.db.execute(query, tag.name, ctx.guild.id)
+
+    async def create_tag(self, ctx, name, content):
+        # https://github.com/Rapptz/RoboDanny/blob/65b13cad81317768b21cd1e1e05e6efc414cceda/cogs/tags.py#L253-L283
+        query = """WITH tag_insert AS (
+                        INSERT INTO tags (name, content, owner_id, guild_id)
+                        VALUES ($1, $2, $3, $4)
+                        RETURNING id
+                    )
+                    INSERT INTO tag_aliases (name, owner_id, guild_id, tag_id)
+                    VALUES ($1, $3, $4, (SELECT id FROM tag_insert));
+                """
+
+        async with ctx.db.acquire() as con:
+            tr = con.transaction()
+            await tr.start()
+
+            try:
+                await ctx.db.execute(query, name, content, ctx.author.id, ctx.guild.id)
+            except asyncpg.UniqueViolationError:
+                await tr.rollback()
+                await ctx.send("There is already a tag with this name.")
+            except:
+                await tr.rollback()
+                await ctx.send("Could not create tag. Sorry.")
+            else:
+                await tr.commit()
+                await ctx.send(f"Successfully created tag **`{name}`**.")
 
     @tag.command(
         name="create",
@@ -213,13 +244,63 @@ class Tags(commands.Cog):
                 await tr.commit()
                 await ctx.send(f"Successfully created tag **`{name}`**.")
 
+    @tag.command(name="make", description="Make a tag with an interactive session")
+    async def tag_make(self, ctx):
+        await ctx.send("What would you like to name your tag?")
+
+        def check(ms):
+            return ms.author == ctx.author and ms.channel == ctx.channel
+
+        try:
+            message = await self.bot.wait_for(
+                "message", check=check, timeout=180.0
+            )  # 3 minutes
+        except asyncio.TimeoutError:
+            return await ctx.send("You timed out. Aborting.")
+
+        name = await TagNameConverter().convert(ctx, message.content)
+
+        if ctx.guild.id not in self._in_progress_tags.keys():
+            self._in_progress_tags[ctx.guild.id] = []
+
+        if name in self._in_progress_tags[ctx.guild.id]:
+            return await ctx.send("A tag with that name is being made right now.")
+
+        query = """SELECT id
+                   FROM tag_aliases
+                   WHERE name=$1 AND guild_id=$2;
+                """
+
+        result = await ctx.db.fetchrow(query, name, ctx.guild.id)
+
+        if result:
+            return await ctx.send("That tag name is already taken.")
+
+        self._in_progress_tags[ctx.guild.id].append(name)
+
+        await ctx.send("What would you like the content of your tag to be?")
+
+        try:
+            message = await self.bot.wait_for(
+                "message", check=check, timeout=180.0
+            )  # 3 minutes
+        except asyncio.TimeoutError:
+            return await ctx.send("You timed out. Aborting.")
+
+        content = await TagContentConverter().convert(ctx, message.content)
+
+        await self.create_tag(ctx, name, content)
+
+        ipt = self._in_progress_tags[ctx.guild.id]
+        ipt.pop(ipt.index(name))
+
     @tag.command(
         name="delete",
         description="Delete a tag you own",
         usage="[tag name]",
         aliases=["remove"],
     )
-    async def delete(self, ctx, name):
+    async def delete(self, ctx, *, name):
         # https://github.com/Rapptz/RoboDanny/blob/65b13cad81317768b21cd1e1e05e6efc414cceda/cogs/tags.py#L644-L669
         bypass_owner_check = (
             ctx.author.id == self.bot.owner_id
@@ -315,7 +396,7 @@ class Tags(commands.Cog):
         aliases=["about"],
         usage="[tag]",
     )
-    async def tag_info(self, ctx, name):
+    async def tag_info(self, ctx, *, name):
         query = """SELECT
                        tag_aliases.name <> tags.name AS "Alias",
                        tag_aliases.name AS alias_name,
@@ -359,7 +440,7 @@ class Tags(commands.Cog):
         description="Get a tag without markdown (for copy/pasting)",
         usage="[tag name]",
     )
-    async def tag_raw(self, ctx, tag: TagConverter):
+    async def tag_raw(self, ctx, *, tag: TagConverter):
         await ctx.send(discord.utils.escape_markdown(tag.content))
 
         query = "UPDATE tags SET uses = uses + 1 WHERE name=$1 AND guild_id=$2;"
