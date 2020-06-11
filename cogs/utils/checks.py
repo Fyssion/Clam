@@ -2,6 +2,17 @@ import discord
 from discord.ext import commands
 
 
+def has_permissions(**perms):
+    async def predicate(ctx):
+        try:
+            return await commands.has_permissions(**perms).predicate(ctx)
+        except commands.MissingPermissions:
+            if ctx.bot.is_owner(ctx.author):
+                return True
+            else:
+                raise
+
+
 def has_manage_guild():
     async def predicate(ctx):
         try:

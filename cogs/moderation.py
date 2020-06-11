@@ -42,7 +42,12 @@ class Logs(db.Table):
 
 class Moderation(commands.Cog):
     """
-    This cog has not been fully developed. Will include many moderation features.
+    This cog has not been fully developed.
+    It will include many moderation features.
+
+    If you can't see any commands, that means you
+    do not have the required permissions to use
+    those commands.
     """
 
     def __init__(self, bot):
@@ -65,6 +70,7 @@ class Moderation(commands.Cog):
     async def ban(self, ctx, user: int, *, reason=None):
         user = discord.Object(id=user)
         await ctx.guild.ban(user, reason=reason)
+
         await ctx.send(":ok_hand:")
 
     @commands.command()
