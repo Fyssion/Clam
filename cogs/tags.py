@@ -95,11 +95,11 @@ class TagConverter(commands.Converter):
             rows = await ctx.db.fetch(query, ctx.guild.id, arg)
 
             if not rows:
-                raise commands.BadArgument("Could not find tag.")
+                raise commands.BadArgument("Could not find tag. Sorry.")
 
             similar = "\n".join(r["name"] for r in rows)
             raise commands.BadArgument(
-                f"Could not find tag. Did you mean...\n{similar}"
+                f"Could not find tag. Sorry.\nSimilar tags:\n{similar}"
             )
 
         return Tag.from_partial(row)
@@ -207,7 +207,9 @@ class Tags(commands.Cog):
                 await ctx.send("Could not create tag. Sorry.")
             else:
                 await tr.commit()
-                await ctx.send(f"Successfully created tag **`{name}`**.")
+                await ctx.send(
+                    f"{ctx.tick(True)} Successfully created tag **`{name}`**."
+                )
 
     @tag.command(
         name="create",
@@ -242,7 +244,9 @@ class Tags(commands.Cog):
                 await ctx.send("Could not create tag. Sorry.")
             else:
                 await tr.commit()
-                await ctx.send(f"Successfully created tag **`{name}`**.")
+                await ctx.send(
+                    f"{ctx.tick(True)} Successfully created tag **`{name}`**."
+                )
 
     @tag.command(name="make", description="Make a tag with an interactive session")
     async def tag_make(self, ctx):
@@ -363,7 +367,7 @@ class Tags(commands.Cog):
                 "Tag edit failed. Either the tag doesn't exist or you don't own it."
             )
 
-        await ctx.send("Successfully edited tag.")
+        await ctx.send(f"{ctx.tick(True)} Successfully edited tag.")
 
     @tag.command(
         name="alias",
@@ -508,6 +512,69 @@ class Tags(commands.Cog):
             desc += "\n Only showing top ten tags."
 
         em.description = desc
+
+        await ctx.send(embed=em)
+
+    @tag.command(
+        name="member",
+        description="Get top ten tags for a member",
+        usage="[member]",
+        aliases=["user"],
+    )
+    async def tag_member(self, ctx, member: discord.Member):
+        query = """SELECT name, uses
+                   FROM tags
+                   WHERE guild_id=$1 AND owner_id=$2
+                   ORDER BY uses DESC
+                   LIMIT 10;
+                """
+
+        results = await ctx.db.fetch(query, ctx.guild.id, member.id)
+
+        if not results:
+            return await ctx.send("This server has no tags.")
+
+        em = discord.Embed(
+            title=f"Top Tags For {member.display_name}", color=colors.PRIMARY
+        )
+
+        em.set_author(name=str(member), icon_url=member.avatar_url)
+
+        desc = "\n".join(
+            f"`{i+1}.` **{n}** ({r} uses)" for i, (n, r) in enumerate(results)
+        )
+
+        if len(results) == 10:
+            desc += "\n Only showing top ten tags."
+
+        em.description = desc
+
+        await ctx.send(embed=em)
+
+    @tag.command(
+        name="search", description="Search for a tag", usage="[tag]", aliases=["find"],
+    )
+    async def tag_search(self, ctx, name):
+        query = """SELECT     tag_aliases.name
+                   FROM       tag_aliases
+                   WHERE      tag_aliases.guild_id=$1 AND tag_aliases.name % $2
+                   ORDER BY   similarity(tag_aliases.name, $2) DESC
+                   LIMIT 10;
+                """
+
+        results = await ctx.db.fetch(query, ctx.guild.id, name)
+
+        if not results:
+            return await ctx.send("I couldn't find any similar tags. Sorry.")
+
+        em = discord.Embed(
+            title=f"Results for '{name}'",
+            description="\n".join(r["name"] for r in results),
+            color=colors.PRIMARY,
+        )
+
+        if len(results) == 10:
+            em.description += "\nOnly showing first ten results."
 
         await ctx.send(embed=em)
 

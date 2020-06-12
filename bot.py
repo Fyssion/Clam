@@ -12,6 +12,7 @@ import collections
 import os
 
 from cogs.utils import backup, db
+from cogs.utils.context import Context
 from cogs.utils.errors import PrivateCog, Blacklisted
 
 
@@ -26,20 +27,6 @@ file_logger.addHandler(handler)
 logger = logging.getLogger("discord")
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
-
-
-class Context(commands.Context):
-    @property
-    def guild_prefix(self):
-        return self.bot.guild_prefix(self.guild)
-
-    @property
-    def console(self):
-        return self.bot.console
-
-    @property
-    def db(self):
-        return self.bot.pool
 
 
 def get_prefix(client, message):
