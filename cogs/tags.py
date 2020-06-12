@@ -878,7 +878,7 @@ class Tags(commands.Cog):
 
         return em
 
-    @commands.group(invoke_without_command=True)
+    @commands.group(invoke_without_command=True, usage="<FAQ tag>")
     async def faq(self, ctx, *, name=None):
         """Varient of tags for server admins
 
