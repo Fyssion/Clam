@@ -964,6 +964,8 @@ class Tags(commands.Cog):
         if result:
             raise commands.BadArgument("There is already a tag with that name.")
 
+        self._in_progress_tags[ctx.guild.id].append(name)
+
         embed = await CreateEmbedMenu().create_embed(ctx)
 
         if not embed:
