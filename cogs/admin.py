@@ -166,10 +166,7 @@ class Admin(commands.Cog):
                         f"**:warning: Extension `{ext}` not loaded.**\n"
                         f"```py\n{traceback_data}```\n\n"
                     )
-                    self.log.warning(
-                        f"Extension 'cogs.{cog.lower()}' not loaded.\n"
-                        f"{traceback_data}"
-                    )
+                    traceback.print_exception(type(e), e, e.__traceback__)
             return await ctx.send(msg)
 
         try:
