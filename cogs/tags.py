@@ -886,8 +886,8 @@ class Tags(commands.Cog):
         are embeds, and they can only be created by admins
         and members with a role called "faq"
 
-        Since tags and faqs tags use the same system, you can
-        still use most of the tag subcommands for faq tags.
+        Since tags and FAQ tags use the same system, you can
+        still use most of the tag subcommands for FAQ tags.
         Exceptions to this are the subcommands below.
         """
         if not name:
