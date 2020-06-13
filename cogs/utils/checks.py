@@ -5,9 +5,10 @@ from discord.ext import commands
 def has_permissions(**perms):
     async def predicate(ctx):
         try:
-            return await commands.has_permissions(**perms).predicate(ctx)
+            await commands.has_permissions(**perms).predicate(ctx)
+            return True
         except commands.MissingPermissions:
-            if ctx.bot.is_owner(ctx.author):
+            if ctx.author.id == ctx.bot.owner_id:
                 return True
             else:
                 raise
