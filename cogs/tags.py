@@ -755,6 +755,9 @@ class Tags(commands.Cog):
             em.set_author(**self._owner_kwargs(ctx.guild, record["owner_id"]))
             em.set_footer(text=f"ID: {record['id']} | Created")
 
+            if record["faq"]:
+                em.description += "\nThis is an FAQ tag."
+
         await ctx.send(embed=em)
 
     @tag.command(
@@ -827,8 +830,8 @@ class Tags(commands.Cog):
         usage="[member]",
         aliases=["user"],
     )
-    async def tag_member(self, ctx, member: discord.Member):
-        query = """SELECT name, uses
+    async def tag_member(self, ctx, *, member: discord.Member):
+        query = """SELECT id, name, uses, faq
                    FROM tags
                    WHERE guild_id=$1 AND owner_id=$2
                    ORDER BY uses DESC
@@ -838,7 +841,7 @@ class Tags(commands.Cog):
         results = await ctx.db.fetch(query, ctx.guild.id, member.id)
 
         if not results:
-            return await ctx.send("This server has no tags.")
+            return await ctx.send("This member has no tags.")
 
         em = discord.Embed(
             title=f"Top Tags For {member.display_name}", color=colors.PRIMARY
@@ -846,9 +849,14 @@ class Tags(commands.Cog):
 
         em.set_author(name=str(member), icon_url=member.avatar_url)
 
-        desc = "\n".join(
-            f"`{i+1}.` **{n}** ({r} uses)" for i, (n, r) in enumerate(results)
-        )
+        tags = []
+        for i, (tag_id, name, uses, faq) in enumerate(results):
+            tag_line = f"`{i+1}.` **{name}** - {uses} uses `(ID: {tag_id})`"
+            if faq:
+                tag_line += " [FAQ]"
+            tags.append(tag_line)
+
+        desc = "\n".join(tags)
 
         if len(results) == 10:
             desc += "\n Only showing top ten tags."
