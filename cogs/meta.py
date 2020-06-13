@@ -300,10 +300,12 @@ class Meta(commands.Cog):
         if isinstance(e, PrivateCog):
             return
         if isinstance(e, commands.NoPrivateMessage):
-            return await ctx.send("Sorry, this command can't be used in DMs.")
+            return await ctx.send(
+                f"{ctx.tick(False)} Sorry, this command can't be used in DMs."
+            )
         if isinstance(e, commands.CommandOnCooldown):
             return await ctx.send(
-                f"**You are on cooldown.** Try again after {int(e.retry_after)} seconds."
+                f"{ctx.tick(False)} **You are on cooldown.** Try again after {int(e.retry_after)} seconds."
             )
         if isinstance(e, commands.errors.CommandNotFound):
             return
@@ -312,19 +314,19 @@ class Meta(commands.Cog):
         if isinstance(e, commands.errors.BotMissingPermissions):
             perms = ""
             for perm in e.missing_perms:
-                perms += f"\n  - {perm}"
+                perms += f"\n- `{perm}`"
             return await ctx.send(
-                f"**:x: The bot is missing some permissions:**{perms}"
+                f"{ctx.tick(False)} I am missing some required permissions:{perms}"
             )
         if isinstance(e, commands.errors.CheckFailure):
             return
         if isinstance(e, commands.errors.NotOwner):
             return
         if isinstance(e, commands.errors.BadArgument):
-            return await ctx.send(f"**:x: You provided a bad argument:** {e}")
+            return await ctx.send(f"{ctx.tick(False)} {e}")
         if isinstance(e, commands.errors.MissingRequiredArgument):
             return await ctx.send(
-                f"**:x: Missing a required argument: `{e.param.name}`**"
+                f"{ctx.tick(False)} Missing a required argument: `{e.param.name}`"
             )
         if isinstance(e, commands.CommandInvokeError) and str(ctx.command) == "help":
             return
@@ -447,7 +449,9 @@ class Meta(commands.Cog):
         except ValueError:
             prefix_num = 100
         if prefix not in prefixes and prefix_num > len(prefixes):
-            return await ctx.send("You don't have that prefix registered.")
+            return await ctx.send(
+                f"{ctx.tick(True)} You don't have that prefix registered."
+            )
         try:
             int(prefix)
             prefixes.pop(int(prefix) - 1)
@@ -491,7 +495,7 @@ class Meta(commands.Cog):
                     indent=4,
                     separators=(",", ": "),
                 )
-            return await ctx.send(f"Set default prefix to `{prefix}`")
+            return await ctx.send(f"{ctx.tick(True)} Set default prefix to `{prefix}`")
         try:
             int(prefix)
             prefixes.pop(int(prefix) - 1)
@@ -512,7 +516,7 @@ class Meta(commands.Cog):
                 indent=4,
                 separators=(",", ": "),
             )
-        await ctx.send(f"Set default prefix to `{prefix}`")
+        await ctx.send(f"{ctx.tick(True)} Set default prefix to `{prefix}`")
 
     @prefix.command(
         name="reset", description="Reset prefixes to default.", usage="[prefix]"
@@ -586,7 +590,7 @@ class Meta(commands.Cog):
         else:
             obj = self.bot.get_command(command.replace(".", " "))
             if obj is None:
-                return await ctx.send("Could not find command.")
+                return await ctx.send(f"{ctx.tick(False)} Could not find command.")
 
             # since we found the command we're looking for, presumably anyway, let's
             # try to access the code itself

@@ -3,6 +3,7 @@ from discord.flags import BaseFlags, fill_with_flags, flag_value
 import discord
 
 import json
+import typing
 from datetime import datetime as d
 import asyncio
 import re
@@ -40,6 +41,48 @@ class Logs(db.Table):
     guild_id = db.Column(db.Integer(big=True), index=True)
 
 
+class BannedUser(commands.Converter):
+    async def convert(self, ctx, arg):
+        bans = await ctx.guild.bans()
+
+        # First, see if the arg matches a banned user's name
+        # If not, see if the arg startswith a banned user's name
+        # This allows for the use of discriminators
+        # Finally, see if the arg is an int and if it's
+        # that of a user in the banned list.
+
+        banned_users = [b[0] for b in bans]
+
+        user = discord.utils.get(banned_users, name=arg)
+
+        if user:
+            return user
+
+        for banned_user, reason in bans:
+            if arg.startswith(banned_user.name):
+                user = banned_user
+                break
+
+        if user:
+            return user
+
+        try:
+            arg = int(arg)
+        except ValueError:
+            raise commands.BadArgument(
+                f"{ctx.Tick(False)} Couldn't find a banned user by that name."
+            )
+
+        user = discord.utils.get(banned_users, id=arg)
+
+        if user:
+            return user
+
+        raise commands.BadArgument(
+            f"{ctx.Tick(False)} Couldn't find a banned user by that name or ID."
+        )
+
+
 class Moderation(commands.Cog):
     """
     This cog has not been fully developed.
@@ -67,27 +110,46 @@ class Moderation(commands.Cog):
     @commands.command()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def ban(self, ctx, user: int, *, reason=None):
-        user = discord.Object(id=user)
-        await ctx.guild.ban(user, reason=reason)
+    async def ban(self, ctx, user: typing.Union[discord.User, int], *, reason=None):
+        if isinstance(user, discord.User):
+            user_id = user.id
+            human_friendly = f"`{str(user)}`"
+        else:
+            user_id = user
+            human_friendly = f"with an ID of `{user_id}`"
 
-        await ctx.send(":ok_hand:")
+        to_be_banned = discord.Object(id=user_id)
+
+        try:
+            await ctx.guild.ban(to_be_banned, reason=reason)
+        except discord.HTTPException:
+            return await ctx.send(f"{ctx.tick(False)} I couldn't ban that user.")
+
+        await ctx.send(f"{ctx.tick(True)} Banned user {human_friendly}")
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def unban(self, ctx, user: int, *, reason=None):
-        user = discord.Object(id=user)
-        await ctx.guild.unban(user, reason=reason)
-        await ctx.send(":ok_hand:")
+    async def unban(self, ctx, user: BannedUser, *, reason=None):
+        to_be_unbanned = discord.Object(id=user.id)
+
+        try:
+            await ctx.guild.unban(to_be_unbanned, reason=reason)
+        except discord.HTTPException:
+            return await ctx.send(f"{ctx.tick(False)} I couldn't unban that user.")
+
+        await ctx.send(f"{ctx.tick(True)} Unbanned user `{user}`")
 
     @commands.command()
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
-    async def kick(self, ctx, user: int, *, reason=None):
-        user = discord.Object(id=user)
-        await ctx.guild.kick(user, reason=reason)
-        await ctx.send(":ok_hand:")
+    async def kick(self, ctx, user: discord.Member, *, reason=None):
+        try:
+            await ctx.guild.unban(user, reason=reason)
+        except discord.HTTPException:
+            return await ctx.send(f"{ctx.tick(False)} I couldn't kick that user.")
+
+        await ctx.send(f"{ctx.tick(True)} Kicked user `{user}`")
 
     def get_log(self, guild):
         if str(guild) in self.log_channels.keys():
@@ -133,6 +195,7 @@ class Moderation(commands.Cog):
     )
     @commands.guild_only()
     @has_manage_guild()
+    @commands.is_owner()
     async def welcome(self, ctx):
         await ctx.send("Beginning interactive message generator in your DMs.")
         author = ctx.author
@@ -411,19 +474,10 @@ class Moderation(commands.Cog):
     )
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
-    async def purge_command(self, ctx, amount=None):
-        def is_not_ctx(msg):
-            return msg.id != ctx.message.id
-
-        if not amount:
-            deleted = await ctx.channel.purge(limit=None, check=is_not_ctx)
-            return await ctx.channel.send(
-                f"Deleted {len(deleted)} message(s)", delete_after=5
-            )
-
-        deleted = await ctx.channel.purge(limit=int(amount), check=is_not_ctx)
+    async def purge_command(self, ctx, amount: int = 100):
+        deleted = await ctx.channel.purge(limit=amount + 1)
         return await ctx.channel.send(
-            f"Deleted {len(deleted)} message(s)", delete_after=5
+            f"{ctx.tick(True)} Deleted {len(deleted)} message(s)", delete_after=5
         )
 
     @commands.group(
