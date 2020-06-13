@@ -594,7 +594,7 @@ class Tags(commands.Cog):
         usage="[tag name]",
         aliases=["remove"],
     )
-    async def delete(self, ctx, *, name):
+    async def tag_delete(self, ctx, *, name):
         # https://github.com/Rapptz/RoboDanny/blob/65b13cad81317768b21cd1e1e05e6efc414cceda/cogs/tags.py#L644-L669
         bypass_owner_check = (
             ctx.author.id == self.bot.owner_id
@@ -888,7 +888,8 @@ class Tags(commands.Cog):
 
         Since tags and FAQ tags use the same system, you can
         still use most of the tag subcommands for FAQ tags.
-        Exceptions to this are the subcommands below.
+        Exceptions to this are the subcommands below, unless
+        specified otherwise.
         """
         if not name:
             return await ctx.send_help(ctx.command)
@@ -968,9 +969,10 @@ class Tags(commands.Cog):
 
         embed = await CreateEmbedMenu().create_embed(ctx)
 
-        if not embed:
+        if embed is None:
             ipt = self._in_progress_tags[ctx.guild.id]
             ipt.pop(ipt.index(name))
+            return
 
         title = embed.title or None
         description = embed.description or None
@@ -1045,6 +1047,18 @@ class Tags(commands.Cog):
         )
 
         await ctx.send(f"{ctx.tick(True)} Successfully edited tag.")
+
+    @faq.command(name="delete", description="Alias for tag delete", usage="[FAQ tag]")
+    async def faq_delete(self, ctx, *, name):
+        await ctx.invoke(self.tag_delete, name=name)
+
+    @faq.command(
+        name="alias",
+        description="Alias for tag alias",
+        usage="[original name] [alias name]",
+    )
+    async def faq_alias(self, ctx, original: TagNameConverter, alias: TagNameConverter):
+        await ctx.invoke(self.tag_alias, original=original, alias=alias)
 
 
 def setup(bot):
