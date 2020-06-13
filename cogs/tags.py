@@ -6,6 +6,7 @@ import asyncio
 import re
 
 from .utils import db, checks, colors
+from .utils.menus import MenuPages
 
 
 # Note that this was heavily inspired by Rapptz/RoboDanny
@@ -63,14 +64,15 @@ def faq_only():
     async def predicate(ctx):
         try:
             await checks.has_permissions(manage_guild=True).predicate(ctx)
-            permissions = True
-        except commands.MissingPermissions:
+            return True
+        except commands.MissingPermissions as missing_perms:
             try:
                 await commands.has_any_role(["faq", "FAQ"]).predicate(ctx)
-                permissions = True
+                return True
             except commands.MissingAnyRole:
-                permissions = False
-        return ctx.author.id == 224513210471022592 or permissions
+                if ctx.author.id == ctx.bot.owner_id:
+                    return True
+                raise missing_perms
 
     return commands.check(predicate)
 
@@ -433,6 +435,32 @@ class CreateEmbedMenu(menus.Menu):
         self.stop()
 
 
+class TagPageSource(menus.ListPageSource):
+    def __init__(self, entries, title="All Tags"):
+        super().__init__(entries, per_page=10)
+        self.title = title
+
+    def format_page(self, menu, entries):
+        offset = menu.current_page * self.per_page
+        em = discord.Embed(
+            title=self.title,
+            description=f"Total tags: **{len(self.entries)}**\n\nTags:\n",
+            color=colors.PRIMARY,
+        )
+        em.set_footer(text=f"Page {menu.current_page + 1}/{self.get_max_pages()}")
+
+        tags = []
+        for i, (tag_id, name, uses, faq) in enumerate(entries, start=offset):
+            tag_line = f"`{i+1}.` **{name}** - {uses} uses `(ID: {tag_id})`"
+            if faq:
+                tag_line += " [FAQ]"
+            tags.append(tag_line)
+
+        em.description += "\n".join(tags)
+
+        return em
+
+
 class Tags(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -744,10 +772,9 @@ class Tags(commands.Cog):
         name="all", description="List all tags for this server", aliases=["list"]
     )
     async def tag_all(self, ctx):
-        query = """SELECT name, uses
+        query = """SELECT id, name, uses, faq
                    FROM tags
-                   WHERE guild_id=$1
-                   LIMIT 10;
+                   WHERE guild_id=$1;
                 """
 
         results = await ctx.db.fetch(query, ctx.guild.id)
@@ -755,24 +782,16 @@ class Tags(commands.Cog):
         if not results:
             return await ctx.send("This server has no tags.")
 
-        em = discord.Embed(title="All Tags", color=colors.PRIMARY)
-
-        desc = "\n".join(f"**{r[0]}** ({r[1]} uses)" for r in results)
-
-        if len(results) == 10:
-            desc += "\n Only showing first ten tags."
-
-        em.description = desc
-
-        await ctx.send(embed=em)
+        pages = MenuPages(source=TagPageSource(results), clear_reactions_after=True,)
+        await pages.start(ctx)
 
     @tag.command(
         name="top",
         description="List top tags by number of uses for this server",
         aliases=["ranks"],
     )
-    async def tag_rank(self, ctx):
-        query = """SELECT name, uses
+    async def tag_top(self, ctx):
+        query = """SELECT id, name, uses, faq
                    FROM tags
                    WHERE guild_id=$1
                    ORDER BY uses DESC
@@ -786,12 +805,17 @@ class Tags(commands.Cog):
 
         em = discord.Embed(title="Top Tags", color=colors.PRIMARY)
 
-        desc = "\n".join(
-            f"`{i+1}.` **{n}** ({r} uses)" for i, (n, r) in enumerate(results)
-        )
+        tags = []
+        for i, (tag_id, name, uses, faq) in enumerate(results):
+            tag_line = f"`{i+1}.` **{name}** - {uses} uses `(ID: {tag_id})`"
+            if faq:
+                tag_line += " [FAQ]"
+            tags.append(tag_line)
+
+        desc = "\n".join(tags)
 
         if len(results) == 10:
-            desc += "\n Only showing top ten tags."
+            desc += "\nOnly showing top ten tags."
 
         em.description = desc
 
