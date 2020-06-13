@@ -304,7 +304,7 @@ class CreateEmbedMenu(menus.Menu):
         await self.message.delete()
 
         if not self.finished:
-            await self.ctx.send("You timed out. Aborting.")
+            await self.ctx.send(f"{ctx.tick(False)} You timed out. Aborting.")
             return None
 
         return self.embed
@@ -328,7 +328,9 @@ class CreateEmbedMenu(menus.Menu):
             elif sw("n"):
                 return False
             else:
-                raise commands.BadArgument("You must input y or n. Aborting.")
+                raise commands.BadArgument(
+                    f"{ctx.tick(False)} You must input y or n. Aborting."
+                )
 
         await bot_message.delete()
         await response.delete()
@@ -354,7 +356,8 @@ class CreateEmbedMenu(menus.Menu):
 
         if len(description) > 2048:
             return await self.ctx.send(
-                "Description must be no longer than 2048 characters.", delete_after=5.0
+                f"{self.ctx.tick(False)} Description must be no longer than 2048 characters.",
+                delete_after=5.0,
             )
 
         self.embed.description = description
@@ -390,7 +393,9 @@ class CreateEmbedMenu(menus.Menu):
         url = r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
 
         if not re.match(url, thumbnail):
-            return await self.ctx.send("That is not a vaild URL.", delete_after=5.0)
+            return await self.ctx.send(
+                f"{self.ctx.tick(False)} That is not a vaild URL.", delete_after=5.0
+            )
 
         self.embed.set_thumbnail(url=thumbnail)
 
@@ -404,7 +409,9 @@ class CreateEmbedMenu(menus.Menu):
         url = r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
 
         if not re.match(url, image):
-            return await self.ctx.send("That is not a vaild URL.", delete_after=5.0)
+            return await self.ctx.send(
+                f"{self.ctx.tick(False)} That is not a vaild URL.", delete_after=5.0
+            )
 
         self.embed.set_image(url=image)
 
@@ -511,10 +518,12 @@ class Tags(commands.Cog):
                 await ctx.db.execute(query, name, content, ctx.author.id, ctx.guild.id)
             except asyncpg.UniqueViolationError:
                 await tr.rollback()
-                await ctx.send("There is already a tag with this name.")
+                await ctx.send(
+                    f"{ctx.tick(False)} There is already a tag with this name."
+                )
             except:
                 await tr.rollback()
-                await ctx.send("Could not create tag. Sorry.")
+                await ctx.send(f"{ctx.tick(False)} Could not create tag. Sorry.")
             else:
                 await tr.commit()
                 await ctx.send(
@@ -548,10 +557,12 @@ class Tags(commands.Cog):
                 await ctx.db.execute(query, name, content, ctx.author.id, ctx.guild.id)
             except asyncpg.UniqueViolationError:
                 await tr.rollback()
-                await ctx.send("There is already a tag with this name.")
+                await ctx.send(
+                    f"{ctx.tick(False)} There is already a tag with this name."
+                )
             except:
                 await tr.rollback()
-                await ctx.send("Could not create tag. Sorry.")
+                await ctx.send(f"{ctx.tick(False)} Could not create tag. Sorry.")
             else:
                 await tr.commit()
                 await ctx.send(
@@ -570,7 +581,7 @@ class Tags(commands.Cog):
                 "message", check=check, timeout=180.0
             )  # 3 minutes
         except asyncio.TimeoutError:
-            return await ctx.send("You timed out. Aborting.")
+            return await ctx.send(f"{ctx.tick(False)} You timed out. Aborting.")
 
         name = await TagNameConverter().convert(ctx, message.content)
 
@@ -588,7 +599,7 @@ class Tags(commands.Cog):
         result = await ctx.db.fetchrow(query, name, ctx.guild.id)
 
         if result:
-            return await ctx.send("That tag name is already taken.")
+            return await ctx.send(f"{ctx.tick(False)} That tag name is already taken.")
 
         self._in_progress_tags[ctx.guild.id].append(name)
 
@@ -601,7 +612,7 @@ class Tags(commands.Cog):
                 "message", check=check, timeout=180.0
             )  # 3 minutes
         except asyncio.TimeoutError:
-            return await ctx.send("You timed out. Aborting.")
+            return await ctx.send(f"{ctx.tick(False)} You timed out. Aborting.")
 
         if message.content == f"{ctx.prefix}abort":
             await ctx.send("Aborting tag creation.")
@@ -641,7 +652,8 @@ class Tags(commands.Cog):
 
         if deleted is None:
             await ctx.send(
-                "Could not delete tag. Either it does not exist or you do not have permissions to do so."
+                f"{ctx.tick(False)} Could not delete tag. "
+                "Either it does not exist or you do not have permissions to do so."
             )
             return
 
@@ -652,9 +664,11 @@ class Tags(commands.Cog):
         # the status returns DELETE <count>, similar to UPDATE above
         if status[-1] == "0":
             # this is based on the previous delete above
-            await ctx.send("Tag alias successfully deleted.")
+            await ctx.send(f"{ctx.tick(True)} Tag alias successfully deleted.")
         else:
-            await ctx.send("Tag and corresponding aliases successfully deleted.")
+            await ctx.send(
+                f"{ctx.tick(True)} Tag and corresponding aliases successfully deleted."
+            )
 
     @tag.command(
         name="edit",
@@ -674,7 +688,8 @@ class Tags(commands.Cog):
 
         if status[-1] == "0":
             return await ctx.send(
-                "Tag edit failed. Either the tag doesn't exist or you don't own it."
+                f"{ctx.tick(False)} Tag edit failed. "
+                "Either the tag doesn't exist or you don't own it."
             )
 
         await ctx.send(f"{ctx.tick(True)} Successfully edited tag.")
@@ -696,14 +711,14 @@ class Tags(commands.Cog):
                 query, alias, original.lower(), ctx.guild.id, ctx.author.id
             )
         except asyncpg.UniqueViolationError:
-            await ctx.send("A tag with this name already exists.")
+            await ctx.send(f"{ctx.tick(False)} A tag with this name already exists.")
         else:
             # The status returns INSERT N M, where M is the number of rows inserted.
             if status[-1] == "0":
-                await ctx.send(f"Tag **`{original}`** doesn't exist.")
+                await ctx.send(f"{ctx.tick(False)} Tag **`{original}`** doesn't exist.")
             else:
                 await ctx.send(
-                    f"An aliases for **`{original}`** called **`{alias}`** has been created."
+                    f"{ctx.tick(True)} An aliases for **`{original}`** called **`{alias}`** has been created."
                 )
 
     def _owner_kwargs(self, guild, owner_id):
@@ -733,7 +748,7 @@ class Tags(commands.Cog):
         record = await ctx.db.fetchrow(query, name, ctx.guild.id)
 
         if record is None:
-            return await ctx.send("Tag not found.")
+            return await ctx.send(f"{ctx.tick(False)} Tag not found.")
 
         if record["Alias"]:
             em = discord.Embed(
@@ -956,7 +971,9 @@ class Tags(commands.Cog):
             elif sw("n"):
                 return False
             else:
-                raise commands.BadArgument("You must input y or n. Aborting.")
+                raise commands.BadArgument(
+                    f"{ctx.tick(False)} You must input y or n. Aborting."
+                )
 
         await bot_message.delete()
         await response.delete()
@@ -985,7 +1002,9 @@ class Tags(commands.Cog):
             self._in_progress_tags[ctx.guild.id] = []
 
         if name in self._in_progress_tags[ctx.guild.id]:
-            return await ctx.send("A tag with that name is being made right now.")
+            return await ctx.send(
+                f"{ctx.tick(False)} A tag with that name is being made right now."
+            )
 
         query = """SELECT id
                    FROM tag_aliases
@@ -995,7 +1014,9 @@ class Tags(commands.Cog):
         result = await ctx.db.fetchrow(query, name, ctx.guild.id)
 
         if result:
-            raise commands.BadArgument("There is already a tag with that name.")
+            raise commands.BadArgument(
+                f"{ctx.tick(False)} There is already a tag with that name."
+            )
 
         self._in_progress_tags[ctx.guild.id].append(name)
 
@@ -1040,10 +1061,12 @@ class Tags(commands.Cog):
                 )
             except asyncpg.UniqueViolationError:
                 await tr.rollback()
-                await ctx.send("There is already a tag with this name.")
+                await ctx.send(
+                    f"{ctx.tick(False)} There is already a tag with this name."
+                )
             except:
                 await tr.rollback()
-                await ctx.send("Could not create FAQ tag. Sorry.")
+                await ctx.send(f"{ctx.tick(False)} Could not create FAQ tag. Sorry.")
                 raise
             else:
                 await tr.commit()
