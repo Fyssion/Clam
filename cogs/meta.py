@@ -285,75 +285,93 @@ class Meta(commands.Cog):
     #     owner = self.bot.get_user(self.bot.owner_id)
     #     await owner.send(f"Error in {event}:```py\n{full}```")
 
-    @commands.Cog.listener("on_command_error")
-    async def _send_error(self, ctx, e: commands.CommandError):
-        error = "".join(traceback.format_exception(type(e), e, e.__traceback__, 1))
-        print("Ignoring exception in command {}:".format(ctx.command), file=sys.stderr)
-        traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
-        stats = self.bot.get_cog("Stats")
-        if stats:
-            await stats.register_command(ctx)
-        if hasattr(ctx, "handled"):
-            return
-        if isinstance(e, Blacklisted):
-            return
-        if isinstance(e, PrivateCog):
-            return
-        if isinstance(e, commands.NoPrivateMessage):
-            return await ctx.send(
-                f"{ctx.tick(False)} Sorry, this command can't be used in DMs."
-            )
-        if isinstance(e, commands.CommandOnCooldown):
-            return await ctx.send(
-                f"{ctx.tick(False)} **You are on cooldown.** Try again after {int(e.retry_after)} seconds."
-            )
-        if isinstance(e, commands.errors.CommandNotFound):
-            return
-        if isinstance(e, commands.errors.MissingPermissions):
-            return
-        if isinstance(e, commands.errors.BotMissingPermissions):
-            perms = ""
-            for perm in e.missing_perms:
-                perms += f"\n- `{perm}`"
-            return await ctx.send(
-                f"{ctx.tick(False)} I am missing some required permissions:{perms}"
-            )
-        if isinstance(e, commands.errors.CheckFailure):
-            return
-        if isinstance(e, commands.errors.NotOwner):
-            return
-        if isinstance(e, commands.errors.BadArgument):
-            return await ctx.send(f"{ctx.tick(False)} {e}")
-        if isinstance(e, commands.errors.MissingRequiredArgument):
-            return await ctx.send(
-                f"{ctx.tick(False)} Missing a required argument: `{e.param.name}`"
-            )
-        if isinstance(e, commands.CommandInvokeError) and str(ctx.command) == "help":
-            return
-        self.bot.error_cache.append(e)
+    async def send_unexpected_error(self, ctx, error):
+        formatted = "".join(
+            traceback.format_exception(type(error), error, error.__traceback__, 1)
+        )
+        self.bot.error_cache.append(error)
+
         em = discord.Embed(
             title=":warning: Unexpected Error",
             color=discord.Color.gold(),
             timestamp=d.utcnow(),
         )
+
         description = (
             "An unexpected error has occured:"
-            f"```py\n{e}```\n The developer has been notified."
+            f"```py\n{formatted}```\n The developer has been notified."
         )
+
         em.description = description
         em.set_footer(icon_url=self.bot.user.avatar_url)
+
         await ctx.send(embed=em)
+
         extra_info = f"Command name: `{ctx.command.name}`"
         extra_info += f"\nError cache position: `{len(self.bot.error_cache) - 1}`"
+
         if ctx.args:
             args = [str(a) for a in ctx.args]
             extra_info += f"\nArgs: `{', '.join(args)}`"
+
         if ctx.kwargs:
             kwargs = [str(a) for a in ctx.kwargs]
             extra_info += f"\nKwargs: `{', '.join(kwargs)}`"
-        extra_info += f"\n\nAn unexpected error has occured: ```py\n{e}```\n"
+
+        extra_info += f"\n\nAn unexpected error has occured: ```py\n{error}```\n"
         em.description = extra_info
+
         await ctx.console.send(embed=em)
+
+    @commands.Cog.listener("on_command_error")
+    async def _send_error(self, ctx, error: commands.CommandError):
+        print("Ignoring exception in command {}:".format(ctx.command), file=sys.stderr)
+        traceback.print_exception(
+            type(error), error, error.__traceback__, file=sys.stderr
+        )
+        stats = self.bot.get_cog("Stats")
+        if stats:
+            await stats.register_command(ctx)
+
+        if hasattr(ctx, "handled"):
+            return
+
+        if isinstance(error, commands.NoPrivateMessage):
+            await ctx.send(
+                f"{ctx.tick(False)} Sorry, this command can't be used in DMs."
+            )
+
+        elif isinstance(error, commands.CommandOnCooldown):
+            await ctx.send(
+                f"{ctx.tick(False)} **You are on cooldown.** Try again after {int(error.retry_after)} seconds."
+            )
+
+        elif isinstance(error, commands.errors.BotMissingPermissions):
+            perms = ""
+
+            for perm in error.missing_perms:
+                perms += f"\n- `{perm}`"
+
+            await ctx.send(
+                f"{ctx.tick(False)} I am missing some required permissions:{perms}"
+            )
+
+        elif isinstance(error, commands.errors.BadArgument):
+            await ctx.send(f"{ctx.tick(False)} {error}")
+
+        elif isinstance(error, commands.errors.MissingRequiredArgument):
+            await ctx.send(
+                f"{ctx.tick(False)} Missing a required argument: `{error.param.name}`"
+            )
+
+        elif (
+            isinstance(error, commands.CommandInvokeError)
+            and str(ctx.command) == "help"
+        ):
+            pass
+
+        else:
+            await self.send_unexpected_error(ctx, error)
 
     def get_guild_prefixes(self, guild):
         if not guild:
