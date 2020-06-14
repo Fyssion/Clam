@@ -156,7 +156,7 @@ class Stats(commands.Cog):
             for (index, (command, uses)) in enumerate(records):
                 formatted.append(f"{places[index]} **{command}** ({uses} uses)")
 
-            value = "\n".join(formatted) or "No Commands"
+            value = "\n".join(formatted) or "None"
 
             em.add_field(name=":trophy: Top Commands", value=value, inline=True)
 
@@ -178,7 +178,7 @@ class Stats(commands.Cog):
 
             em.add_field(
                 name=":clock1: Top Commands Today",
-                value="\n".join(value) or "No Commands.",
+                value="\n".join(value) or "None",
                 inline=True,
             )
             em.add_field(name="\u200b", value="\u200b", inline=True)
@@ -469,7 +469,7 @@ class Stats(commands.Cog):
         for (index, (command, uses)) in enumerate(records):
             formatted.append(f"{places[index]} **{command}** ({uses} uses)")
 
-        value = "\n".join(formatted) or "No Commands"
+        value = "\n".join(formatted) or "None"
 
         em.add_field(name=":trophy: Top Commands", value=value, inline=True)
 
@@ -491,7 +491,7 @@ class Stats(commands.Cog):
 
         em.add_field(
             name=":clock1: Top Commands Today",
-            value="\n".join(value) or "No Commands.",
+            value="\n".join(value) or "None",
             inline=True,
         )
         em.add_field(name="\u200b", value="\u200b", inline=True)
