@@ -3,7 +3,7 @@ import discord
 
 import enum
 
-from .emojis import RED_TICK, GREEN_TICK, GRAY_TICK
+from .emojis import RED_TICK, GREEN_TICK
 
 
 class Context(commands.Context):
@@ -20,6 +20,6 @@ class Context(commands.Context):
         return self.bot.pool
 
     def tick(self, tick):
-        tick = int(tick)
-        ticks = {0: RED_TICK, 1: GREEN_TICK, 2: GRAY_TICK}
+        tick = bool(tick)
+        ticks = {True: GREEN_TICK, False: RED_TICK}
         return ticks[tick]

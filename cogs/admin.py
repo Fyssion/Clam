@@ -122,7 +122,7 @@ class Admin(commands.Cog):
 
         self.bot.add_to_blacklist(user)
 
-        await ctx.send(f"Added **`{user}`** to the blacklist.")
+        await ctx.send(f"{ctx.tick(True)} Added **`{user}`** to the blacklist.")
 
     @blacklist.command(
         name="remove",
@@ -136,7 +136,7 @@ class Admin(commands.Cog):
 
         self.bot.remove_from_blacklist(user)
 
-        await ctx.send(f"Removed **`{user}`** from the blacklist.")
+        await ctx.send(f"{ctx.tick(True)} Removed **`{user}`** from the blacklist.")
 
     @commands.command(
         name="reload",
@@ -163,7 +163,7 @@ class Admin(commands.Cog):
                         traceback.format_exception(type(e), e, e.__traceback__, 1)
                     )
                     msg += (
-                        f"**:warning: Extension `{ext}` not loaded.**\n"
+                        f"**{ctx.tick(False)} Extension `{ext}` not loaded.**\n"
                         f"```py\n{traceback_data}```\n\n"
                     )
                     traceback.print_exception(type(e), e, e.__traceback__)
@@ -178,7 +178,7 @@ class Admin(commands.Cog):
                 traceback.format_exception(type(e), e, e.__traceback__, 1)
             )
             await ctx.send(
-                f"**:warning: Extension `{cog.lower()}` not loaded.**\n```py\n{traceback_data}```"
+                f"**{ctx.tick(False)} Extension `{cog.lower()}` not loaded.**\n```py\n{traceback_data}```"
             )
             self.log.warning(
                 f"Extension 'cogs.{cog.lower()}' not loaded.\n{traceback_data}"
@@ -266,7 +266,7 @@ class Admin(commands.Cog):
         try:
             e = self.bot.error_cache[i]
         except IndexError:
-            return await ctx.send("There is no error at that index.")
+            return await ctx.send(f"{ctx.tick(False)} There is no error at that index.")
         etype = type(e)
         trace = e.__traceback__
         verbosity = 4
@@ -309,7 +309,7 @@ class Admin(commands.Cog):
         if type(user) == int:
             user = self.bot.get_user(user)
             if not user:
-                return await ctx.send("I couldn't find that user.")
+                return await ctx.send(f"{ctx.tick(False)} I couldn't find that user.")
         category = ctx.guild.get_channel(CLAM_DMS_CATEGORY)
         channel = await category.create_text_channel(
             name=str(user), reason="Create DM session"
@@ -325,7 +325,9 @@ class Admin(commands.Cog):
     @commands.is_owner()
     async def close(self, ctx):
         if not ctx.dm_session:
-            return await ctx.send("You must be in a DM session to invoke this command.")
+            return await ctx.send(
+                f"{ctx.tick(False)} You must be in a DM session to invoke this command."
+            )
         await ctx.dm_session.close()
         self.dm_sessions.pop(ctx.dm_session.channel.id)
 
@@ -335,7 +337,7 @@ class Admin(commands.Cog):
             await dm_session.close()
         num_sessions = len(self.dm_sessions)
         self.bot.dm_sessions = {}
-        await ctx.send(f"Closed {num_sessions} DM session(s)")
+        await ctx.send(f"{ctx.tick(True)} Closed {num_sessions} DM session(s)")
 
     @commands.Cog.listener("on_message")
     async def dm_sender(self, message):
