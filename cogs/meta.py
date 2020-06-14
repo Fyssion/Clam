@@ -323,12 +323,8 @@ class Meta(commands.Cog):
 
         await ctx.console.send(embed=em)
 
-    @commands.Cog.listener("on_command_error")
-    async def _send_error(self, ctx, error: commands.CommandError):
-        print("Ignoring exception in command {}:".format(ctx.command), file=sys.stderr)
-        traceback.print_exception(
-            type(error), error, error.__traceback__, file=sys.stderr
-        )
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx, error):
         stats = self.bot.get_cog("Stats")
         if stats:
             await stats.register_command(ctx)
@@ -336,10 +332,19 @@ class Meta(commands.Cog):
         if hasattr(ctx, "handled"):
             return
 
+        ignored_errors = [PrivateCog, Blacklisted, commands.NotOwner]
+
+        for ignored_error in ignored_errors:
+            if isinstance(error, ignored_error):
+                return
+
         if isinstance(error, commands.NoPrivateMessage):
             await ctx.send(
                 f"{ctx.tick(False)} Sorry, this command can't be used in DMs."
             )
+
+        elif isinstance(error, commands.ArgumentParsingError):
+            await ctx.send(f"{ctx.tick(False)} {error}")
 
         elif isinstance(error, commands.CommandOnCooldown):
             await ctx.send(
@@ -350,10 +355,13 @@ class Meta(commands.Cog):
             perms = ""
 
             for perm in error.missing_perms:
-                perms += f"\n- `{perm}`"
+                formatted = (
+                    str(perm).replace("_", " ").replace("guild", "server").capitalize()
+                )
+                perms += f"\n- `{formatted}`"
 
             await ctx.send(
-                f"{ctx.tick(False)} I am missing some required permissions:{perms}"
+                f"{ctx.tick(False)} I am missing some required permission(s):{perms}"
             )
 
         elif isinstance(error, commands.errors.BadArgument):
@@ -370,8 +378,18 @@ class Meta(commands.Cog):
         ):
             pass
 
-        else:
-            await self.send_unexpected_error(ctx, error)
+        elif isinstance(error, commands.CommandInvokeError):
+            original = error.original
+            if not isinstance(original, discord.HTTPException):
+                print(
+                    "Ignoring exception in command {}:".format(ctx.command),
+                    file=sys.stderr,
+                )
+                traceback.print_exception(
+                    type(error), error, error.__traceback__, file=sys.stderr
+                )
+
+                await self.send_unexpected_error(ctx, error)
 
     def get_guild_prefixes(self, guild):
         if not guild:
