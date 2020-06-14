@@ -585,6 +585,7 @@ class Music(commands.Cog):
     async def cog_command_error(self, ctx, error: commands.CommandError):
         await ctx.send(f"Oops: {str(error)}")
         print(str(error))
+        ctx.handled = True
 
     @commands.Cog.listener("on_voice_state_update")
     async def on_voice_leave(self, member, before, after):
