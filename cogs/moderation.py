@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 from async_timeout import timeout
 
 from .utils import db
+from .utils.emojis import GREEN_TICK, RED_TICK
 from .utils.checks import has_manage_guild
 from .utils.utils import is_int
 
@@ -96,7 +97,6 @@ class Moderation(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.emoji = ":police_car:"
-        self.private = True
         self.log = self.bot.log
 
         with open("log_channels.json", "r") as f:
@@ -244,6 +244,7 @@ class Moderation(commands.Cog):
     )
     @commands.guild_only()
     @has_manage_guild()
+    @commands.is_owner()
     @commands.bot_has_permissions(
         manage_messages=True, manage_roles=True, manage_channels=True
     )
@@ -341,7 +342,7 @@ class Moderation(commands.Cog):
         )
 
         message = await channel.send(content)
-        await message.add_reaction("✅")
+        await message.add_reaction(GREEN_TICK)
 
         self.verifications[str(ctx.guild.id)] = {
             "message_id": message.id,
@@ -358,11 +359,12 @@ class Moderation(commands.Cog):
     )
     @commands.guild_only()
     @has_manage_guild()
+    @commands.is_owner()
     @commands.bot_has_permissions(
         manage_messages=True, manage_guild=True, manage_roles=True, manage_channels=True
     )
     async def ver_remove(self, ctx):
-        if not (ctx.guild.id in self.verifications.keys()):
+        if str(ctx.guild.id) not in self.verifications.keys():
             return await ctx.send(
                 "**Verification is OFF** for this server. "
                 f"Set it up with `{self.bot.guild_prefix(ctx.guild)}verification create`"
@@ -410,7 +412,7 @@ class Moderation(commands.Cog):
                 reaction.message.id == bot_message.id
                 and user != guild.me
                 and verify_role in user.roles
-                and reaction.emoji in ["✅", "❌"]
+                and str(reaction.emoji) in [GREEN_TICK, RED_TICK]
             )
 
         if (
@@ -430,21 +432,21 @@ class Moderation(commands.Cog):
                     separators=(",", ": "),
                 )
             return
-        if payload.emoji.name != "✅":
+        if str(payload.emoji) != GREEN_TICK:
             return
         await channel.send(
             "Your verification request is being processed by the moderators.",
             delete_after=10,
         )
-        await message.remove_reaction("✅", member)
+        await message.remove_reaction(GREEN_TICK, member)
 
         bot_message = await verify_channel.send(
             f"**`{member}` is requesting verification!**\n\n"
-            "React with :white_check_mark: to verify them, or :x: to ignore.\n"
+            f"React with {GREEN_TICK} to verify them, or {RED_TICK} to ignore.\n"
             "If you don't respond within 24 hours, they will be ignored."
         )
-        await bot_message.add_reaction("✅")
-        await bot_message.add_reaction("❌")
+        await bot_message.add_reaction(GREEN_TICK)
+        await bot_message.add_reaction(RED_TICK)
         try:
             reaction, user = await self.bot.wait_for(
                 "reaction_add", check=check, timeout=86400
@@ -452,19 +454,20 @@ class Moderation(commands.Cog):
         except asyncio.TimeoutError:
             pass
 
-        emoji = reaction.emoji
-        if emoji == "✅":
+        emoji = str(reaction.emoji)
+        if emoji == GREEN_TICK:
             await member.add_roles(role, reason="Verification")
             await bot_message.edit(
-                content=f"**:white_check_mark: `{user}` accepted `{member}` into the server.**"
+                content=f"**{GREEN_TICK} `{user}` accepted `{member}` into the server.**"
             )
-        elif emoji == "❌":
-            await bot_message.edit(content=f":x: `{user}` ignored `{member}`")
+        elif emoji == RED_TICK:
+            await bot_message.edit(content=f"{RED_TICK} `{user}` ignored `{member}`")
         else:
-            await bot_message.edit(content=f"**:x: Timed out! Ignored `{member}`")
+            await bot_message.edit(
+                content=f"**{RED_TICK} Timed out! Ignored `{member}`"
+            )
 
-        await bot_message.remove_reaction("✅", guild.me)
-        await bot_message.remove_reaction("❌", guild.me)
+        await bot_message.clear_reactions()
 
     @commands.command(
         name="purge",
@@ -485,6 +488,7 @@ class Moderation(commands.Cog):
         description="Keep a log of all user actions.",
         invoke_without_command=True,
     )
+    @commands.is_owner()
     @commands.guild_only()
     @has_manage_guild()
     async def _log(self, ctx):
@@ -498,6 +502,7 @@ class Moderation(commands.Cog):
     @_log.command(description="Enable your server's log.")
     @commands.guild_only()
     @has_manage_guild()
+    @commands.is_owner()
     async def enable(self, ctx):
         if self.get_log(ctx.guild.id):
             return await ctx.send("Log is already enabled!")
@@ -506,6 +511,7 @@ class Moderation(commands.Cog):
     @_log.command(description="Disable your server's log.")
     @commands.guild_only()
     @has_manage_guild()
+    @commands.is_owner()
     async def disable(self, ctx):
         if not self.get_log(str(ctx.guild.id)):
             await ctx.send("This server doesn't have a log.")
@@ -521,6 +527,7 @@ class Moderation(commands.Cog):
     )
     @commands.guild_only()
     @has_manage_guild()
+    @commands.is_owner()
     async def _set(self, ctx, channel: discord.TextChannel = None):
         if not channel:
             channel = ctx.channel
