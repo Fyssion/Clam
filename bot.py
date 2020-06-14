@@ -11,7 +11,8 @@ import json
 import collections
 import os
 
-from cogs.utils import backup, db
+from config import Config
+from cogs.utils import db
 from cogs.utils.context import Context
 from cogs.utils.errors import PrivateCog, Blacklisted
 
@@ -72,24 +73,14 @@ initial_extensions = [
 
 class Clam(commands.Bot):
     def __init__(self):
-        with open("config.yml", "r") as config:
-            try:
-                self.config = yaml.safe_load(config)
-
-            except yaml.YAMLError as exc:
-                self.log.critical("Could not load config.yml")
-                print(exc)
-                import sys
-
-                sys.exit()
+        self.config = Config("config.yml")
 
         command_prefix = get_prefix
         self.debug = False
 
-        if "debug" in self.config.keys():
-            if self.config["debug"]:
-                command_prefix = dev_prefix
-                self.debug = True
+        if self.config.debug:
+            command_prefix = dev_prefix
+            self.debug = True
 
         super().__init__(
             command_prefix=command_prefix,
@@ -115,8 +106,8 @@ class Clam(commands.Bot):
         with open("blacklist.json", "r") as f:
             self.blacklist = json.load(f)
 
-        self.reddit_id = self.config["reddit-id"]
-        self.reddit_secret = self.config["reddit-secret"]
+        self.reddit_id = self.config.reddit_id
+        self.reddit_secret = self.config.reddit_secret
         self.prefixes = ["`c.`", "or when mentioned"]
         self.default_prefix = "c."
         self.dev = self.get_user(224513210471022592)
@@ -234,7 +225,7 @@ class Clam(commands.Bot):
         if self.session is None:
             self.session = aiohttp.ClientSession(loop=self.loop)
         if self.pool is None:
-            self.pool = await db.Table.create_pool(self.config["database-uri"])
+            self.pool = await db.Table.create_pool(self.config.database_uri)
 
         self.log.info(f"Logged in as {self.user.name} - {self.user.id}")
 
@@ -243,7 +234,7 @@ class Clam(commands.Bot):
         await self.pool.close()
 
     def run(self):
-        super().run(self.config["bot-token"], reconnect=True, bot=True)
+        super().run(self.config.bot_token, reconnect=True, bot=True)
 
 
 if __name__ == "__main__":
