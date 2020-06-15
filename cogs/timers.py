@@ -255,7 +255,7 @@ class Timers(commands.Cog):
         self,
         ctx,
         *,
-        when: human_time.UserFriendlyTime(commands.clean_content, default=None),
+        when: human_time.UserFriendlyTime(commands.clean_content, default=""),
     ):
         """Create a timer that will notify you when completed
 
@@ -381,15 +381,18 @@ class Timers(commands.Cog):
             channel.guild.id if isinstance(channel, discord.TextChannel) else "@me"
         )
         message_id = timer.kwargs.get("message_id")
-        msg = (
-            f"<@{author_id}>, your timer has completed:\n{timer.human_delta}: {message}"
+
+        em = discord.Embed(
+            title="Timer Completed",
+            description=f"When: {timer.human_delta}\nMessage: {message or 'None'}",
+            color=colors.PRIMARY,
         )
 
         if message_id:
-            msg = f"{msg}\n\nJump: <https://discord.com/channels/{guild_id}/{channel.id}/{message_id}>"
+            em.description += f"\n\n[Jump](https://discord.com/channels/{guild_id}/{channel.id}/{message_id})"
 
         try:
-            await channel.send(msg)
+            await channel.send(f"<@{author_id}>", embed=em)
         except discord.HTTPException:
             return
 
