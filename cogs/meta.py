@@ -615,7 +615,7 @@ class Meta(commands.Cog):
         or by spaces.
         """
         source_url = "https://github.com/Clam-Bot/Clam"
-        branch = "master"
+        branch = "main"
         if command is None:
             return await ctx.send(source_url)
 
