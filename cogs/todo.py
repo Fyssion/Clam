@@ -15,10 +15,6 @@ from .utils.menus import MenuPages
 from .utils import db, colors
 
 
-class TodoNotFound(commands.BadArgument):
-    pass
-
-
 class TodoTaskSource(menus.ListPageSource):
     def __init__(self, data, ctx, list_type):
         super().__init__(data, per_page=10)
@@ -87,7 +83,7 @@ class TodoTaskConverter(commands.Converter):
         result = await ctx.db.fetchrow(query, argument, ctx.author.id)
 
         if not result:
-            raise TodoNotFound("Task was not found.")
+            raise commands.BadArgument("Task was not found.")
 
         return result
 
@@ -99,11 +95,6 @@ class Todo(commands.Cog):
         self.bot = bot
         self.log = bot.log
         self.emoji = ":page_facing_up:"
-
-    async def cog_command_error(self, ctx, error):
-        if isinstance(error, TodoNotFound):
-            await ctx.send("Task was not found.")
-            ctx.handled = True
 
     @commands.group(invoke_without_command=True)
     async def todo(self, ctx):
@@ -127,7 +118,7 @@ class Todo(commands.Cog):
     )
     async def todo_add(self, ctx, *, name):
         if len(name) > 64:
-            return await ctx.send(
+            raise commands.BadArgument(
                 "That name is too long. Must be 64 characters or less."
             )
 
@@ -143,10 +134,12 @@ class Todo(commands.Cog):
                 await ctx.db.execute(query, name, ctx.author.id)
             except asyncpg.UniqueViolationError:
                 await tr.rollback()
-                await ctx.send("You already have a task with this name.")
+                await ctx.send(
+                    f"{ctx.tick(False)} You already have a task with this name."
+                )
             except:
                 await tr.rollback()
-                await ctx.send("Could not create task.")
+                await ctx.send(f"{ctx.tick(False)} Could not create task.")
             else:
                 await tr.commit()
                 await ctx.send(
@@ -154,12 +147,12 @@ class Todo(commands.Cog):
                 )
 
     @todo.command(
-        name="done",
+        name="check",
         description="Mark an task from your todo list as done",
         usage="[name or id]",
-        aliases=["check", "complete"],
+        aliases=["done", "complete"],
     )
-    async def todo_done(self, ctx, *, task):
+    async def todo_check(self, ctx, *, task):
         try:
             task = int(task)
             sql = """UPDATE todos
@@ -175,9 +168,35 @@ class Todo(commands.Cog):
 
         result = await ctx.db.execute(sql, ctx.author.id, task)
         if result.split(" ")[1] == "0":
-            return await ctx.send("Task was not found.")
+            raise commands.BadArgument("Task was not found.")
 
         await ctx.send(":ballot_box_with_check: Task marked as done")
+
+    @todo.command(
+        name="uncheck",
+        description="Mark a task from your todo list as not done",
+        usage="[name or id]",
+        aliases=["undo"],
+    )
+    async def todo_uncheck(self, ctx, *, task):
+        try:
+            task = int(task)
+            sql = """UPDATE todos
+                     SET completed_at=NULL
+                     WHERE author_id=$1 AND id=$2;
+                  """
+        except ValueError:
+            task = task
+            sql = """UPDATE todos
+                     SET completed_at=NULL
+                     WHERE author_id=$1 AND name=$2;
+                  """
+
+        result = await ctx.db.execute(sql, ctx.author.id, task)
+        if result.split(" ")[1] == "0":
+            raise commands.BadArgument("Task was not found.")
+
+        await ctx.send(":black_large_square: Task marked as not done")
 
     @todo.command(
         name="delete",
@@ -195,7 +214,7 @@ class Todo(commands.Cog):
 
         result = await ctx.db.execute(query, task, ctx.author.id)
         if result.split(" ")[1] == "0":
-            return await ctx.send("Task was not found.")
+            raise commands.BadArgument("Task was not found.")
 
         await ctx.send(":wastebasket: Task deleted.")
 
