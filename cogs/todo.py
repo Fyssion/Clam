@@ -180,6 +180,32 @@ class Todo(commands.Cog):
         await ctx.send(":ballot_box_with_check: Task marked as done")
 
     @todo.command(
+        name="uncheck",
+        description="Mark a task from your todo list as not done",
+        usage="[name or id]",
+        aliases=["undo"],
+    )
+    async def todo_uncheck(self, ctx, *, task):
+        try:
+            task = int(task)
+            sql = """UPDATE todos
+                     SET completed_at=NULL
+                     WHERE author_id=$1 AND id=$2;
+                  """
+        except ValueError:
+            task = task
+            sql = """UPDATE todos
+                     SET completed_at=NULL
+                     WHERE author_id=$1 AND name=$2;
+                  """
+
+        result = await ctx.db.execute(sql, ctx.author.id, task)
+        if result.split(" ")[1] == "0":
+            raise commands.BadArgument("Task was not found.")
+
+        await ctx.send(":black_large_square: Task marked as not done")
+
+    @todo.command(
         name="delete",
         description="Delete a task from your todo list",
         usage="[name or id]",
