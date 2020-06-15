@@ -273,7 +273,6 @@ class Internet(commands.Cog):
         usage="[repo or user]",
         aliases=["gh"],
     )
-    @commands.cooldown(2, 5.0, commands.BucketType.member)
     async def github(self, ctx, item):
 
         # Basically, this command checks if a / was found in

@@ -114,7 +114,7 @@ class Stats(commands.Cog):
     )
     @commands.guild_only()
     @commands.cooldown(1, 30.0, type=commands.BucketType.member)
-    async def stats(self, ctx, member: discord.Member = None):
+    async def stats(self, ctx, *, member: discord.Member = None):
         await ctx.trigger_typing()
 
         places = (

@@ -25,7 +25,7 @@ DEALINGS IN THE SOFTWARE.
 """
 
 
-from discord.ext import commands
+from discord.ext import commands, menus
 import discord
 
 import asyncio
@@ -33,7 +33,8 @@ import asyncpg
 import datetime
 import textwrap
 
-from .utils import db, human_time
+from .utils import db, human_time, colors
+from .utils.menus import MenuPages
 
 
 class TimersTable(db.Table, table_name="timers"):
@@ -43,6 +44,31 @@ class TimersTable(db.Table, table_name="timers"):
     created = db.Column(db.Datetime, default="now() at time zone 'utc'")
     event = db.Column(db.String)
     extra = db.Column(db.JSON, default="'{}'::jsonb")
+
+
+class TimerPageSource(menus.ListPageSource):
+    def __init__(self, entries):
+        super().__init__(entries, per_page=10)
+
+    def format_page(self, menu, entries):
+        offset = menu.current_page * self.per_page
+        em = discord.Embed(
+            title="Your Timers",
+            description=f"Total timers: **{len(self.entries)}**\n\nTimers:\n",
+            color=colors.PRIMARY,
+        )
+
+        em.set_footer(text=f"Page {menu.current_page + 1}/{self.get_max_pages()}")
+
+        for i, (_id, expires, message) in enumerate(entries, start=offset):
+            shorten = textwrap.shorten(message, width=512)
+            em.add_field(
+                name=f"`ID: {_id}` In {human_time.human_timedelta(expires)}",
+                value=shorten,
+                inline=False,
+            )
+
+        return em
 
 
 class Timer:
@@ -221,6 +247,151 @@ class Timers(commands.Cog):
             self._task = self.bot.loop.create_task(self.dispatch_timers())
 
         return timer
+
+    @commands.group(
+        aliases=["reminder", "remind"], usage="<when>", invoke_without_command=True
+    )
+    async def timer(
+        self,
+        ctx,
+        *,
+        when: human_time.UserFriendlyTime(commands.clean_content, default=None),
+    ):
+        """Create a timer that will notify you when completed
+
+        Note that times are in UTC.
+        To create a timer, specify the time and/or a message
+        associated with the timer.
+
+        Examples:
+        - 2d do laundry
+        - Meet with friends in five hours
+
+        Note that this was taken from R. Danny.
+        I plan on expanding it.
+        """
+
+        timer = await self.create_timer(
+            when.dt,
+            "timer",
+            ctx.author.id,
+            ctx.channel.id,
+            when.arg,
+            connection=ctx.db,
+            created=ctx.message.created_at,
+            message_id=ctx.message.id,
+        )
+        delta = human_time.human_timedelta(when.dt, source=timer.created_at)
+        friendly_message = f"message `{when.arg}`" if when.arg else "no message"
+        await ctx.send(
+            f"{ctx.tick(True)} Set a timer for **`{delta}`** with {friendly_message}"
+        )
+
+    @timer.command(name="list", ignore_extra=False)
+    async def timer_list(self, ctx):
+        """Shows your currently running timers."""
+        query = """SELECT id, expires, extra #>> '{args,2}'
+                   FROM timers
+                   WHERE event = 'timer'
+                   AND extra #>> '{args,0}' = $1
+                   ORDER BY expires
+                   LIMIT 10;
+                """
+
+        records = await ctx.db.fetch(query, str(ctx.author.id))
+
+        if len(records) == 0:
+            return await ctx.send("No currently running timers.")
+
+        pages = MenuPages(source=TimerPageSource(records), clear_reactions_after=True,)
+        await pages.start(ctx)
+
+    @timer.command(name="delete", aliases=["remove", "cancel"], ignore_extra=False)
+    async def timer_delete(self, ctx, *, id: int):
+        """Deletes a timer by its ID.
+        To get a timer ID, use the timer list command.
+        """
+
+        query = """DELETE FROM timers
+                   WHERE id=$1
+                   AND event = 'timer'
+                   AND extra #>> '{args,0}' = $2;
+                """
+
+        status = await ctx.db.execute(query, id, str(ctx.author.id))
+        if status == "DELETE 0":
+            raise commands.BadArgument(
+                "Could not delete any timers with that ID."
+                "\nDoes that timer exist and do you own it?"
+            )
+
+        # if the current timer is being deleted
+        if self._current_timer and self._current_timer.id == id:
+            # cancel the task and re-run it
+            self._task.cancel()
+            self._task = self.bot.loop.create_task(self.dispatch_timers())
+
+        await ctx.send(f"{ctx.tick(True)} Successfully deleted timer.")
+
+    @timer.command(name="clear", ignore_extra=False)
+    async def timer_clear(self, ctx):
+        """Clears all timer you have set."""
+
+        # For UX purposes this has to be two queries.
+
+        query = """SELECT COUNT(*)
+                   FROM timers
+                   WHERE event = 'timer'
+                   AND extra #>> '{args,0}' = $1;
+                """
+
+        author_id = str(ctx.author.id)
+        total = await ctx.db.fetchrow(query, author_id)
+        total = total[0]
+        if total == 0:
+            return await ctx.send("You don't have any timers.")
+
+        confirm = await ctx.confirm(
+            f"Are you sure you want to delete {total} timer(s)?"
+        )
+        if not confirm:
+            return await ctx.send("Aborting")
+
+        query = """DELETE FROM timers WHERE event = 'timer' AND extra #>> '{args,0}' = $1;"""
+        await ctx.db.execute(query, author_id)
+
+        # Restart the task in case one of the timers is being waited for
+        self._task.cancel()
+        self._task = bot.loop.create_task(self.dispatch_timers())
+
+        await ctx.send(f"{ctx.tick(True)} Successfully deleted {total} timer(s).")
+
+    @commands.Cog.listener()
+    async def on_timer_timer_complete(self, timer):
+        author_id, channel_id, message = timer.args
+
+        try:
+            channel = self.bot.get_channel(channel_id) or (
+                await self.bot.fetch_channel(channel_id)
+            )
+        except discord.HTTPException:
+            return
+
+        guild_id = (
+            channel.guild.id if isinstance(channel, discord.TextChannel) else "@me"
+        )
+        message_id = timer.kwargs.get("message_id")
+        msg = (
+            f"<@{author_id}>, your timer has completed:\n{timer.human_delta}: {message}"
+        )
+
+        if message_id:
+            msg = f"{msg}\n\nJump: <https://discord.com/channels/{guild_id}/{channel.id}/{message_id}>"
+
+        try:
+            await channel.send(msg)
+        except discord.HTTPException:
+            return
 
 
 def setup(bot):
