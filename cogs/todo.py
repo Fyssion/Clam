@@ -154,12 +154,12 @@ class Todo(commands.Cog):
                 )
 
     @todo.command(
-        name="done",
+        name="check",
         description="Mark an task from your todo list as done",
         usage="[name or id]",
-        aliases=["check", "complete"],
+        aliases=["done", "complete"],
     )
-    async def todo_done(self, ctx, *, task):
+    async def todo_check(self, ctx, *, task):
         try:
             task = int(task)
             sql = """UPDATE todos
