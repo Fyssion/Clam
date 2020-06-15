@@ -299,7 +299,9 @@ class Meta(commands.Cog):
 
         description = (
             "An unexpected error has occured:"
-            f"```py\n{formatted}```\n The developer has been notified."
+            f"```py\n{error}```\n"
+            "The developer has been notified."
+            "\nConfused? Join my [support server.](https://www.discord.gg/wfCGTrp)"
         )
 
         em.description = description
