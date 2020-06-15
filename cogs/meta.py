@@ -437,6 +437,18 @@ class Meta(commands.Cog):
             invite = f"https://discordapp.com/api/oauth2/authorize?client_id={self.bot.user.id}&permissions=470150358&scope=bot"
         await ctx.send(f"Invite link: <{invite}>")
 
+    @commands.command(description="Get a link to my support server")
+    async def support(self, ctx):
+        # If the bot isn't Clam or Clam DEV,
+        # send a 'friendly' message with a link
+        # to my site
+        if self.bot.user.id in [639234650782564362, 683129055092015107]:
+            await ctx.send("Support Server Invite: https://www.discord.gg/wfCGTrp")
+        else:
+            return await ctx.send(
+                "The person who made this bot copy/pasted my code :(\nHere's the original: <https://clambot.xyz/>"
+            )
+
     @commands.group(
         description="View your prefixes.",
         invoke_without_command=True,
