@@ -67,7 +67,7 @@ def faq_only():
             return True
         except commands.MissingPermissions as missing_perms:
             try:
-                await commands.has_any_role(["faq", "FAQ"]).predicate(ctx)
+                await commands.has_any_role("faq", "FAQ").predicate(ctx)
                 return True
             except commands.MissingAnyRole:
                 if ctx.author.id == ctx.bot.owner_id:
