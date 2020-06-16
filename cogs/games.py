@@ -51,19 +51,25 @@ class TenSeconds(SinglePlayerGame):
         end_time = tm - timedelta(microseconds=tm.microsecond % 100000)
         tm = self.ten_seconds
         ten_seconds = tm - timedelta(microseconds=tm.microsecond % 10000)
+
         if ten_seconds == end_time:
-            msg = ":tada: You did it!"
+            msg = ":tada: You did it! I'm impressed!"
+
         elif ten_seconds < end_time:
             time = end_time - ten_seconds
             result = str(float(f"{time.seconds}.{time.microseconds}"))
             msg = f"You were slow by `{result}` seconds."
+
         elif ten_seconds > end_time:
             time = ten_seconds - end_time
             result = str(float(f"{time.seconds}.{time.microseconds}"))
             msg = f"You were fast by `{result}` seconds."
+
         em = self.message.embeds[0]
         em.description = msg
+
         await self.message.edit(embed=em)
+
         self.stop()
 
 
