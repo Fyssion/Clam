@@ -478,6 +478,11 @@ class Games(commands.Cog):
         Note that moderators (specifically, members with manage messages)
         can stop any hangman game.
         """
+        if ctx.hangman:
+            return await ctx.send(
+                f"{ctx.tick(False)} There is already a hangman game in this channel."
+            )
+
         await ctx.send("Please enter a word in your DMs...", delete_after=10.0)
         await ctx.author.send(
             "What is your word? Note that the word can only have letters A-Z."
@@ -560,7 +565,15 @@ class Games(commands.Cog):
     @hangman.command(name="all", description="List all hangman games", aliases=["list"])
     @commands.is_owner()
     async def hangman_all(self, ctx):
-        pass
+        games = [
+            f"In {h.ctx.guild} - `#{h.channel}`" for h in self.hangman_games.values()
+        ]
+
+        if not games:
+            return await ctx.send("No running hangman games.")
+
+        pages = ctx.pages(games)
+        await pages.start(ctx)
 
 
 def setup(bot):
