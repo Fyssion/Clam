@@ -501,7 +501,7 @@ class Games(commands.Cog):
 
         if not word.isalpha():
             return await ctx.author.send(
-                f"{ctx.tick(False)}  That word has characters not in the alphabet. Aborting."
+                f"{ctx.tick(False)}  That word has characters that aren't in the English alphabet. Aborting."
             )
 
         hangman = Hangman(word)
