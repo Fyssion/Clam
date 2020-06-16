@@ -117,10 +117,11 @@ class Timers(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.emoji = ":alarm_clock:"
+
         self._have_data = asyncio.Event(loop=bot.loop)
         self._current_timer = None
         self._task = bot.loop.create_task(self.dispatch_timers())
-        self.hidden = True
 
     def cog_unload(self):
         self._task.cancel()
