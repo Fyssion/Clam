@@ -565,7 +565,15 @@ class Games(commands.Cog):
     @hangman.command(name="all", description="List all hangman games", aliases=["list"])
     @commands.is_owner()
     async def hangman_all(self, ctx):
-        pass
+        games = [
+            f"In {h.ctx.guild} - `#{h.channel}`" for h in self.hangman_games.values()
+        ]
+
+        if not games:
+            return await ctx.send("No running hangman games.")
+
+        pages = ctx.pages(games)
+        await pages.start(ctx)
 
 
 def setup(bot):
