@@ -4,6 +4,7 @@ import discord
 import enum
 
 from .emojis import GREEN_TICK, RED_TICK
+from .menus import MenuPages
 
 
 class Confirm(menus.Menu):
@@ -30,6 +31,19 @@ class Confirm(menus.Menu):
         return self.result
 
 
+class BasicPageSource(menus.ListPageSource):
+    def format_page(self, menu, entries):
+        offset = menu.current_page * self.per_page
+        return "\n".join(f"`{i+1}.` {v}" for i, v in enumerate(entries, start=offset))
+
+
+class BasicPages(MenuPages):
+    def __init__(self, entries, *args, **kwargs):
+        super().__init__(
+            BasicPageSource(entries, per_page=10), clear_reactions_after=True
+        )
+
+
 class Context(commands.Context):
     @property
     def guild_prefix(self):
@@ -50,3 +64,6 @@ class Context(commands.Context):
 
     async def confirm(self, message):
         return await Confirm(message).prompt(self)
+
+    def pages(self, entries):
+        return BasicPages(entries)
