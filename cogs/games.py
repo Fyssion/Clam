@@ -350,7 +350,9 @@ class Hangman:
         if self.game_status == "win":
             desc = ":tada: All letters guessed correctly!"
         elif self.game_status == "lose":
-            desc = "Game over. You ran out of guesses."
+            desc = (
+                f"Game over. You ran out of guesses.\nThe word was... ||{self.word}||"
+            )
 
         em = discord.Embed(title="Hangman", description=desc, color=colors.PRIMARY)
 
