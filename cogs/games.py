@@ -471,11 +471,18 @@ class Games(commands.Cog):
         game = Connect4([ctx.author, opponent])
         await game.start(ctx)
 
-    @commands.command(
-        name="10s",
-        description="Start a ten seconds game. Timer starts as soon as my message is sent.",
-    )
+    @commands.command(name="10s")
     async def ten_seconds(self, ctx):
+        """A Discord-exclusive game of 10s
+
+        How to play:
+        - Use the 10s command
+        - Count to 10 seconds
+        - Click/tap the reaction under the 10s message when you finish counting
+        - See how far off you were
+
+        Timer starts as soon as my message is sent.
+        """
         m = TenSeconds()
         await m.start(ctx)
 
