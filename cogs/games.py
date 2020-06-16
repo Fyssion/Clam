@@ -35,8 +35,14 @@ class TenSeconds(SinglePlayerGame):
         em = discord.Embed(
             description="Click the reaction after 10 seconds!", color=colors.PRIMARY,
         )
+
+        em.set_author(name=str(ctx.author), icon_url=ctx.author.avatar_url)
+
+        em.set_footer(text=f"Confused? Learn more with {ctx.guild_prefix}help 10s")
+
         msg = await channel.send(embed=em)
         self.ten_seconds = datetime.utcnow() + timedelta(seconds=10)
+
         return msg
 
     @menus.button("⏲️")
@@ -45,19 +51,25 @@ class TenSeconds(SinglePlayerGame):
         end_time = tm - timedelta(microseconds=tm.microsecond % 100000)
         tm = self.ten_seconds
         ten_seconds = tm - timedelta(microseconds=tm.microsecond % 10000)
+
         if ten_seconds == end_time:
-            msg = ":tada: You did it!"
+            msg = ":tada: You did it! I'm impressed!"
+
         elif ten_seconds < end_time:
             time = end_time - ten_seconds
             result = str(float(f"{time.seconds}.{time.microseconds}"))
             msg = f"You were slow by `{result}` seconds."
+
         elif ten_seconds > end_time:
             time = ten_seconds - end_time
             result = str(float(f"{time.seconds}.{time.microseconds}"))
             msg = f"You were fast by `{result}` seconds."
+
         em = self.message.embeds[0]
         em.description = msg
+
         await self.message.edit(embed=em)
+
         self.stop()
 
 
@@ -459,11 +471,18 @@ class Games(commands.Cog):
         game = Connect4([ctx.author, opponent])
         await game.start(ctx)
 
-    @commands.command(
-        name="10s",
-        description="Start a ten seconds game. Timer starts as soon as my message is sent.",
-    )
+    @commands.command(name="10s")
     async def ten_seconds(self, ctx):
+        """A Discord-exclusive game of 10s
+
+        How to play:
+        - Use the 10s command
+        - Count to 10 seconds
+        - Click/tap the reaction under the 10s message when you finish counting
+        - See how far off you were
+
+        Timer starts as soon as my message is sent.
+        """
         m = TenSeconds()
         await m.start(ctx)
 
