@@ -343,6 +343,7 @@ class Games(commands.Cog):
         self.emoji = ":video_game:"
 
     @commands.command(desciption="Start a Connect 4 game", usage="[opponent]")
+    @commands.command(description="Start a Connect 4 game", usage="[opponent]")
     async def connect4(self, ctx, opponent: discord.Member):
         if opponent.bot:
             return await ctx.send("You cannot play with a bot.")
