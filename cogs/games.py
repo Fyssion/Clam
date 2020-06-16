@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import random
+import asyncio
 
 import discord
 from discord.ext import commands, menus
@@ -335,6 +336,96 @@ class Connect4(MultiPlayerGame):
         await self.play_piece(payload, 6)
 
 
+class Hangman:
+    def __init__(self, word):
+        self.word = word
+        self.guesses_left = 6
+        self.correct_letters = []
+        self.incorrect_letters = []
+        self.game_status = None
+
+    def create_embed(self):
+        desc = f"Guess a letter with `{self.ctx.guild_prefix}hangman guess [letter]`"
+
+        if self.game_status == "win":
+            desc = ":tada: All letters guessed correctly!"
+        elif self.game_status == "lose":
+            desc = "Game over. You ran out of guesses."
+
+        em = discord.Embed(title="Hangman", description=desc, color=colors.PRIMARY)
+
+        # Add the correct hangman thumbnail
+        num = self.guesses_left
+        url = f"https://raw.githubusercontent.com/Clam-Bot/Clam/main/assets/hangman/hangman{num}.png"
+
+        em.set_thumbnail(url=url)
+
+        # Generate the word display
+        word_display = " ".join(
+            l if l in self.correct_letters else "_" for l in self.word
+        )
+        word_display = discord.utils.escape_markdown(word_display)
+
+        em.add_field(name="Word", value=word_display, inline=False)
+
+        value = ", ".join(self.incorrect_letters) if self.incorrect_letters else "None"
+
+        em.add_field(
+            name="Incorrect Guesses", value=value,
+        )
+        em.add_field(name="Guesses Left", value=self.guesses_left or "No guesses left.")
+        em.add_field(name="Game Creator", value=str(self.creator))
+
+        return em
+
+    async def start(self, ctx):
+        self.ctx = ctx
+        self.channel = ctx.channel
+        self.creator = ctx.author
+
+        embed = self.create_embed()
+        self.message = await ctx.send(embed=embed)
+
+    async def guess(self, ctx, letter):
+        if letter in self.correct_letters or letter in self.incorrect_letters:
+            raise commands.BadArgument("That letter has already been guessed.")
+
+        if letter in list(self.word):
+            self.correct_letters.append(letter)
+
+            unguessed = []
+            for letter in self.word:
+                if letter not in self.correct_letters:
+                    unguessed.append(letter)
+
+            if not unguessed:
+                self.game_status = "win"
+
+            await ctx.send(f"{ctx.tick(True)} You guessed correctly!")
+
+        else:
+            self.incorrect_letters.append(letter)
+
+            self.guesses_left -= 1
+
+            if self.guesses_left <= 0:
+                self.game_status = "lose"
+
+            await ctx.send(f"{ctx.tick(False)} Sorry, you guessed incorrectly.")
+
+        await self.message.edit(embed=self.create_embed())
+
+        return self.game_status
+
+    async def stop(self):
+        em = self.create_embed()
+        em.description = (
+            f"{self.ctx.tick(False)} Game has been stopped by creator or moderator."
+        )
+
+        await self.message.edit(embed=em)
+
+
 class Games(commands.Cog):
     """Games to play with friends"""
 
@@ -342,7 +433,15 @@ class Games(commands.Cog):
         self.bot = bot
         self.emoji = ":video_game:"
 
-    @commands.command(desciption="Start a Connect 4 game", usage="[opponent]")
+        # channel_id: Hangman
+        self.hangman_games = {}
+
+    async def cog_before_invoke(self, ctx):
+        if ctx.channel.id in self.hangman_games.keys():
+            ctx.hangman = self.hangman_games[ctx.channel.id]
+        else:
+            ctx.hangman = None
+
     @commands.command(description="Start a Connect 4 game", usage="[opponent]")
     async def connect4(self, ctx, opponent: discord.Member):
         if opponent.bot:
@@ -359,6 +458,107 @@ class Games(commands.Cog):
     async def ten_seconds(self, ctx):
         m = TenSeconds()
         await m.start(ctx)
+
+    @commands.group(invoke_without_command=True)
+    async def hangman(self, ctx):
+        """Play hangman with your friends in Discord
+
+        When you use this command, a new hangman game will be
+        created in this channel. You will be asked to provide a word.
+
+        Other members in this channel will be able to guess with the
+        guess subcommand below.
+
+        Note that moderators (specifically, members with manage messages)
+        can stop any hangman game.
+        """
+        await ctx.send("Please enter a word in your DMs...", delete_after=10.0)
+        await ctx.author.send(
+            "What is your word? Note that the word can only have letters A-Z."
+        )
+
+        def check(ms):
+            return ms.author == ctx.author and ms.channel == ctx.author.dm_channel
+
+        try:
+            message = await self.bot.wait_for("message", check=check, timeout=180.0)
+        except asyncio.TimeoutError:
+            return await ctx.send(f"{ctx.tick(False)} You timed out. Aborting.")
+
+        # Remove mentions from the word and strip it
+        word = discord.utils.escape_mentions(message.content.lower().strip())
+
+        if not word.isalpha():
+            return await ctx.author.send(
+                f"{ctx.tick(False)}  That word has characters not in the alphabet. Aborting."
+            )
+
+        hangman = Hangman(word)
+        self.hangman_games[ctx.channel.id] = hangman
+        await hangman.start(ctx)
+
+        await ctx.author.send(f"{ctx.tick(True)} Hangman game created")
+
+    @hangman.command(
+        name="guess",
+        description="Guess a letter in the current hangman game",
+        aliases=["g"],
+        usage="[letter]",
+    )
+    async def hangman_guess(self, ctx, letter):
+        if not ctx.hangman:
+            return await ctx.send(
+                f"{ctx.tick(False)} There is no running hangman game in this channel."
+            )
+
+        if ctx.author == ctx.hangman.creator:
+            return await ctx.send(
+                f"{ctx.tick(False)} You can't guess in your own game."
+            )
+
+        letter = letter.lower().strip()
+
+        if len(letter) > 1:
+            return await ctx.send(
+                f"{ctx.tick(False)} Your letter must be a single character.",
+                delete_after=5.0,
+            )
+
+        if not letter.isalpha():
+            return await ctx.send(
+                f"{ctx.tick(False)} Your letter must be a letter in the English alphabet.",
+                delete_after=5.0,
+            )
+
+        status = await ctx.hangman.guess(ctx, letter)
+
+        if status:
+            del self.hangman_games[ctx.channel.id]
+
+    @hangman.command(
+        name="stop", description="Stop the current hangman game", aliases=["quit"]
+    )
+    async def hangman_stop(self, ctx):
+        if not ctx.hangman:
+            return await ctx.send(
+                f"{ctx.tick(False)} There is no running hangman game in this channel."
+            )
+
+        if (
+            ctx.hangman.creator == ctx.author
+            or ctx.author.guild_permissions.manage_messages
+        ):
+            await ctx.hangman.stop()
+            del self.hangman_games[ctx.channel.id]
+            await ctx.send(f"{ctx.tick(True)} Stopped hangman game.")
+
+        else:
+            await ctx.send(f"{ctx.tick(False)} You did not create that hangman game.")
+
+    @hangman.command(name="all", description="List all hangman games", aliases=["list"])
+    @commands.is_owner()
+    async def hangman_all(self, ctx):
+        pass
 
 
 def setup(bot):
