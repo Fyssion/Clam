@@ -519,15 +519,11 @@ class Games(commands.Cog):
         letter = letter.lower().strip()
 
         if len(letter) > 1:
-            return await ctx.send(
-                f"{ctx.tick(False)} Your letter must be a single character.",
-                delete_after=5.0,
-            )
+            raise commands.BadArgument("Your letter must be a single character.")
 
         if not letter.isalpha():
-            return await ctx.send(
-                f"{ctx.tick(False)} Your letter must be a letter in the English alphabet.",
-                delete_after=5.0,
+            raise commands.BadArgument(
+                "Your letter must be a letter in the English alphabet."
             )
 
         status = await ctx.hangman.guess(ctx, letter)
