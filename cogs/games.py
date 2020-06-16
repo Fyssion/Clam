@@ -417,11 +417,9 @@ class Hangman:
 
         return self.game_status
 
-    async def stop(self):
+    async def stop(self, message="Game stopped by creator or moderator."):
         em = self.create_embed()
-        em.description = (
-            f"{self.ctx.tick(False)} Game has been stopped by creator or moderator."
-        )
+        em.description = f"{self.ctx.tick(False)} {message}"
 
         await self.message.edit(embed=em)
 
@@ -441,6 +439,14 @@ class Games(commands.Cog):
             ctx.hangman = self.hangman_games[ctx.channel.id]
         else:
             ctx.hangman = None
+
+    def cog_unload(self):
+        for hangman in self.hangman_games.values():
+            self.bot.loop.create_task(
+                hangman.stop(
+                    "Sorry! The code behind this was restarted and this game was stopped."
+                )
+            )
 
     @commands.command(description="Start a Connect 4 game", usage="[opponent]")
     async def connect4(self, ctx, opponent: discord.Member):
