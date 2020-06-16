@@ -478,6 +478,11 @@ class Games(commands.Cog):
         Note that moderators (specifically, members with manage messages)
         can stop any hangman game.
         """
+        if ctx.hangman:
+            return await ctx.send(
+                f"{ctx.tick(False)} There is already a hangman game in this channel."
+            )
+
         await ctx.send("Please enter a word in your DMs...", delete_after=10.0)
         await ctx.author.send(
             "What is your word? Note that the word can only have letters A-Z."
