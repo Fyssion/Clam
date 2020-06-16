@@ -343,6 +343,7 @@ class Games(commands.Cog):
         self.emoji = ":video_game:"
 
     @commands.command(desciption="Start a Connect 4 game", usage="[opponent]")
+    @commands.command(description="Start a Connect 4 game", usage="[opponent]")
     async def connect4(self, ctx, opponent: discord.Member):
         if opponent.bot:
             return await ctx.send("You cannot play with a bot.")
@@ -362,46 +363,3 @@ class Games(commands.Cog):
 
 def setup(bot):
     bot.add_cog(Games(bot))
-
-
-if __name__ == "__main__":
-
-    def find_diagonal_4(board, pieces):
-        height = len(board[0].pieces)
-        width = len(board.rows)
-
-        for piece in pieces:
-            # check / diagonal spaces
-            for x in range(width - 3):
-                for y in range(3, height):
-                    if (
-                        board[x][y] == piece
-                        and board[x + 1][y - 1] == piece
-                        and board[x + 2][y - 2] == piece
-                        and board[x + 3][y - 3] == piece
-                    ):
-                        return piece
-
-            # check \ diagonal spaces
-            for x in range(width - 3):
-                for y in range(height - 3):
-                    if (
-                        board[x][y] == piece
-                        and board[x + 1][y + 1] == piece
-                        and board[x + 2][y + 2] == piece
-                        and board[x + 3][y + 3] == piece
-                    ):
-                        return piece
-
-        return None
-
-    board = Connect4Board()
-    pieces = [Piece("Red", "red_circle"), Piece("Blue", "blue_circle")]
-    red = pieces[0]
-    board.rows[2].pieces[0] = red
-    board.rows[2].pieces[2] = red
-    board.rows[2].pieces[3] = red
-    board.rows[2].pieces[5] = red
-
-    print(find_diagonal_4(board, pieces))
-    print(board.rows[2].find_4())
