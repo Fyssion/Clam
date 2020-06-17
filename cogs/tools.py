@@ -142,14 +142,15 @@ class Tools(commands.Cog):
         #            f"({time.human_timedelta(dt, accuracy=3)})"
 
         desc = ""
+        if member.id == self.bot.owner_id:
+            created_or_owns = "created" if member.id == 224513210471022592 else "owns"
+            desc += f"\n:gear: This user {created_or_owns} this bot."
         if member == self.bot.user:
             desc += "\n:wave:Hey, that's me!"
         if member.bot is True:
             desc += "\n:robot: This user is a bot."
         if member.id == ctx.guild.owner_id:
-            desc += "\n<:owner:649355683598303260> " "This user is the server owner."
-        if member.id == self.bot.owner_id:
-            desc += "\n:gear: This user owns this bot."
+            desc += "\n<:owner:649355683598303260> This user owns this server."
         if member.premium_since:
             formatted = member.premium_since.strftime("%b %d, %Y at %#I:%M %p")
             desc += (
