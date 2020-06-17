@@ -16,6 +16,7 @@ import dateparser
 
 from .utils import colors
 
+
 def snowstamp(snowflake):
     timestamp = (int(snowflake) >> 22) + 1420070400000
     timestamp /= 1000
@@ -168,7 +169,7 @@ class Tools(commands.Cog):
         color = await self.get_average_color(icon) if icon else None
         color = color or member.color or colors.PRIMARY
 
-        em = discord.Embed(description=desc, color=color, timestamp=d.utcnow(),)
+        em = discord.Embed(description=desc, color=color)
 
         em.set_thumbnail(url=member.avatar_url)
         em.set_author(name=author, icon_url=member.avatar_url)
@@ -218,7 +219,7 @@ class Tools(commands.Cog):
         color = await self.get_average_color(icon) if icon else None
         color = color or colors.PRIMARY
 
-        em = discord.Embed(description=desc, color=color, timestamp=d.utcnow(),)
+        em = discord.Embed(description=desc, color=color)
 
         em.set_thumbnail(url=guild.icon_url)
         if guild.banner_url:

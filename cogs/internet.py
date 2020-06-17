@@ -78,7 +78,6 @@ class Internet(commands.Cog):
             url=package.package_url,
             description=package.summary,
             color=0x0073B7,
-            timestamp=datetime.utcnow(),
         )
 
         em.set_thumbnail(url="https://i.imgur.com/fGCuXc2.png")

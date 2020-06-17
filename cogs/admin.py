@@ -209,11 +209,7 @@ class Admin(commands.Cog):
     )
     @commands.is_owner()
     async def _process(self, ctx):
-        em = discord.Embed(
-            title="Current Process Stats",
-            color=discord.Color.teal(),
-            timestamp=d.utcnow(),
-        )
+        em = discord.Embed(title="Current Process Stats", color=discord.Color.teal(),)
         em.add_field(
             name="CPU",
             value=f"{psutil.cpu_percent()}% used with {psutil.cpu_count()} CPU(s)",
