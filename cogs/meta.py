@@ -229,9 +229,74 @@ class ClamHelpCommand(commands.HelpCommand):
         await ctx.send(embed=em)
 
     async def on_help_command_error(self, ctx, error):
-        print(type(error))
+        traceback.print_exception(
+            type(error), error, error.__traceback__, file=sys.stderr
+        )
         if isinstance(error, commands.CommandInvokeError):
             return await ctx.send("You don't have access to that cog.")
+
+    async def command_callback(self, ctx, *, command=None):
+        # I am only overriding this because I want to add
+        # case insensitivity for cogs
+
+        await self.prepare_help_command(ctx, command)
+        bot = ctx.bot
+
+        if command is None:
+            mapping = self.get_bot_mapping()
+            return await self.send_bot_help(mapping)
+
+        # Check if the query is an actual cog
+        cog = bot.get_cog(command)
+        if cog is not None:
+            return await self.send_cog_help(cog)
+
+        # Check if the query was a cog even if it was lowercase
+        # and save it for later use
+        cogs_lowered = [c.lower() for c in bot.cogs.keys()]
+        cog = bot.get_cog(command.lower().capitalize())
+
+        maybe_coro = discord.utils.maybe_coroutine
+
+        # At this point, the command could either be a cog
+        # or a command
+        keys = command.split(" ")
+        cmd = bot.all_commands.get(keys[0])
+        if cmd is None:
+            string = await maybe_coro(
+                self.command_not_found, self.remove_mentions(keys[0])
+            )
+
+            # At this point, the command was not found
+            # If the cog exists, send that
+            if cog is not None:
+                return await self.send_cog_help(cog)
+
+            return await self.send_error_message(string)
+
+        for key in keys[1:]:
+            try:
+                found = cmd.all_commands.get(key)
+            except AttributeError:
+                string = await maybe_coro(
+                    self.subcommand_not_found, cmd, self.remove_mentions(key)
+                )
+                return await self.send_error_message(string)
+            else:
+                if found is None:
+                    string = await maybe_coro(
+                        self.subcommand_not_found, cmd, self.remove_mentions(key)
+                    )
+                    return await self.send_error_message(string)
+                cmd = found
+
+        if isinstance(cmd, commands.Group):
+            return await self.send_group_help(cmd)
+        else:
+            return await self.send_command_help(cmd)
+
+        if cog is not None:
+            return await self.send_cog_help(cog)
 
 
 class Meta(commands.Cog):
