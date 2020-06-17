@@ -132,7 +132,7 @@ class Clam(commands.Bot):
         for cog in initial_extensions:
             self.load_extension(cog)
 
-        self.ordered_cogs = [c for c in self.cogs.values()]
+        self.ordered_cogs = [c for c in self.cogs.keys()]
 
     def add_to_blacklist(self, user):
         self.blacklist.append(str(user.id))
