@@ -21,7 +21,7 @@ class ErrorSource(menus.ListPageSource):
 
     def format_page(self, menu, entries):
         offset = menu.current_page * self.per_page
-        message = f"**Page {menu.current_page + 1}/{self.get_max_pages()} | Error {self.error_id}**```py\n"
+        message = f"**Page {menu.current_page + 1}/{self.get_max_pages()} \N{BULLET} Error {self.error_id}**```py\n"
         for i, line in enumerate(entries, start=offset):
             message += line
         message += "\n```"
