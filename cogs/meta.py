@@ -54,7 +54,9 @@ class HelpPages(menus.ListPageSource):
         em.description = self.original_description
         page_count = f"Page {menu.current_page + 1}/{self.get_max_pages()}"
         em.set_author(name=page_count)
-        em.set_footer(text=page_count)
+        em.set_footer(
+            text=f"{page_count} \N{BULLET} Note that you can only view commands that you can use"
+        )
         command_info = []
         for i, command in enumerate(entries, start=offset):
             command_help = f"**`{self.prefix}"
@@ -95,12 +97,9 @@ class ClamHelpCommand(commands.HelpCommand):
     def get_base_embed(self):
         ctx = self.context
         bot = ctx.bot
-        em = discord.Embed(
-            title=f"Help for {bot.user.name}",
-            color=colors.PRIMARY,
-            timestamp=d.utcnow(),
-        )
+        em = discord.Embed(title=f"Help for {bot.user.name}", color=colors.PRIMARY,)
         em.set_thumbnail(url=ctx.bot.user.avatar_url)
+        em.set_footer(text="Note that you can only view commands that you can use")
         return em
 
     async def send_bot_help(self, mapping):
@@ -140,11 +139,12 @@ class ClamHelpCommand(commands.HelpCommand):
 
         dev = bot.get_user(224513210471022592)
         em.add_field(
-            name=":information_source: Technical Info",
+            name="More Info",
             value=(
-                f"Developed by - {dev}\n"
-                "Programming Language - Python\n"
-                "Framework - discord.py commands"
+                "Need help? Join the [support server.](https://www.discord.gg/wfCGTrp)\n"
+                "\n"
+                f"Created by {dev}\n"
+                f"using discord.py v{discord.__version__}"
             ),
             inline=True,
         )
@@ -154,7 +154,9 @@ class ClamHelpCommand(commands.HelpCommand):
     async def send_cog_help(self, cog):
         ctx = self.context
         bot = ctx.bot
+
         filtered = await self.filter_commands(cog.get_commands(), sort=True)
+
         em = self.get_base_embed()
 
         if hasattr(cog, "emoji"):
@@ -176,24 +178,34 @@ class ClamHelpCommand(commands.HelpCommand):
     async def send_group_help(self, group):
         ctx = self.context
         bot = ctx.bot
+
         filtered = await self.filter_commands(group.commands, sort=True)
+
         em = self.get_base_embed()
+
         em.description = f"**`{bot.guild_prefix(ctx.guild)}{group.name}"
         em.description += f" {group.usage}`**" if group.usage is not None else "`**"
+
         if group.description:
             em.description += f" - {group.description}"
+
         if group.help:
             em.description += "\n" + group.help
+
         if group.aliases:
             formatted_aliases = []
+
             for alias in group.aliases:
                 formatted_alias = f"`{bot.guild_prefix(ctx.guild)}"
                 formatted_alias += (
                     f"{group.parent} " if group.parent is not None else ""
                 )
+
                 formatted_alias += alias + "`"
                 formatted_aliases.append(formatted_alias)
+
             em.description += f"\nAliases: {', '.join(formatted_aliases)}"
+
         if filtered:
             em.description += f"\n\n**Subcommands ({len(filtered)} total):**"
 
@@ -208,25 +220,36 @@ class ClamHelpCommand(commands.HelpCommand):
     async def send_command_help(self, command):
         ctx = self.context
         bot = ctx.bot
+
         em = self.get_base_embed()
+
+        em.set_footer(text=em.Empty)
+
         em.description = f"**`{bot.guild_prefix(ctx.guild)}"
         em.description += f"{command.parent} " if command.parent is not None else ""
         em.description += command.name
         em.description += f" {command.usage}`**" if command.usage is not None else "`**"
+
         if command.description:
             em.description += f" - {command.description}"
+
         if command.help:
             em.description += "\n" + command.help + "\n"
+
         if command.aliases:
             formatted_aliases = []
+
             for alias in command.aliases:
                 formatted_alias = f"`{bot.guild_prefix(ctx.guild)}"
                 formatted_alias += (
                     f"{command.parent} " if command.parent is not None else ""
                 )
+
                 formatted_alias += alias + "`"
                 formatted_aliases.append(formatted_alias)
+
             em.description += f"\nAliases: {', '.join(formatted_aliases)}"
+
         await ctx.send(embed=em)
 
     async def on_help_command_error(self, ctx, error):
@@ -358,9 +381,7 @@ class Meta(commands.Cog):
         self.bot.error_cache.append(error)
 
         em = discord.Embed(
-            title=":warning: Unexpected Error",
-            color=discord.Color.gold(),
-            timestamp=d.utcnow(),
+            title=":warning: Unexpected Error", color=discord.Color.gold(),
         )
 
         description = (
