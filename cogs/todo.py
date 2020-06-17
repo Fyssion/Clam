@@ -94,7 +94,7 @@ class Todo(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.log = bot.log
-        self.emoji = ":page_facing_up:"
+        self.emoji = ":ballot_box_with_check:"
 
     @commands.group(invoke_without_command=True)
     async def todo(self, ctx):
