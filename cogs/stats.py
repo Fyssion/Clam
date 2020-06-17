@@ -547,14 +547,17 @@ class Stats(commands.Cog):
         name="about", description="Display info about the bot", aliases=["info"],
     )
     async def about(self, ctx):
-        em = discord.Embed(
-            title="About", color=colors.PRIMARY, timestamp=datetime.utcnow()
+        em = discord.Embed(title="About", color=colors.PRIMARY)
+
+        em.set_footer(
+            text=f"Made with \N{HEAVY BLACK HEART} using discord.py v{discord.__version__}"
         )
+
         em.set_thumbnail(url=self.bot.user.avatar_url)
 
         dev = self.bot.get_user(224513210471022592)
         up = datetime.now() - self.bot.startup_time
-        em.add_field(name=":gear: Developer", value=str(dev))
+        em.add_field(name=":gear: Creator", value=str(dev))
         em.add_field(name=":adult: User Count", value=len(self.bot.users))
         em.add_field(name=":family: Server Count", value=len(self.bot.guilds))
         em.add_field(

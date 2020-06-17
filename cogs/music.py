@@ -16,8 +16,7 @@ import sys
 import os
 import traceback
 
-from .utils import utils
-from .utils import stopwatch
+from .utils import utils, colors, stopwatch
 from .utils.errors import PrivateCog
 
 
@@ -1048,9 +1047,7 @@ class Music(commands.Cog):
                     failed_songs += 1
 
         em = discord.Embed(
-            title="**:page_facing_up: Enqueued:**",
-            timestamp=d.utcnow(),
-            color=colors.PRIMARY,
+            title="**:page_facing_up: Enqueued:**", color=colors.PRIMARY,
         )
         description = ""
         total_duration = 0
@@ -1087,11 +1084,7 @@ class Music(commands.Cog):
                 f"An error occurred while processing this request: ```py {str(e)}```"
             )
         else:
-            em = discord.Embed(
-                title="**:page_facing_up: Enqueued:**",
-                timestamp=d.utcnow(),
-                color=0xFF0000,
-            )
+            em = discord.Embed(title="**:page_facing_up: Enqueued:**", color=0xFF0000,)
             description = ""
             total_duration = 0
             for i, source in enumerate(playlist):

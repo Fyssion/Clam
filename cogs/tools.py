@@ -16,6 +16,7 @@ import dateparser
 
 from .utils import colors
 
+
 def snowstamp(snowflake):
     timestamp = (int(snowflake) >> 22) + 1420070400000
     timestamp /= 1000
@@ -142,14 +143,15 @@ class Tools(commands.Cog):
         #            f"({time.human_timedelta(dt, accuracy=3)})"
 
         desc = ""
+        if member.id == self.bot.owner_id:
+            created_or_owns = "created" if member.id == 224513210471022592 else "owns"
+            desc += f"\n:gear: This user {created_or_owns} this bot."
         if member == self.bot.user:
             desc += "\n:wave:Hey, that's me!"
         if member.bot is True:
             desc += "\n:robot: This user is a bot."
         if member.id == ctx.guild.owner_id:
-            desc += "\n<:owner:649355683598303260> " "This user is the server owner."
-        if member.id == self.bot.owner_id:
-            desc += "\n:gear: This user owns this bot."
+            desc += "\n<:owner:649355683598303260> This user owns this server."
         if member.premium_since:
             formatted = member.premium_since.strftime("%b %d, %Y at %#I:%M %p")
             desc += (
@@ -167,7 +169,7 @@ class Tools(commands.Cog):
         color = await self.get_average_color(icon) if icon else None
         color = color or member.color or colors.PRIMARY
 
-        em = discord.Embed(description=desc, color=color, timestamp=d.utcnow(),)
+        em = discord.Embed(description=desc, color=color)
 
         em.set_thumbnail(url=member.avatar_url)
         em.set_author(name=author, icon_url=member.avatar_url)
@@ -217,7 +219,7 @@ class Tools(commands.Cog):
         color = await self.get_average_color(icon) if icon else None
         color = color or colors.PRIMARY
 
-        em = discord.Embed(description=desc, color=color, timestamp=d.utcnow(),)
+        em = discord.Embed(description=desc, color=color)
 
         em.set_thumbnail(url=guild.icon_url)
         if guild.banner_url:

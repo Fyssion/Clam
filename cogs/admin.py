@@ -21,7 +21,7 @@ class ErrorSource(menus.ListPageSource):
 
     def format_page(self, menu, entries):
         offset = menu.current_page * self.per_page
-        message = f"**Page {menu.current_page + 1}/{self.get_max_pages()} | Error {self.error_id}**```py\n"
+        message = f"**Page {menu.current_page + 1}/{self.get_max_pages()} \N{BULLET} Error {self.error_id}**```py\n"
         for i, line in enumerate(entries, start=offset):
             message += line
         message += "\n```"
@@ -209,11 +209,7 @@ class Admin(commands.Cog):
     )
     @commands.is_owner()
     async def _process(self, ctx):
-        em = discord.Embed(
-            title="Current Process Stats",
-            color=discord.Color.teal(),
-            timestamp=d.utcnow(),
-        )
+        em = discord.Embed(title="Current Process Stats", color=discord.Color.teal(),)
         em.add_field(
             name="CPU",
             value=f"{psutil.cpu_percent()}% used with {psutil.cpu_count()} CPU(s)",

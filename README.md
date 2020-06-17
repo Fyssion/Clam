@@ -1,8 +1,11 @@
 <p align="center">
-  <img src="https://clambot.xyz/images/logo.png" alt="Logo" title="Clam" height="200" width="200"/>
+<img src="https://clambot.xyz/images/logo.png" alt="Logo" title="Clam" height="200" width="200"/>
 </p>
 
 # Clam
+
+[![License](https://img.shields.io/github/license/Clam-Bot/Clam)](https://github.com/Clam-Bot/Clam/blob/main/LICENSE)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 A multi-purpose Discord bot. Likes to hide in it's shell.
 
