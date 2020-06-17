@@ -122,7 +122,8 @@ class ClamHelpCommand(commands.HelpCommand):
             )
 
         cog_names = []
-        for cog in bot.ordered_cogs:
+        for cog_name in bot.ordered_cogs:
+            cog = bot.get_cog(cog_name)
             if (
                 hasattr(cog, "hidden")
                 or hasattr(cog, "private")
