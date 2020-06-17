@@ -30,24 +30,24 @@ logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
 
-def get_prefix(client, message):
+def get_prefix(bot, message):
 
     prefixes = ["c."]
 
     if not isinstance(message.channel, discord.DMChannel):
-        if str(message.guild.id) in client.guild_prefixes.keys():
-            prefixes = client.guild_prefixes[str(message.guild.id)]
+        if str(message.guild.id) in bot.guild_prefixes.keys():
+            prefixes = bot.guild_prefixes[str(message.guild.id)]
 
-    return commands.when_mentioned_or(*prefixes)(client, message)
+    return commands.when_mentioned_or(*prefixes)(bot, message)
 
 
-def dev_prefix(client, message):
+def dev_prefix(bot, message):
 
     prefixes = ["dev "]
 
     if not isinstance(message.channel, discord.DMChannel):
-        if str(message.guild.id) in client.guild_prefixes.keys():
-            prefixes = client.guild_prefixes[str(message.guild.id)]
+        if str(message.guild.id) in bot.guild_prefixes.keys():
+            prefixes = bot.guild_prefixes[str(message.guild.id)]
 
     return prefixes
 
