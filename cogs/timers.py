@@ -288,7 +288,7 @@ class Timers(commands.Cog):
             f"{ctx.tick(True)} Set a timer for **`{delta}`** with {friendly_message}"
         )
 
-    @timer.command(name="list", ignore_extra=False)
+    @timer.command(name="list", aliases=["all"], ignore_extra=False)
     async def timer_list(self, ctx):
         """Shows your currently running timers."""
         query = """SELECT id, expires, extra #>> '{args,2}'
