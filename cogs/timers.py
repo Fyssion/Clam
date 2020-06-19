@@ -25,7 +25,7 @@ DEALINGS IN THE SOFTWARE.
 """
 
 
-from discord.ext import commands, menus
+from discord.ext import commands, tasks, menus
 import discord
 
 import asyncio
@@ -121,29 +121,28 @@ class Timers(commands.Cog):
 
         self._have_data = asyncio.Event(loop=bot.loop)
         self._current_timer = None
-        self._task = bot.loop.create_task(self.dispatch_timers())
+        self.timer_task.add_exception_type(
+            OSError, discord.ConnectionClosed, asyncpg.PostgresConnectionError
+        )
+        self.timer_task.start()
 
     def cog_unload(self):
-        self._task.cancel()
+        self.timer_task.cancel()
 
-    async def get_active_timer(self, *, connection=None, days=7):
-        query = "SELECT * FROM timers WHERE expires < (CURRENT_DATE + $1::interval) ORDER BY expires LIMIT 1;"
+    async def get_active_timers(self, *, connection=None, seconds=30):
+        query = "SELECT * FROM timers WHERE expires < (CURRENT_TIMESTAMP + $1::interval) ORDER BY expires;"
         con = connection or self.bot.pool
 
-        record = await con.fetchrow(query, datetime.timedelta(days=days))
-        return Timer(record=record) if record else None
+        records = await con.fetch(query, datetime.timedelta(seconds=seconds))
 
-    async def wait_for_active_timers(self, *, connection=None, days=7):
-        async with db.MaybeAcquire(connection=connection, pool=self.bot.pool) as con:
-            timer = await self.get_active_timer(connection=con, days=days)
-            if timer is not None:
-                self._have_data.set()
-                return timer
+        print(records)
 
-            self._have_data.clear()
-            self._current_timer = None
-            await self._have_data.wait()
-            return await self.get_active_timer(connection=con, days=days)
+        if not records:
+            return [None]
+
+        timers = [Timer(record=r) if r else None for r in records]
+
+        return timers
 
     async def call_timer(self, timer):
         # delete the timer
@@ -154,26 +153,32 @@ class Timers(commands.Cog):
         event_name = f"{timer.event}_timer_complete"
         self.bot.dispatch(event_name, timer)
 
-    async def dispatch_timers(self):
+    async def dispatch_timer(self, timer):
+        now = datetime.datetime.utcnow()
+
+        if timer.expires >= now:
+            to_sleep = (timer.expires - now).total_seconds()
+            await asyncio.sleep(to_sleep)
+
+        await self.call_timer(timer)
+
+    @tasks.loop(seconds=30)
+    async def timer_task(self):
+        print(1)
+        timers = await self.get_active_timers()
+        print(2)
+
+        for timer in timers:
+            print(3)
+            print(timer)
+            if timer is not None:
+                print(4)
+                self.bot.loop.create_task(self.dispatch_timer(timer))
+                print(5)
+
+    @timer_task.before_loop
+    async def before_timer_task(self):
         await self.bot.wait_until_ready()
-        try:
-            while not self.bot.is_closed():
-                # can only asyncio.sleep for up to ~48 days reliably
-                # so we're gonna cap it off at 40 days
-                # see: http://bugs.python.org/issue20493
-                timer = self._current_timer = await self.wait_for_active_timers(days=40)
-                now = datetime.datetime.utcnow()
-
-                if timer.expires >= now:
-                    to_sleep = (timer.expires - now).total_seconds()
-                    await asyncio.sleep(to_sleep)
-
-                await self.call_timer(timer)
-        except asyncio.CancelledError:
-            raise
-        except (OSError, discord.ConnectionClosed, asyncpg.PostgresConnectionError):
-            self._task.cancel()
-            self._task = self.bot.loop.create_task(self.dispatch_timers())
 
     async def short_timer_optimisation(self, seconds, timer):
         await asyncio.sleep(seconds)
@@ -241,11 +246,11 @@ class Timers(commands.Cog):
         if delta <= (86400 * 40):  # 40 days
             self._have_data.set()
 
-        # check if this timer is earlier than our currently run timer
-        if self._current_timer and when < self._current_timer.expires:
-            # cancel the task and re-run it
-            self._task.cancel()
-            self._task = self.bot.loop.create_task(self.dispatch_timers())
+        # # check if this timer is earlier than our currently run timer
+        # if self._current_timer and when < self._current_timer.expires:
+        #     # cancel the task and re-run it
+        #     self._task.cancel()
+        #     self._task = self.bot.loop.create_task(self.dispatch_timers())
 
         return timer
 
@@ -326,11 +331,11 @@ class Timers(commands.Cog):
                 "\nDoes that timer exist and do you own it?"
             )
 
-        # if the current timer is being deleted
-        if self._current_timer and self._current_timer.id == id:
-            # cancel the task and re-run it
-            self._task.cancel()
-            self._task = self.bot.loop.create_task(self.dispatch_timers())
+        # # if the current timer is being deleted
+        # if self._current_timer and self._current_timer.id == id:
+        #     # cancel the task and re-run it
+        #     self._task.cancel()
+        #     self._task = self.bot.loop.create_task(self.dispatch_timers())
 
         await ctx.send(f"{ctx.tick(True)} Successfully deleted timer.")
 
@@ -361,9 +366,9 @@ class Timers(commands.Cog):
         query = """DELETE FROM timers WHERE event = 'timer' AND extra #>> '{args,0}' = $1;"""
         await ctx.db.execute(query, author_id)
 
-        # Restart the task in case one of the timers is being waited for
-        self._task.cancel()
-        self._task = bot.loop.create_task(self.dispatch_timers())
+        # # Restart the task in case one of the timers is being waited for
+        # self._task.cancel()
+        # self._task = bot.loop.create_task(self.dispatch_timers())
 
         await ctx.send(f"{ctx.tick(True)} Successfully deleted {total} timer(s).")
 
