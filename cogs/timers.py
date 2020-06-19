@@ -164,17 +164,11 @@ class Timers(commands.Cog):
 
     @tasks.loop(seconds=30)
     async def timer_task(self):
-        print(1)
         timers = await self.get_active_timers()
-        print(2)
 
         for timer in timers:
-            print(3)
-            print(timer)
             if timer is not None:
-                print(4)
                 self.bot.loop.create_task(self.dispatch_timer(timer))
-                print(5)
 
     @timer_task.before_loop
     async def before_timer_task(self):
