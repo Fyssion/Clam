@@ -445,22 +445,17 @@ class Games(commands.Cog):
         self.bot = bot
         self.emoji = ":video_game:"
 
-        # channel_id: Hangman
-        self.hangman_games = {}
+        if not hasattr(bot, "hangman_games"):
+            # channel_id: Hangman
+            self.bot.hangman_games = {}
+
+        self.hangman_games = bot.hangman_games
 
     async def cog_before_invoke(self, ctx):
         if ctx.channel.id in self.hangman_games.keys():
             ctx.hangman = self.hangman_games[ctx.channel.id]
         else:
             ctx.hangman = None
-
-    def cog_unload(self):
-        for hangman in self.hangman_games.values():
-            self.bot.loop.create_task(
-                hangman.stop(
-                    "Sorry! The code behind this was restarted and this game was stopped."
-                )
-            )
 
     @commands.command(description="Start a Connect 4 game", usage="[opponent]")
     async def connect4(self, ctx, opponent: discord.Member):
@@ -586,14 +581,12 @@ class Games(commands.Cog):
     @hangman.command(name="all", description="List all hangman games", aliases=["list"])
     @commands.is_owner()
     async def hangman_all(self, ctx):
-        games = [
-            f"In {h.ctx.guild} - `#{h.channel}`" for h in self.hangman_games.values()
-        ]
+        games = [f"{h.ctx.guild} #{h.channel}" for h in self.hangman_games.values()]
 
         if not games:
             return await ctx.send("No running hangman games.")
 
-        pages = ctx.pages(games)
+        pages = ctx.pages(games, title="All Running Hangman Games")
         await pages.start(ctx)
 
 
