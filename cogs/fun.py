@@ -143,7 +143,9 @@ class Fun(commands.Cog):
             if outcome.occurrences == 0:
                 break
             percentage = int(outcome.occurrences / number * 100)
-            human_friendly.append(f"`{percentage}%` **{outcome.choice}** ({human_time.plural(outcome.occurrences):occurrence})")
+            human_friendly.append(
+                f"`{percentage}%` **{outcome.choice}** ({human_time.plural(outcome.occurrences):occurrence})"
+            )
 
         formatted = "\n".join(human_friendly)
 
