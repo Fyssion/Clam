@@ -3,7 +3,6 @@ from discord.ext import commands, menus
 
 from datetime import datetime as d
 import traceback
-import json
 import psutil
 import typing
 
