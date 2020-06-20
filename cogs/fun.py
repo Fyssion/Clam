@@ -7,10 +7,10 @@ import random
 import functools
 import importlib
 import asyncio
-
+import collections
 from random import choice
 
-from .utils import colors
+from .utils import colors, human_time
 from .utils.utils import is_int
 
 # from .utils.utils import thesaurize
@@ -123,17 +123,27 @@ class Fun(commands.Cog):
         await ctx.send(random.choice(choices))
 
     @commands.command(
-        description="Similar to choose, except it's a best of three",
-        usage="[choices]",
-        aliases=["bo3", "bestofthree"],
+        description="Similar to choose, except it's the best of a specified number",
+        usage="[number] [choices]",
+        aliases=["bo"],
     )
-    async def bestof3(self, ctx, *choices):
-        outcomes = [random.choice(choices) for i in range(3)]
-        occurrences = [outcomes.count(c) for c in choices]
+    async def bestof(self, ctx, number: int, *choices):
+        if len(choices) > 20:
+            raise commands.BadArgument("You can have up to 20 choices.")
+
+        Outcome = collections.namedtuple("Outcome", "choice occurrences")
+
+        randomized = [random.choice(choices) for i in range(number)]
+        outcomes = [Outcome(choice=c, occurrences=randomized.count(c)) for c in choices]
+        outcomes.sort(key=lambda x: x.occurrences)
+        outcomes.reverse()
 
         human_friendly = []
-        for i in range(len(choices)):
-            human_friendly.append(f"{choices[i]} ({occurrences[i]})")
+        for outcome in outcomes:
+            if outcome.occurrences == 0:
+                break
+            percentage = int(outcome.occurrences / number * 100)
+            human_friendly.append(f"`{percentage}%` **{outcome.choice}** ({human_time.plural(outcome.occurrences):occurrence})")
 
         formatted = "\n".join(human_friendly)
 
