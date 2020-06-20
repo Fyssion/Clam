@@ -1,5 +1,7 @@
 
 .vscode/settings.json
+*.sublime-project
+*.sublime-workspace
 *.pyc
 .replit
 ffmpeg.exe
