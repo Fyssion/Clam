@@ -135,8 +135,6 @@ class Timers(commands.Cog):
 
         records = await con.fetch(query, datetime.timedelta(seconds=seconds))
 
-        print(records)
-
         if not records:
             return [None]
 

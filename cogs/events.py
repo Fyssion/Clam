@@ -168,9 +168,14 @@ class Events(commands.Cog):
         self._current_event = None
         self._event_ready = asyncio.Event()
 
-        self._event_dispatch_task = self.bot.loop.create_task(
-            self.event_dispatch_loop()
+        # self._event_dispatch_task = self.bot.loop.create_task(
+        #     self.event_dispatch_loop()
+        # )
+
+        self.event_task.add_exception_type(
+            OSError, discord.ConnectionClosed, asyncpg.PostgresConnectionError
         )
+        self.event_task.start()
 
     async def cog_command_error(self, ctx, error):
         if isinstance(error, EventNotFound):
@@ -178,29 +183,46 @@ class Events(commands.Cog):
             ctx.handled = True
 
     def cog_unload(self):
-        self._event_dispatch_task.cancel()
+        # self._event_dispatch_task.cancel()
+        self.event_task.cancel()
 
-    async def get_first_active_event(self, days=7):
+    async def get_all_active_events(self, *, connection=None, seconds=30):
         query = """SELECT *
                    FROM events
-                   WHERE starts_at < (CURRENT_DATE + $1::interval)
-                   ORDER BY starts_at
-                   LIMIT 1;
+                   WHERE starts_at < (CURRENT_TIMESTAMP + $1::interval)
+                   ORDER BY starts_at;
                 """
+        con = connection or self.bot.pool
 
-        record = await self.bot.pool.fetchrow(query, timedelta(days=days))
-        return Event.from_record(record) if record else None
+        records = await con.fetch(query, timedelta(seconds=seconds))
 
-    async def get_active_events(self, days=40):
-        event = await self.get_first_active_event(days)
-        if event is not None:
-            self._event_ready.set()
-            return event
+        if not records:
+            return [None]
 
-        self._event_ready.clear()
-        self._current_event = None
-        await self._event_ready.wait()
-        return await self.get_first_active_event(days)
+        events = [Event.from_record(r) if r else None for r in records]
+
+        return events
+
+    async def dispatch_event(self, event):
+        now = datetime.utcnow()
+
+        if event.starts_at >= now:
+            to_sleep = (event.starts_at - now).total_seconds()
+            await asyncio.sleep(to_sleep)
+
+        await self.end_event(event)
+
+    @tasks.loop(seconds=30)
+    async def event_task(self):
+        events = await self.get_all_active_events()
+
+        for event in events:
+            if event is not None:
+                self.bot.loop.create_task(self.dispatch_event(event))
+
+    @event_task.before_loop
+    async def before_event_task(self):
+        await self.bot.wait_until_ready()
 
     async def end_event(self, event):
         guild = self.bot.get_guild(event.guild_id)
@@ -239,30 +261,6 @@ class Events(commands.Cog):
                 f"<@{event.owner_id}>\nEvent `{event.name}` has started!"
             )
 
-    async def event_dispatch_loop(self):
-        await self.bot.wait_until_ready()
-        try:
-            while not self.bot.is_closed():
-                event = await self.get_active_events()
-                self._current_event = event
-                now = datetime.utcnow()
-
-                if utc.localize(event.starts_at) >= utc.localize(now):
-                    to_sleep = (
-                        utc.localize(event.starts_at) - utc.localize(now)
-                    ).total_seconds()
-                    await asyncio.sleep(to_sleep)
-                await self.end_event(event)
-        except asyncio.CancelledError:
-            raise
-        except (OSError, discord.ConnectionClosed, asyncpg.PostgresConnectionError):
-            self._event_dispatch_task.cancel()
-            self._event_dispatch_task = self.bot.loop.create_task(
-                self.event_dispatch_loop()
-            )
-        except:
-            raise
-
     async def get_event(self, event_id):
         query = """SELECT * FROM events WHERE id=$1;"""
         async with self.bot.pool.acquire() as con:
@@ -281,8 +279,6 @@ class Events(commands.Cog):
 
     async def update_event_field(self, event, field, value):
         channel = self.bot.get_channel(event.channel_id)
-
-        print(channel)
 
         if not channel:
             return
@@ -795,11 +791,11 @@ class Events(commands.Cog):
         if delta <= (86400 * 7):  # 7 days
             self._event_ready.set()
 
-        if self._current_event and date < self._current_event.starts_at:
-            self._event_dispatch_task.cancel()
-            self._event_dispatch_task = self.bot.loop.create_task(
-                self.event_dispatch_loop()
-            )
+        # if self._current_event and date < self._current_event.starts_at:
+        #     self._event_dispatch_task.cancel()
+        #     self._event_dispatch_task = self.bot.loop.create_task(
+        #         self.event_dispatch_loop()
+        #     )
 
         embed = self.create_event_embed(partial_event)
         await msg.edit(embed=embed)
