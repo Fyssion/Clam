@@ -116,7 +116,7 @@ class Admin(commands.Cog):
         # for those people.
         lang, query = code
 
-        is_multistatement = query.count(';') > 1
+        is_multistatement = query.count(";") > 1
         if is_multistatement:
             # fetch does not support multiple statements
             strategy = ctx.db.execute
@@ -128,11 +128,11 @@ class Admin(commands.Cog):
             results = await strategy(query)
             dt = (time.perf_counter() - start) * 1000.0
         except Exception:
-            return await ctx.send(f'```py\n{traceback.format_exc()}\n```')
+            return await ctx.send(f"```py\n{traceback.format_exc()}\n```")
 
         rows = len(results)
         if is_multistatement or rows == 0:
-            return await ctx.send(f'`{dt:.2f}ms: {results}`')
+            return await ctx.send(f"`{dt:.2f}ms: {results}`")
 
         headers = list(results[0].keys())
         table = TabularData()
@@ -140,10 +140,10 @@ class Admin(commands.Cog):
         table.add_rows(list(r.values()) for r in results)
         render = table.render()
 
-        fmt = f'```\n{render}\n```\n*Returned {plural(rows):row} in {dt:.2f}ms*'
+        fmt = f"```\n{render}\n```\n*Returned {plural(rows):row} in {dt:.2f}ms*"
         if len(fmt) > 2000:
-            fp = io.BytesIO(fmt.encode('utf-8'))
-            await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
+            fp = io.BytesIO(fmt.encode("utf-8"))
+            await ctx.send("Too many results...", file=discord.File(fp, "results.txt"))
         else:
             await ctx.send(fmt)
 
@@ -164,10 +164,10 @@ class Admin(commands.Cog):
         table.add_rows(list(r.values()) for r in results)
         render = table.render()
 
-        fmt = f'```\n{render}\n```'
+        fmt = f"```\n{render}\n```"
         if len(fmt) > 2000:
-            fp = io.BytesIO(fmt.encode('utf-8'))
-            await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
+            fp = io.BytesIO(fmt.encode("utf-8"))
+            await ctx.send("Too many results...", file=discord.File(fp, "results.txt"))
         else:
             await ctx.send(fmt)
 
