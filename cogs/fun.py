@@ -159,13 +159,7 @@ class Fun(commands.Cog):
             "Who would you like to send the birthday message to? They must be in this server."
         )
         msg = await self.wait_for_message(ctx)
-        if msg.mentions:
-            user = msg.mentions[0]
-            recipient = self.bot.get_user(user.id)
-        else:
-            recipient = ctx.guild.get_member_named(msg.content.lower)
-        if not recipient:
-            return await ctx.send("Sorry, I couldn't find that user.")
+        recipient = await commands.MemberConverter().convert(ctx, msg.content)
 
         await ctx.send(f"How old is {recipient.name}?")
         msg = await self.wait_for_message(ctx)
@@ -176,6 +170,9 @@ class Fun(commands.Cog):
                 "Please specify a non-word number. Ex: 23 and not twenty-three"
             )
         age_to_grow_on = str(age + 1)
+
+        if int(age_to_grow_on) > 500:
+            raise commands.BadArgument("That age is too large. Must be less than 500.")
 
         await ctx.send(
             "Would you like to specify a name for the recipient? Type `no` to use their username."
@@ -209,6 +206,9 @@ class Fun(commands.Cog):
             else:
                 cakes += ":cupcake: "
                 isCupcake = False
+
+        if len(msg) > 2000 or len(cakes) > 2000:
+            raise commands.BadArgument("Sorry, that message is too big to send.")
 
         await recipient.send(msg)
         await recipient.send(cakes)
