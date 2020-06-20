@@ -721,6 +721,17 @@ class Tags(commands.Cog):
                     f"{ctx.tick(True)} An aliases for **`{original}`** called **`{alias}`** has been created."
                 )
 
+    @tag.command(
+        name="transfer",
+        description="Transfer a tag to another member",
+        aliases=["move", "give"],
+        usage="[tag] [member]",
+        hidden=True,
+    )
+    @commands.is_owner()
+    async def tag_transfer(self, ctx, name, *, member: discord.Member):
+        pass
+
     def _owner_kwargs(self, guild, owner_id):
         member = guild.get_member(owner_id)
         if not member:
