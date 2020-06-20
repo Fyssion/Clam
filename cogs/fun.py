@@ -97,9 +97,7 @@ class Fun(commands.Cog):
     )
     async def rolldice(self, ctx, dice: int = 1, sides: int = 6):
         if dice > 10:
-            raise commands.BadArgument(
-                "Too many dice. You can roll up to 10 dice."
-            )
+            raise commands.BadArgument("Too many dice. You can roll up to 10 dice.")
         if sides < 2:
             raise commands.BadArgument("You must have two or more sides.")
         if sides > 99:
@@ -117,6 +115,29 @@ class Fun(commands.Cog):
             f"and **{word_rolls[-1]}** for a "
             f"total of **{self.number(sum(rolls))}**."
         )
+
+    @commands.command(
+        description="Choose a random option", usage="[choices]", aliases=["choice"]
+    )
+    async def choose(self, ctx, *choices):
+        await ctx.send(random.choice(choices))
+
+    @commands.command(
+        description="Similar to choose, except it's a best of three",
+        usage="[choices]",
+        aliases=["bo3", "bestofthree"],
+    )
+    async def bestof3(self, ctx, *choices):
+        outcomes = [random.choice(choices) for i in range(3)]
+        occurrences = [outcomes.count(c) for c in choices]
+
+        human_friendly = []
+        for i in range(len(choices)):
+            human_friendly.append(f"{choices[i]} ({occurrences[i]})")
+
+        formatted = "\n".join(human_friendly)
+
+        await ctx.send(f"Outcomes:\n{formatted}")
 
     async def wait_for_message(self, ctx, timeout=60):
         def check(ms):
