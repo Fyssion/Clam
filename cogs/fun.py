@@ -63,6 +63,8 @@ class Fun(commands.Cog):
             return num2words1[num]
         elif 20 <= num <= 99:
             tens, below_ten = divmod(num, 10)
+            if below_ten == 0:
+                return num2words2[tens - 2]
             return num2words2[tens - 2] + "-" + num2words1[below_ten]
         else:
             return str(num)
@@ -89,42 +91,19 @@ class Fun(commands.Cog):
 
     @commands.group(
         description=("Roll a die or two. " "Also see `c.rolldice sides [# of sides]`"),
-        usage="<# of dice>",
+        usage="<# of dice> <# of sides>",
         aliases=["diceroll"],
         invoke_without_command=True,
     )
-    async def rolldice(self, ctx, dice: int = 1):
+    async def rolldice(self, ctx, dice: int = 1, sides: int = 6):
         if dice > 10:
-            return await ctx.send(
-                ":warning: Too many dice. " "You can roll up to 10 dice."
-            )
-        rolls = []
-        for i in range(dice):
-            rolls.append(random.randrange(1, 6))
-        if dice == 1:
-            result = self.number(rolls[0])
-            return await ctx.send(f":game_die: You rolled **{result}**.")
-
-        word_rolls = [f"**{self.number(num)}**" for num in rolls]
-        await ctx.send(
-            f":game_die: You rolled {', '.join(word_rolls[:-1])} "
-            f"and **{word_rolls[-1]}** for a "
-            f"total of **{self.number(sum(rolls))}**."
-        )
-
-    @rolldice.command(
-        name="sides",
-        description="Roll a dice with a specified # of sizes.",
-        aliases=["side"],
-        usage="[# of sides] <# of dice>",
-    )
-    async def rolldice_sides(self, ctx, sides: int = 6, dice: int = 1):
-        if dice > 10:
-            return await ctx.send(
-                ":warning: Too many dice. " "You can roll up to 10 dice."
+            raise commands.BadArgument(
+                "Too many dice. You can roll up to 10 dice."
             )
         if sides < 2:
-            return await ctx.send(":warning: You must have " "more than two sides.")
+            raise commands.BadArgument("You must have two or more sides.")
+        if sides > 99:
+            raise commands.BadArgument("You can have up to 99 sides.")
         rolls = []
         for i in range(dice):
             rolls.append(random.randrange(1, sides))
@@ -132,7 +111,7 @@ class Fun(commands.Cog):
             result = self.number(rolls[0])
             return await ctx.send(f":game_die: You rolled **{result}**.")
 
-        word_rolls = [f"**{self.number(num)}**" for num in rolls]
+        word_rolls = [f"**{num}**" for num in rolls]
         await ctx.send(
             f":game_die: You rolled {', '.join(word_rolls[:-1])} "
             f"and **{word_rolls[-1]}** for a "
@@ -166,7 +145,7 @@ class Fun(commands.Cog):
         try:
             age = int(msg.content)
         except ValueError:
-            return await ctx.send(
+            raise commands.BadArgument(
                 "Please specify a non-word number. Ex: 23 and not twenty-three"
             )
         age_to_grow_on = str(age + 1)
@@ -214,7 +193,7 @@ class Fun(commands.Cog):
         await recipient.send(cakes)
         await recipient.send(f"`From: {ctx.author}`")
 
-        await ctx.send(f"Sent birthday message to `{recipient}`")
+        await ctx.send(f"{ctx.tick(True)} Sent birthday message to `{recipient}`")
 
     @commands.command(
         description="Generate a typing message for a name", usage="[name]"
