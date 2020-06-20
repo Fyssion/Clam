@@ -1,22 +1,17 @@
 import discord
 from discord.ext import commands, menus
 
-from datetime import datetime as d
 from string import Formatter
 import traceback
-import codecs
 import os
-import pathlib
 import json
 import sys
 import asyncio
 import inspect
-import humanize
 import functools
 
-from .utils.utils import wait_for_deletion, get_lines_of_code
-from .utils import db, colors
-from .utils.utils import hover_link
+from .utils.utils import get_lines_of_code
+from .utils import colors
 from .utils.checks import has_manage_guild
 from .utils.menus import MenuPages
 from .utils.errors import PrivateCog, Blacklisted
