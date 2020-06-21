@@ -223,6 +223,12 @@ class Events(commands.Cog):
     @event_task.before_loop
     async def before_event_task(self):
         await self.bot.wait_until_ready()
+        # Wait for pool to connect
+        while True:
+            if self.bot.pool is None:
+                await asyncio.sleep(1)
+            else:
+                break
 
     async def end_event(self, event):
         guild = self.bot.get_guild(event.guild_id)

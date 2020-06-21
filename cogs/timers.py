@@ -171,6 +171,12 @@ class Timers(commands.Cog):
     @timer_task.before_loop
     async def before_timer_task(self):
         await self.bot.wait_until_ready()
+        # Wait for pool to connect
+        while True:
+            if self.bot.pool is None:
+                await asyncio.sleep(1)
+            else:
+                break
 
     async def short_timer_optimisation(self, seconds, timer):
         await asyncio.sleep(seconds)
