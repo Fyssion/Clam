@@ -34,9 +34,14 @@ def get_prefix(bot, message):
 
     prefixes = ["c."]
 
-    if not isinstance(message.channel, discord.DMChannel):
+    # Get prefixes from prefixes.json if the message is in a guild
+    if not isinstance(message.channel, discord.DMChannel) and message.guild:
         if str(message.guild.id) in bot.guild_prefixes.keys():
             prefixes = bot.guild_prefixes[str(message.guild.id)]
+
+    # Add ! to prefixes in DMs for easier use
+    elif isinstance(message.channel, discord.DMChannel):
+        prefixes.append("!")
 
     return commands.when_mentioned_or(*prefixes)(bot, message)
 
