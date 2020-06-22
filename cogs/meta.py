@@ -449,7 +449,15 @@ class Meta(commands.Cog):
             )
 
         elif isinstance(error, commands.errors.BadArgument):
-            await ctx.send(f"{ctx.tick(False)} {error}")
+            if str(error).startswith('Converting to "int" failed for parameter '):
+                # param = str(error).replace('Converting to "int" failed for parameter ', "")
+                # param = param.replace(".", "")
+                # param = param.replace('"', "").strip()
+                # param = discord.utils.escape_mentions(param)
+                # param = discord.utils.escape_markdown(param)
+                await ctx.send(f"{ctx.tick(False)} You must specify a number.")
+            else:
+                await ctx.send(f"{ctx.tick(False)} {error}")
 
         elif isinstance(error, commands.errors.MissingRequiredArgument):
             await ctx.send(
