@@ -54,7 +54,7 @@ class Internet(commands.Cog):
     @commands.group(
         description="Fetch a PyPI package.",
         usage="[package] <version>",
-        aliases=["package"],
+        aliases=["package", "pip"],
         invoke_without_command=True,
     )
     async def pypi(self, ctx, package, release=None):
