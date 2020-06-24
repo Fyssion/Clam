@@ -21,6 +21,7 @@ class Config:
         self.reddit_id = self._data["reddit-id"]  # Reddit app ID
         self.reddit_secret = self._data["reddit-secret"]  # Reddit app secret
         self.database_uri = self._data["database-uri"]  # Postgres database URI
+        self.status_hook = self._data["status-hook"]  # Webhook for status messages
 
         # Optional config stuff
         # Run the bot in debug mode or not
