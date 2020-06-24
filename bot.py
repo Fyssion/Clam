@@ -239,6 +239,9 @@ class Clam(commands.Bot):
     async def on_connect(self):
         await self.status_hook.send("Connected to Discord")
 
+    async def on_resumed(self):
+        self.status_hook.send("Resumed connection with Discord")
+
     async def on_disconnect(self):
         if not self.session.closed:
             await self.status_hook.send("Disconnected from Discord")
