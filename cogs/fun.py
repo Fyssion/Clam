@@ -190,7 +190,6 @@ class Fun(commands.Cog):
         name="birthday",
         description="Sends a user a bday message straight to their DMs",
         aliases=["bday"],
-        usage="[mentioned user] [IRL Name ('None' to mention them)] [age]",
     )
     async def birthday_command(self, ctx):
         await ctx.send(
