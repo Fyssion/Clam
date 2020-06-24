@@ -92,7 +92,7 @@ class Fun(commands.Cog):
         await ctx.send(f"You flipped a **{result}**.")
 
     @commands.group(
-        description=("Roll a die or two. " "Also see `c.rolldice sides [# of sides]`"),
+        description=("Roll a die or two"),
         usage="<# of dice> <# of sides>",
         aliases=["diceroll"],
         invoke_without_command=True,
@@ -255,7 +255,7 @@ class Fun(commands.Cog):
         await ctx.send(f"{ctx.tick(True)} Sent birthday message to `{recipient}`")
 
     @commands.command(
-        description="Generate a typing message for a name", usage="[name]"
+        description="Generate a typing message for a name", usage="<name>"
     )
     async def typing(self, ctx, *, member=None):
         if not member:
