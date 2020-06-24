@@ -145,6 +145,7 @@ class Clam(commands.Bot):
         self.session = aiohttp.ClientSession(loop=self.loop)
         self._adapter = discord.AsyncWebhookAdapter(self.session)
         self.status_hook = discord.Webhook.from_url(self.config.status_hook, adapter=self._adapter)
+        await self.status_hook.send("Starting Clam...")
 
     def add_to_blacklist(self, user):
         self.blacklist.append(str(user.id))
@@ -240,7 +241,7 @@ class Clam(commands.Bot):
         await self.status_hook.send("Connected to Discord")
 
     async def on_resumed(self):
-        self.status_hook.send("Resumed connection with Discord")
+        await self.status_hook.send("Resumed connection with Discord")
 
     async def on_disconnect(self):
         if not self.session.closed:
