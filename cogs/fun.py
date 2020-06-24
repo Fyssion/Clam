@@ -2,12 +2,14 @@ from discord.ext import commands
 import discord
 
 from datetime import datetime as d
+from datetime import timedelta
 import math
 import random
 import functools
 import importlib
 import asyncio
 import collections
+import humanize
 from random import choice
 
 from .utils import colors, human_time
@@ -159,6 +161,30 @@ class Fun(commands.Cog):
             return await self.bot.wait_for("message", check=check, timeout=60)
         except asyncio.TimeoutError:
             return None
+
+    @commands.command(description="See how fast you can type something")
+    async def timeme(self, ctx):
+        def check(ms):
+            return ms.channel == ctx.channel and ms.author == ctx.author
+
+        await ctx.send("**Start typing!** The timer started when you sent your message.")
+        start = ctx.message.created_at
+
+        try:
+            message = await self.bot.wait_for("message", check=check, timeout=180)
+        except asyncio.TimeoutError:
+            return await ctx.send("You took too long.")
+
+        end = message.created_at
+
+        start = start - timedelta(microseconds=start.microsecond % 10000)
+        end = end - timedelta(microseconds=end.microsecond % 10000)
+
+        time = end - start
+
+        human_friendly = str(float(f"{time.seconds}.{time.microseconds}"))
+
+        await ctx.send(f"You took **`{human_friendly} seconds`** to type **`{discord.utils.escape_mentions(message.content)}`**.")
 
     @commands.command(
         name="birthday",
