@@ -140,7 +140,6 @@ class Clam(commands.Bot):
         self.ordered_cogs = [c for c in self.cogs.keys()]
 
     async def prepare_bot(self):
-        self.console = self.get_channel(711952122132037722)
         self.pool = await db.Table.create_pool(self.config.database_uri)
         self.session = aiohttp.ClientSession(loop=self.loop)
         self._adapter = discord.AsyncWebhookAdapter(self.session)
@@ -233,6 +232,8 @@ class Clam(commands.Bot):
     async def on_ready(self):
         if self.startup_time is None:
             self.startup_time = d.now()
+        if self.console is None:
+            self.console = self.get_channel(711952122132037722)
 
         self.log.info(f"Logged in as {self.user.name} - {self.user.id}")
         await self.status_hook.send("Received READY event")
