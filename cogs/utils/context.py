@@ -101,6 +101,7 @@ class EmbedPageSource(menus.ListPageSource):
         formatted = "\n".join(
             f"{i+1}. {v}" for i, v in enumerate(entries, start=offset)
         )
+        self.embed.description = self.embed.description or ""
         self.embed.description += "\n\n" + formatted
 
         return self.embed
