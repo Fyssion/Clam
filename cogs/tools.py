@@ -74,6 +74,78 @@ class Tools(commands.Cog):
         self.emoji = ":tools:"
         self.log = self.bot.log
 
+        if not hasattr(bot, "sniped_messages"):
+            self.bot.sniped_messages = []
+
+        self.sniped_messages = self.bot.sniped_messages
+
+    async def send_sniped_message(self, ctx, message):
+        em = discord.Embed(
+            description=message.content,
+            color=colors.PRIMARY,
+            timestamp=message.created_at,
+        )
+
+        em.set_author(name=str(message.author), icon_url=message.author.avatar_url)
+        em.set_footer(text=f"ID: {message.id} | Message sent")
+
+        await ctx.send(embed=em)
+
+    @commands.group(
+        invoke_without_command=True,
+        description="Get the previous deleted message in this channel",
+    )
+    async def snipe(self, ctx):
+        sniped = [m for m in self.sniped_messages if m.channel == ctx.channel]
+
+        if not sniped:
+            return await ctx.send("I haven't sniped any messages in this channel.")
+
+        message = sniped[0]
+
+        await self.send_sniped_message(ctx, message)
+
+    @snipe.command(
+        name="id", description="Get a sniped message by it's id (found with snipe all)"
+    )
+    async def snipe_id(self, ctx, id):
+        sniped = [m for m in self.sniped_messages if m.channel == ctx.channel]
+
+        if not sniped:
+            return await ctx.send("I haven't sniped any messages in this channel.")
+
+        message = discord.utils.get(sniped, id=id)
+
+        if not message:
+            return await ctx.send("I don't have a sniped message with that ID.")
+
+        await self.send_sniped_message(ctx, message)
+
+    @snipe.command(
+        name="all",
+        description="Get all sniped messages in this channel",
+        aliases=["list"],
+    )
+    async def snipe_all(self, ctx):
+        sniped = [m for m in self.sniped_messages if m.channel == ctx.channel]
+
+        if not sniped:
+            return await ctx.send("I haven't sniped any messages in this channel.")
+
+        entries = [f"{m.author} `(ID: {m.id})`" for m in sniped]
+
+        em = discord.Embed(title="Sniped Messages", color=colors.PRIMARY)
+
+        pages = ctx.embed_pages(entries, em)
+        await pages.start(ctx)
+
+    @commands.Cog.listener()
+    async def on_message_delete(self, message):
+        self.sniped_messages.append(message)
+
+        if len(self.sniped_messages) > 1000:
+            self.sniped_messages.pop(len(self.sniped_messages - 1))
+
     async def get_average_color(self, icon):
         bytes = io.BytesIO(await icon.read())
         partial = functools.partial(Image.open, bytes)
