@@ -284,10 +284,10 @@ class CreateEmbedMenu(menus.Menu):
         # )
 
         em.set_image(
-            url="https://raw.githubusercontent.com/Clam-Bot/Clam/main/assets/embed-image.png"
+            url="https://raw.githubusercontent.com/Fyssion/Clam/main/assets/embed-image.png"
         )
         em.set_thumbnail(
-            url="https://raw.githubusercontent.com/Clam-Bot/Clam/main/assets/embed-thumbnail.png"
+            url="https://raw.githubusercontent.com/Fyssion/Clam/main/assets/embed-thumbnail.png"
         )
 
         return await ctx.send(

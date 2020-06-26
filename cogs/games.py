@@ -370,7 +370,7 @@ class Hangman:
 
         # Add the correct hangman thumbnail
         num = self.guesses_left
-        url = f"https://raw.githubusercontent.com/Clam-Bot/Clam/main/assets/hangman/hangman{num}.png"
+        url = f"https://raw.githubusercontent.com/Fyssion/Clam/main/assets/hangman/hangman{num}.png"
 
         em.set_thumbnail(url=url)
 

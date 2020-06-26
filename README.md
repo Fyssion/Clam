@@ -4,7 +4,7 @@
 
 # Clam
 
-[![License](https://img.shields.io/github/license/Clam-Bot/Clam)](https://github.com/Clam-Bot/Clam/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/Fyssion/Clam)](https://github.com/Fyssion/Clam/blob/main/LICENSE)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 A multi-purpose Discord bot. Likes to hide in it's shell.
