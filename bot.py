@@ -66,7 +66,6 @@ initial_extensions = [
     "cogs.mathematics",
     "cogs.meta",
     "cogs.moderation",
-    "cogs.music",
     "cogs.reddit",
     "cogs.stats",
     "cogs.tags",
@@ -143,8 +142,13 @@ class Clam(commands.Bot):
         self.pool = await db.Table.create_pool(self.config.database_uri)
         self.session = aiohttp.ClientSession(loop=self.loop)
         self._adapter = discord.AsyncWebhookAdapter(self.session)
-        self.status_hook = discord.Webhook.from_url(self.config.status_hook, adapter=self._adapter)
-        await self.status_hook.send("Starting Clam...")
+
+        if self.config.status_hook:
+            self.status_hook = discord.Webhook.from_url(self.config.status_hook, adapter=self._adapter)
+            await self.status_hook.send("Starting Clam...")
+
+        else:
+            self.status_hook = None
 
     def add_to_blacklist(self, user):
         self.blacklist.append(str(user.id))
@@ -236,16 +240,20 @@ class Clam(commands.Bot):
             self.console = self.get_channel(711952122132037722)
 
         self.log.info(f"Logged in as {self.user.name} - {self.user.id}")
-        await self.status_hook.send("Received READY event")
+
+        if self.status_hook:
+            await self.status_hook.send("Received READY event")
 
     async def on_connect(self):
-        await self.status_hook.send("Connected to Discord")
+        if self.status_hook:
+            await self.status_hook.send("Connected to Discord")
 
     async def on_resumed(self):
-        await self.status_hook.send("Resumed connection with Discord")
+        if self.status_hook:
+            await self.status_hook.send("Resumed connection with Discord")
 
     async def on_disconnect(self):
-        if not self.session.closed:
+        if not self.session.closed and self.status_hook:
             await self.status_hook.send("Disconnected from Discord")
 
     async def logout(self):
