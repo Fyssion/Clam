@@ -135,7 +135,7 @@ class Fun(commands.Cog):
                 )
 
             limit = abs(position)
-            if deleted:
+            if not deleted:
                 limit += 1
 
             history = await ctx.channel.history(limit=limit).flatten()
