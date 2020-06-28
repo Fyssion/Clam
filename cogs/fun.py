@@ -97,9 +97,10 @@ class Fun(commands.Cog):
 
         try:
             await ctx.message.delete()
+            deleted = True
 
         except discord.Forbidden:
-            pass
+            deleted = False
 
         if not emoji:
             return await ctx.send(
@@ -133,7 +134,9 @@ class Fun(commands.Cog):
                     delete_after=10.0,
                 )
 
-            limit = abs(position) + 1
+            limit = abs(position)
+            if deleted:
+                limit += 1
 
             history = await ctx.channel.history(limit=limit).flatten()
             message = history[limit - 1]
