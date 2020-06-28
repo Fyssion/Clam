@@ -80,11 +80,94 @@ class Fun(commands.Cog):
         emoji = discord.utils.get(self.bot.emojis, name=query)
 
         if not emoji:
-            return await ctx.send("Sorry, I couldn't find that emoji.")
+            return await ctx.send(
+                f"{ctx.tick(False)} Sorry, I couldn't find that emoji."
+            )
         if not emoji.is_usable():
-            return await ctx.send("Sorry, I can't use this emoji.")
+            return await ctx.send(f"{ctx.tick(False)} Sorry, I can't use this emoji.")
 
         await ctx.send(str(emoji))
+
+    @commands.command(
+        description="Search for an emoji I have access to and react with it",
+        usage="[emoji name] <message position>",
+    )
+    async def react(self, ctx, name, position=-1):
+        emoji = discord.utils.get(self.bot.emojis, name=name)
+
+        try:
+            await ctx.message.delete()
+
+        except discord.Forbidden:
+            pass
+
+        if not emoji:
+            return await ctx.send(
+                f"{ctx.tick(False)} Sorry, I couldn't find that emoji.",
+                delete_after=5.0,
+            )
+        if not emoji.is_usable():
+            return await ctx.send(
+                f"{ctx.tick(False)} Sorry, I can't use this emoji.", delete_after=5.0
+            )
+
+        # Manual conversion so I can delete_after
+        try:
+            position = int(position)
+        except ValueError:
+            return await ctx.send(
+                f"{ctx.tick(False)} You must provide a valid position or message ID. Ex: -2",
+                delete_after=10.0,
+            )
+
+        if position == 0:
+            return await ctx.send(
+                f"{ctx.tick(False)} 0 is not a vaild position or message ID.",
+                delete_after=10.0,
+            )
+
+        if position < 0:
+            if position < -10:
+                return await ctx.send(
+                    f"{ctx.tick(False)} If you specify relative position, it must be no further back than 10.",
+                    delete_after=10.0,
+                )
+
+            limit = abs(position) + 1
+
+            history = await ctx.channel.history(limit=limit).flatten()
+            message = history[limit - 1]
+
+        else:
+            try:
+                message = await ctx.channel.fetch_message(position)
+            except (discord.NotFound, discord.Forbidden):
+                return await ctx.send(
+                    f"{ctx.tick(False)} Message not found. Sorry.", delete_after=5.0
+                )
+
+        await message.add_reaction(emoji)
+
+        bot_message = await ctx.send(
+            f"{ctx.tick(True)} Added reaction. "
+            "React and I will remove the reaction and this message."
+        )
+
+        def check(pd):
+            return (
+                pd.user_id == ctx.author.id
+                and pd.channel_id == ctx.channel.id
+                and pd.message_id == message.id
+            )
+
+        try:
+            await self.bot.wait_for("raw_reaction_add", check=check, timeout=180.0)
+
+        except asyncio.TimeoutError:
+            pass
+
+        await message.remove_reaction(emoji, ctx.me)
+        await bot_message.delete()
 
     @commands.command(description="Flip a coin.")
     async def flipcoin(self, ctx):
@@ -167,7 +250,9 @@ class Fun(commands.Cog):
         def check(ms):
             return ms.channel == ctx.channel and ms.author == ctx.author
 
-        await ctx.send("**Start typing!** The timer started when you sent your message.")
+        await ctx.send(
+            "**Start typing!** The timer started when you sent your message."
+        )
         start = ctx.message.created_at
 
         try:
@@ -184,7 +269,9 @@ class Fun(commands.Cog):
 
         human_friendly = str(float(f"{time.seconds}.{time.microseconds}"))
 
-        await ctx.send(f"You took **`{human_friendly} seconds`** to type **`{discord.utils.escape_mentions(message.content)}`**.")
+        await ctx.send(
+            f"You took **`{human_friendly} seconds`** to type **`{discord.utils.escape_mentions(message.content)}`**."
+        )
 
     @commands.command(
         name="birthday",
