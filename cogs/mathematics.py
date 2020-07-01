@@ -88,7 +88,7 @@ class Math(commands.Cog):
     @commands.command(
         description="Solve the quadratic formula", aliases=["quad"], usage="[a b c]"
     )
-    async def quadratic(self, ctx, a: int, b: int, c: int):
+    async def quadratic(self, ctx, a: float, b: float, c: float):
         delta = (b ** 2) - (4 * a * c)
         msg = f"Quadratic formula: **`( -{b} ± √( {b}^2 - 4({a})({c}) ) ) / ( 2({a}) )`**\n"
         if delta < 0:
