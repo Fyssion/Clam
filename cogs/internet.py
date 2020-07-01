@@ -162,7 +162,7 @@ class Internet(commands.Cog):
     @commands.command(
         description="Fetch info about a Roblox profile", usage="[username]"
     )
-    @commands.cooldown(15, 5, commands.BucketType.user)
+    @commands.cooldown(15, 2, commands.BucketType.user)
     async def roblox(self, ctx, *, username):
         await ctx.trigger_typing()
 
@@ -204,6 +204,17 @@ class Internet(commands.Cog):
 
         avatar = links[0].get("src")
 
+        async with session.get(f"https://friends.roblox.com/v1/users/{profile['Id']}/friends/count") as resp:
+            if resp.status != 200:
+                return await ctx.send("I couldn't fetch that user's friend count. Sorry.")
+            friends_data = await resp.json()
+
+        async with session.get(f"https://users.roblox.com/v1/users/{profile['Id']}/status") as resp:
+            if resp.status != 200:
+                return await ctx.send("I couldn't fetch that user's status. Sorry.")
+            status_data = await resp.json()
+
+
         em = discord.Embed(
             title=profile["Username"],
             description=description,
@@ -213,6 +224,9 @@ class Internet(commands.Cog):
 
         em.set_thumbnail(url=avatar)
         em.set_footer(text="Created")
+
+        em.add_field(name="Status", value=status_data.get("status") or "No status", inline=False)
+        em.add_field(name="Friends", value=friends_data.get("count") or "No friends", inline=False)
 
         await ctx.send(embed=em)
 
