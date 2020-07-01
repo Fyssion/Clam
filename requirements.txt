@@ -12,3 +12,4 @@ click
 dateparser
 parsedatetime
 pytz
+beautifulsoup4

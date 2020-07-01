@@ -8,6 +8,7 @@ import importlib
 import re
 import os
 import ast
+from bs4 import BeautifulSoup
 
 from .utils import aiopypi, aioxkcd, fuzzy, colors
 from .utils.menus import MenuPages
@@ -155,6 +156,63 @@ class Internet(commands.Cog):
                 value="\n".join(requires_text),
                 inline=False,
             )
+
+        await ctx.send(embed=em)
+
+    @commands.command(
+        description="Fetch info about a Roblox profile", usage="[username]"
+    )
+    @commands.cooldown(15, 5, commands.BucketType.user)
+    async def roblox(self, ctx, *, username):
+        await ctx.trigger_typing()
+
+        session = self.bot.session
+
+        async with session.get(
+            f"http://api.roblox.com/users/get-by-username/?username={username}"
+        ) as resp:
+            if resp.status != 200:
+                return await ctx.send("I couldn't find that user. Sorry.")
+
+            profile = await resp.json()
+
+        if not profile.get("success") and not profile.get("Id"):
+            return await ctx.send("I couldn't find that user. Sorry.")
+
+        async with session.get(
+            f"https://users.roblox.com/v1/users/{profile['Id']}"
+        ) as resp:
+            if resp.status != 200:
+                return await ctx.send("I couldn't fetch that user. Sorry.")
+            user_data = await resp.json()
+
+        description = user_data["description"]
+        created_at = dateparser.parse(user_data["created"])
+
+        async with session.get(
+           f"https://www.roblox.com/users/{profile['Id']}/profile"
+        ) as resp:
+            if resp.status != 200:
+                return await ctx.send("I couldn't fetch that user's avatar. Sorry.")
+
+            html = await resp.read()
+            html = html.decode("utf-8")
+
+        soup = BeautifulSoup(html, "html.parser")
+
+        links = soup.find_all("img")
+
+        avatar = links[0].get("src")
+
+        em = discord.Embed(
+            title=profile["Username"],
+            description=description,
+            timestamp=created_at,
+            color=colors.PRIMARY,
+        )
+
+        em.set_thumbnail(url=avatar)
+        em.set_footer(text="Created")
 
         await ctx.send(embed=em)
 
