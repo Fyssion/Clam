@@ -521,10 +521,7 @@ class Meta(commands.Cog):
 
     @commands.command(name="invite", description="Invite me to your server")
     async def invite_command(self, ctx):
-        if self.bot.user.id == 639234650782564362:
-            invite = "https://clambot.xyz/invite"
-        else:
-            invite = f"https://discordapp.com/api/oauth2/authorize?client_id={self.bot.user.id}&permissions=470150358&scope=bot"
+        invite = f"https://discordapp.com/api/oauth2/authorize?client_id={self.bot.user.id}&permissions=470150358&scope=bot"
         await ctx.send(f"Invite link: <{invite}>")
 
     @commands.command(description="Get a link to my support server")
