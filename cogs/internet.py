@@ -162,8 +162,17 @@ class Internet(commands.Cog):
     @commands.command(
         description="Fetch info about a Roblox profile", usage="[username]"
     )
-    @commands.cooldown(15, 2, commands.BucketType.user)
+    @commands.cooldown(2, 30, commands.BucketType.user)
     async def roblox(self, ctx, *, username):
+        # Okay, so the Roblox API is a bit strange. You have to make
+        # separate API requests to each API to get info. That means
+        # I have to make a bunch of requests, which makes me enforce
+        # a heavy cooldown. Most of this command uses the standard API, except
+        # for the avatar. For some reason, Roblox does not provide a way (that I could find)
+        # to get an avatar image URL. To get the avatar, I had to preform some
+        # web scraping, which slows the command down quite a bit.
+        # If I knew of a better way to do this, I would most certainly do it.
+
         await ctx.trigger_typing()
 
         session = self.bot.session
@@ -190,7 +199,7 @@ class Internet(commands.Cog):
         created_at = dateparser.parse(user_data["created"])
 
         async with session.get(
-           f"https://www.roblox.com/users/{profile['Id']}/profile"
+            f"https://www.roblox.com/users/{profile['Id']}/profile"
         ) as resp:
             if resp.status != 200:
                 return await ctx.send("I couldn't fetch that user's avatar. Sorry.")
@@ -204,16 +213,21 @@ class Internet(commands.Cog):
 
         avatar = links[0].get("src")
 
-        async with session.get(f"https://friends.roblox.com/v1/users/{profile['Id']}/friends/count") as resp:
+        async with session.get(
+            f"https://friends.roblox.com/v1/users/{profile['Id']}/friends/count"
+        ) as resp:
             if resp.status != 200:
-                return await ctx.send("I couldn't fetch that user's friend count. Sorry.")
+                return await ctx.send(
+                    "I couldn't fetch that user's friend count. Sorry."
+                )
             friends_data = await resp.json()
 
-        async with session.get(f"https://users.roblox.com/v1/users/{profile['Id']}/status") as resp:
+        async with session.get(
+            f"https://users.roblox.com/v1/users/{profile['Id']}/status"
+        ) as resp:
             if resp.status != 200:
                 return await ctx.send("I couldn't fetch that user's status. Sorry.")
             status_data = await resp.json()
-
 
         em = discord.Embed(
             title=profile["Username"],
@@ -225,8 +239,14 @@ class Internet(commands.Cog):
         em.set_thumbnail(url=avatar)
         em.set_footer(text="Created")
 
-        em.add_field(name="Status", value=status_data.get("status") or "No status", inline=False)
-        em.add_field(name="Friends", value=friends_data.get("count") or "No friends", inline=False)
+        em.add_field(
+            name="Status", value=status_data.get("status") or "No status", inline=False
+        )
+        em.add_field(
+            name="Friends",
+            value=friends_data.get("count") or "No friends",
+            inline=False,
+        )
 
         await ctx.send(embed=em)
 
