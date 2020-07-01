@@ -189,10 +189,8 @@ class Internet(commands.Cog):
         if not profile.get("success") and not profile.get("Id"):
             return await ctx.send("I couldn't find that user. Sorry.")
 
-        profile_url = f"https://users.roblox.com/v1/users/{profile['Id']}"
-
         # Get basic info about them
-        async with session.get(profile_url) as resp:
+        async with session.get(f"https://users.roblox.com/v1/users/{profile['Id']}") as resp:
             if resp.status != 200:
                 return await ctx.send("I couldn't fetch that user. Sorry.")
             user_data = await resp.json()
@@ -200,9 +198,11 @@ class Internet(commands.Cog):
         description = user_data["description"]
         created_at = dateparser.parse(user_data["created"])
 
+        profile_url = f"https://www.roblox.com/users/{profile['Id']}/profile"
+
         # Get the avatar URL by web scraping
         async with session.get(
-            f"https://www.roblox.com/users/{profile['Id']}/profile"
+            profile_url
         ) as resp:
             if resp.status != 200:
                 return await ctx.send("I couldn't fetch that user's avatar. Sorry.")
