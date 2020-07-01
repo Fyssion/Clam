@@ -177,6 +177,7 @@ class Internet(commands.Cog):
 
         session = self.bot.session
 
+        # See if the user exists
         async with session.get(
             f"http://api.roblox.com/users/get-by-username/?username={username}"
         ) as resp:
@@ -188,9 +189,10 @@ class Internet(commands.Cog):
         if not profile.get("success") and not profile.get("Id"):
             return await ctx.send("I couldn't find that user. Sorry.")
 
-        async with session.get(
-            f"https://users.roblox.com/v1/users/{profile['Id']}"
-        ) as resp:
+        profile_url = f"https://users.roblox.com/v1/users/{profile['Id']}"
+
+        # Get basic info about them
+        async with session.get(profile_url) as resp:
             if resp.status != 200:
                 return await ctx.send("I couldn't fetch that user. Sorry.")
             user_data = await resp.json()
@@ -198,6 +200,7 @@ class Internet(commands.Cog):
         description = user_data["description"]
         created_at = dateparser.parse(user_data["created"])
 
+        # Get the avatar URL by web scraping
         async with session.get(
             f"https://www.roblox.com/users/{profile['Id']}/profile"
         ) as resp:
@@ -213,6 +216,7 @@ class Internet(commands.Cog):
 
         avatar = links[0].get("src")
 
+        # Get friend count
         async with session.get(
             f"https://friends.roblox.com/v1/users/{profile['Id']}/friends/count"
         ) as resp:
@@ -222,6 +226,7 @@ class Internet(commands.Cog):
                 )
             friends_data = await resp.json()
 
+        # Get status
         async with session.get(
             f"https://users.roblox.com/v1/users/{profile['Id']}/status"
         ) as resp:
@@ -231,6 +236,7 @@ class Internet(commands.Cog):
 
         em = discord.Embed(
             title=profile["Username"],
+            url=profile_url,
             description=description,
             timestamp=created_at,
             color=colors.PRIMARY,
