@@ -141,7 +141,7 @@ class Tools(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):
-        self.sniped_messages.append(message)
+        self.sniped_messages.insert(0, message)
 
         if len(self.sniped_messages) > 1000:
             self.sniped_messages.pop(len(self.sniped_messages - 1))
