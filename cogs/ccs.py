@@ -188,7 +188,9 @@ class CCS(commands.Cog):
     )
     @commands.is_owner()
     @commands.bot_has_permissions(manage_channels=True)
-    async def toggle(self, ctx, *, channel: discord.TextChannel):
+    async def toggle(self, ctx, *, channel: discord.TextChannel = None):
+        channel = channel or ctx.channel
+
         if channel.category and channel.category.id == ARCHIVE_CATEGORY:
             await self.unarchive_channel(ctx, channel)
 
