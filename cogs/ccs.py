@@ -43,6 +43,7 @@ class CCS(commands.Cog):
         self.bot = bot
         self.emoji = CCS_EMOJI
         self.log = self.bot.log
+        self.private = True
 
     async def cog_check(self, ctx):
         if ctx.guild.id != CCS_ID:
