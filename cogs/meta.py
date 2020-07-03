@@ -272,8 +272,10 @@ class ClamHelpCommand(commands.HelpCommand):
 
         # Check if the query was a cog even if it was lowercase
         # and save it for later use
-        cogs_lowered = [c.lower() for c in bot.cogs.keys()]
-        cog = bot.get_cog(command.lower().capitalize())
+        for name in bot.cogs:
+            if name.lower() == command.lower():
+                cog = bot.cogs[name]
+                break
 
         maybe_coro = discord.utils.maybe_coroutine
 
