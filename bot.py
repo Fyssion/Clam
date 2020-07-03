@@ -59,6 +59,7 @@ def dev_prefix(bot, message):
 
 initial_extensions = [
     "cogs.admin",
+    "cogs.ccs",
     "cogs.events",
     "cogs.fun",
     "cogs.games",
