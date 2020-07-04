@@ -13,6 +13,7 @@ import functools
 from PIL import Image
 import typing
 import dateparser
+import asyncio
 
 from .utils import colors
 
@@ -78,6 +79,99 @@ class Tools(commands.Cog):
             self.bot.sniped_messages = []
 
         self.sniped_messages = self.bot.sniped_messages
+
+    async def prompt(self, ctx, msg, *, timeout=180.0, check=None):
+        def default_check(ms):
+            return ms.author == ctx.author and ms.channel == ctx.channel
+
+        check = check or default_check
+
+        await ctx.send(msg)
+
+        try:
+            message = await self.bot.wait_for("message", timeout=timeout, check=check)
+
+        except asyncio.TimeoutError:
+            raise commands.BadArgument("You timed out. Aborting.")
+
+        return message.content
+
+    @commands.command(description="Create a poll and send it to any channel")
+    async def poll(self, ctx):
+        content = await self.prompt(ctx, "What channel should the poll be sent to?")
+
+        channel = await commands.TextChannelConverter().convert(ctx, content)
+
+        content = await self.prompt(
+            ctx, "Mention everyone when creating the poll? (y/n)"
+        )
+        lowered = content.lower()
+
+        if lowered.startswith("y"):
+            mention = "@everyone "
+
+        elif lowered.startswith("n"):
+            mention = ""
+
+        else:
+            raise commands.BadArgument("You must respond with y or n. Aborting.")
+
+        title = await self.prompt(ctx, "What is the title of the poll?")
+
+        emojis = [
+            "regional_indicator_a",
+            "regional_indicator_b",
+            "regional_indicator_c",
+            "regional_indicator_d",
+            "regional_indicator_e",
+            "regional_indicator_f",
+            "regional_indicator_g",
+            "regional_indicator_h",
+            "regional_indicator_i",
+            "regional_indicator_j",
+        ]
+
+        options = []
+
+        await ctx.send(
+            "Type options for your poll in separate messages.\n"
+            f"When you are done, type `{ctx.prefix}create poll` to create the poll."
+        )
+
+        def check(ms):
+            return ms.author == ctx.author and ms.channel == ctx.channel
+
+        while len(options) <= 10:
+            try:
+                message = await self.bot.wait_for("message", timeout=180.0, check=check)
+
+            except asyncio.TimeoutError:
+                return await ctx.send(f"{ctx.tick(False)} You timed out. Aborting.")
+
+            if message.content.lower() == f"{ctx.prefix}create poll":
+                break
+
+            options.append(message.content)
+
+            await message.add_reaction(ctx.tick(True))
+
+        await ctx.send("Creating your poll...")
+
+        description = []
+        reactions_to_add = []
+
+        for i, option in enumerate(options):
+            reactions_to_add.append(emojis[i])
+            description.append(f":{emojis[i]}: | {option}")
+
+        em = discord.Embed(
+            title=title, description="\n".join(description), color=colors.PRIMARY
+        )
+
+        poll_message = await channel.send(f"{mention}**New Poll!**", embed=em)
+
+        for reaction in reactions_to_add:
+            await poll_message.add_reaction(reaction)
 
     async def send_sniped_message(self, ctx, message):
         em = discord.Embed(
