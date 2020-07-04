@@ -119,16 +119,16 @@ class Tools(commands.Cog):
         title = await self.prompt(ctx, "What is the title of the poll?")
 
         emojis = [
-            "regional_indicator_a",
-            "regional_indicator_b",
-            "regional_indicator_c",
-            "regional_indicator_d",
-            "regional_indicator_e",
-            "regional_indicator_f",
-            "regional_indicator_g",
-            "regional_indicator_h",
-            "regional_indicator_i",
-            "regional_indicator_j",
+            "\N{REGIONAL INDICATOR SYMBOL LETTER A}",
+            "\N{REGIONAL INDICATOR SYMBOL LETTER B}",
+            "\N{REGIONAL INDICATOR SYMBOL LETTER C}",
+            "\N{REGIONAL INDICATOR SYMBOL LETTER D}",
+            "\N{REGIONAL INDICATOR SYMBOL LETTER E}",
+            "\N{REGIONAL INDICATOR SYMBOL LETTER F}",
+            "\N{REGIONAL INDICATOR SYMBOL LETTER G}",
+            "\N{REGIONAL INDICATOR SYMBOL LETTER H}:",
+            "\N{REGIONAL INDICATOR SYMBOL LETTER I}",
+            "\N{REGIONAL INDICATOR SYMBOL LETTER J}",
         ]
 
         options = []
@@ -158,11 +158,9 @@ class Tools(commands.Cog):
         await ctx.send("Creating your poll...")
 
         description = []
-        reactions_to_add = []
 
         for i, option in enumerate(options):
-            reactions_to_add.append(emojis[i])
-            description.append(f":{emojis[i]}: | {option}")
+            description.append(f"{emojis[i]} | {option}")
 
         em = discord.Embed(
             title=title, description="\n".join(description), color=colors.PRIMARY
@@ -170,8 +168,8 @@ class Tools(commands.Cog):
 
         poll_message = await channel.send(f"{mention}**New Poll!**", embed=em)
 
-        for reaction in reactions_to_add:
-            await poll_message.add_reaction(reaction)
+        for i in range(len(options)):
+            await poll_message.add_reaction(emojis[i])
 
     async def send_sniped_message(self, ctx, message):
         em = discord.Embed(
