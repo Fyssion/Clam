@@ -190,7 +190,9 @@ class Internet(commands.Cog):
             return await ctx.send("I couldn't find that user. Sorry.")
 
         # Get basic info about them
-        async with session.get(f"https://users.roblox.com/v1/users/{profile['Id']}") as resp:
+        async with session.get(
+            f"https://users.roblox.com/v1/users/{profile['Id']}"
+        ) as resp:
             if resp.status != 200:
                 return await ctx.send("I couldn't fetch that user. Sorry.")
             user_data = await resp.json()
@@ -201,9 +203,7 @@ class Internet(commands.Cog):
         profile_url = f"https://www.roblox.com/users/{profile['Id']}/profile"
 
         # Get the avatar URL by web scraping
-        async with session.get(
-            profile_url
-        ) as resp:
+        async with session.get(profile_url) as resp:
             if resp.status != 200:
                 return await ctx.send("I couldn't fetch that user's avatar. Sorry.")
 
@@ -534,6 +534,7 @@ class Internet(commands.Cog):
             "aiohttp": "https://docs.aiohttp.org/en/stable",
             "asyncpg": "https://magicstack.github.io/asyncpg/current",
             "flask": "https://flask.palletsprojects.com/en/1.1.x",
+            "sqlalchemy": "https://docs.sqlalchemy.org/en/13",
         }
 
         if obj is None:
@@ -603,6 +604,11 @@ class Internet(commands.Cog):
     async def docs_flask(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a Flask entity."""
         await self.do_docs(ctx, "flask", obj)
+
+    @docs.command(name="sqlalchemy", aliases=["sqla"])
+    async def docs_sqlalchemy(self, ctx, *, obj: str = None):
+        """Gives you a documentation link for a SQLAlchemy entity."""
+        await self.do_docs(ctx, "sqlalchemy", obj)
 
 
 def setup(bot):
