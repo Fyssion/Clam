@@ -23,7 +23,7 @@ class DocsSource(menus.ListPageSource):
     def format_page(self, menu, entries):
         offset = menu.current_page * self.per_page
 
-        em = discord.Embed(colour=colors.PRIMARY)
+        em = discord.Embed(title=f"`Results for '{self.object}'`", colour=colors.PRIMARY)
         em.set_footer(
             text=f"{len(self.entries)} results | Page {menu.current_page + 1}/{self.get_max_pages()}"
         )
@@ -33,9 +33,8 @@ class DocsSource(menus.ListPageSource):
         for i, (key, url) in enumerate(entries, start=offset):
             matches.append(f"[`{key}`]({url})")
 
-        em.add_field(
-            name=f"`Results for '{self.object}'`", value="\n".join(matches),
-        )
+        em.description = "\n".join(matches)
+
         return em
 
 
