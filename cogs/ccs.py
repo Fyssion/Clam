@@ -4,7 +4,7 @@ import discord
 from datetime import datetime
 import asyncio
 
-from .utils import db
+from .utils import db, emojis
 from .utils.errors import PrivateCog
 
 
@@ -20,10 +20,12 @@ class ArchivedChannels(db.Table, table_name="archived_channels"):
 CCS_ID = 454469821376102410
 CCS_EMOJI = "<:ccs:728343380773437440>"
 
+GENERAL = 617125050075709440
 ARCHIVE_CATEGORY = 454471313998872576
 
 VERIFIED = 454470860577701898
 CODER = 623295800088461322
+BOT = 454471729776033802
 RETIRED = 617364905909026857
 RETIRED_EMOJI = "\N{CROSS MARK}"
 
@@ -197,6 +199,23 @@ class CCS(commands.Cog):
 
         else:
             await self.archive_channel(ctx, channel)
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member):
+        if member.guild.id != CCS_ID:
+            return
+
+        if not member.bot:
+            return
+
+        verified = member.guild.get_role(VERIFIED)
+        bot = member.guild.get_role(BOT)
+
+        await member.add_roles(verified, bot)
+
+        general = member.guild.get_channel(GENERAL)
+
+        await general.send(f"{emojis.GREEN_TICK} Added bot `{member}`")
 
 
 def setup(bot):
