@@ -67,7 +67,7 @@ initial_extensions = [
     "cogs.mathematics",
     "cogs.meta",
     "cogs.moderation",
-    "cogs.reddit",
+    # "cogs.reddit",
     "cogs.stats",
     "cogs.tags",
     "cogs.timers",
