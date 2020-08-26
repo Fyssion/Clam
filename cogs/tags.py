@@ -814,6 +814,12 @@ class Tags(commands.Cog):
         pages = MenuPages(source=TagPageSource(results), clear_reactions_after=True,)
         await pages.start(ctx)
 
+    @commands.command(
+        description="[Alias for `tag all`] List all tags for this server",
+    )
+    async def tags(self, ctx):
+        await ctx.invoke(self.tag_all)
+
     @tag.command(
         name="top",
         description="List top tags by number of uses for this server",
