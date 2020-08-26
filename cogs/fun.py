@@ -74,10 +74,9 @@ class Fun(commands.Cog):
     @commands.command(
         description="Search for an emoji I have access to.",
         aliases=["emote", "nitro"],
-        usage="[emoji name]",
     )
-    async def emoji(self, ctx, query):
-        emoji = discord.utils.get(self.bot.emojis, name=query)
+    async def emoji(self, ctx, emoji):
+        emoji = discord.utils.get(self.bot.emojis, name=emoji)
 
         if not emoji:
             return await ctx.send(
@@ -92,8 +91,8 @@ class Fun(commands.Cog):
         description="Search for an emoji I have access to and react with it",
         usage="[emoji name] <message position>",
     )
-    async def react(self, ctx, name, position=-1):
-        emoji = discord.utils.get(self.bot.emojis, name=name)
+    async def react(self, ctx, emoji, message=-1):
+        emoji = discord.utils.get(self.bot.emojis, name=emoji)
 
         try:
             await ctx.message.delete()
@@ -114,7 +113,7 @@ class Fun(commands.Cog):
 
         # Manual conversion so I can delete_after
         try:
-            position = int(position)
+            position = int(message)
         except ValueError:
             return await ctx.send(
                 f"{ctx.tick(False)} You must provide a valid position or message ID. Ex: -2",
@@ -179,7 +178,6 @@ class Fun(commands.Cog):
 
     @commands.group(
         description=("Roll a die or two"),
-        usage="<# of dice> <# of sides>",
         aliases=["diceroll"],
         invoke_without_command=True,
     )
@@ -205,14 +203,13 @@ class Fun(commands.Cog):
         )
 
     @commands.command(
-        description="Choose a random option", usage="[choices]", aliases=["choice"]
+        description="Choose a random option", aliases=["choice"]
     )
     async def choose(self, ctx, *choices):
         await ctx.send(random.choice(choices))
 
     @commands.command(
         description="Similar to choose, except it's the best of a specified number",
-        usage="[number] [choices]",
         aliases=["bo"],
     )
     async def bestof(self, ctx, number: int, *choices):

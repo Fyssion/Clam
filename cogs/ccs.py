@@ -87,7 +87,7 @@ class CCS(commands.Cog):
             return True
 
     @commands.command(
-        description="Retire or unretire a bot", usage="[member]", aliases=["unretire"]
+        description="Retire or unretire a bot", aliases=["unretire"]
     )
     @commands.has_role(CODER)
     @commands.bot_has_permissions(manage_roles=True, manage_nicknames=True)
@@ -187,7 +187,6 @@ class CCS(commands.Cog):
 
     @commands.command(
         description="Toggle a channel on or off (move to archived category)",
-        usage="<channel>",
     )
     @commands.is_owner()
     @commands.bot_has_permissions(manage_channels=True)

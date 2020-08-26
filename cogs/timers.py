@@ -253,7 +253,7 @@ class Timers(commands.Cog):
         return timer
 
     @commands.group(
-        aliases=["reminder", "remind"], usage="<when>", invoke_without_command=True
+        aliases=["reminder", "remind"], invoke_without_command=True
     )
     async def timer(
         self,

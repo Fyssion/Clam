@@ -53,7 +53,6 @@ class Internet(commands.Cog):
 
     @commands.group(
         description="Fetch a PyPI package.",
-        usage="[package] <version>",
         aliases=["package", "pip"],
         invoke_without_command=True,
     )
@@ -366,7 +365,7 @@ class Internet(commands.Cog):
 
     @commands.command(
         description="Fetch a repo or user from GitHub and display info about it.",
-        usage="[repo or user]",
+        usage="<repo|user>",
         aliases=["gh"],
     )
     async def github(self, ctx, item):
@@ -400,7 +399,6 @@ class Internet(commands.Cog):
     @commands.group(
         name="xkcd",
         description="Fetch an xdcd comic",
-        usage="<comic> (random if left blank)",
         invoke_without_command=True,
     )
     async def _xkcd(self, ctx, number: int = None):

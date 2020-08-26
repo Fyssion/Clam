@@ -36,10 +36,9 @@ def strfdelta(tdelta, fmt):
 
 
 class HelpPages(menus.ListPageSource):
-    def __init__(self, data, embed, prefix, more_info):
+    def __init__(self, data, embed, more_info):
         self.embed_base = embed
         self.original_description = embed.description
-        self.prefix = prefix
         self.more_info = more_info
         super().__init__(data, per_page=10)
 
@@ -52,20 +51,9 @@ class HelpPages(menus.ListPageSource):
         em.set_footer(
             text=f"{page_count} \N{BULLET} Note that you can only view commands that you can use"
         )
-        command_info = []
-        for i, command in enumerate(entries, start=offset):
-            command_help = f"**`{self.prefix}"
-            command_help += f"{command.parent} " if command.parent is not None else ""
-            command_help += command.name
-            command_help += (
-                f" {command.usage}`**" if command.usage is not None else "`**"
-            )
-            if command.description or command.brief or command.short_doc:
-                command_help += (
-                    f" - {command.description or command.brief or command.short_doc}"
-                )
-            command_info.append(command_help)
-        formatted = "\n".join(command_info)
+
+        commands = [c for i, c in enumerate(entries, start=offset)]
+        formatted = "\n".join(commands)
         if formatted:
             em.description += f"\n\n{formatted}\n\n{self.more_info}"
         else:
@@ -77,17 +65,17 @@ class ClamHelpCommand(commands.HelpCommand):
     def i_category(self, ctx):
         return (
             "For **more info** on a **specific category**, "
-            f"use: **`{self.context.bot.guild_prefix(self.context.guild)}help [category]`‍**"
+            f"use: **`{self.context.bot.guild_prefix(self.context.guild)}help <category>`‍**"
         )
 
     def i_cmd(self, ctx):
         return (
             "For **more info** on a **specific command**, "
-            f"use: **`{self.context.bot.guild_prefix(self.context.guild)}help [command]`‍**"
+            f"use: **`{self.context.bot.guild_prefix(self.context.guild)}help <command>`‍**"
         )
 
     def arg_help(self):
-        return "**Key:** `[required]` `<optional>`\n**Remove `[]` and `<>` when using the command.**"
+        return "**Key:** `<required>` `[optional]`\n**Remove `<>` and `[]` when using the command.**"
 
     def get_base_embed(self):
         ctx = self.context
@@ -146,11 +134,58 @@ class ClamHelpCommand(commands.HelpCommand):
 
         await ctx.send(embed=em)
 
+    def format_commands(self, commands):
+        formatted_commands = []
+
+        for command in commands:
+            signature = self.get_command_signature(command)
+            description = command.description or command.brief or command.short_doc
+
+            formatted_command = f"**`{signature}`**"
+
+            if description:
+                formatted_command += f" - {description}"
+
+            formatted_commands.append(formatted_command)
+
+        return formatted_commands
+
+    def format_aliases(self, command):
+        formatted_aliases = []
+
+        for alias in command.aliases:
+            formatted_alias = f"`{self.context.guild_prefix}"
+            formatted_alias += (
+                f"{command.parent} " if command.parent is not None else ""
+            )
+
+            formatted_alias += alias + "`"
+            formatted_aliases.append(formatted_alias)
+
+        return f"Aliases: {', '.join(formatted_aliases)}"
+
+    def format_command(self, command):
+        signature = self.get_command_signature(command)
+        description = command.description or command.brief or command.short_doc
+
+        formatted_command = f"**`{signature}`**"
+
+        if description:
+            formatted_command += f" - {description}"
+
+        if command.help:
+            formatted_command += f"\n{command.help}\n"
+
+        if command.aliases:
+            formatted_command += f"\n{self.format_aliases(command)}"
+
+        return formatted_command
+
     async def send_cog_help(self, cog):
         ctx = self.context
-        bot = ctx.bot
 
         filtered = await self.filter_commands(cog.get_commands(), sort=True)
+        commands = self.format_commands(filtered)
 
         em = self.get_base_embed()
 
@@ -165,41 +200,20 @@ class ClamHelpCommand(commands.HelpCommand):
         more_info = f"{self.arg_help()}\n{self.i_cmd(ctx)}"
 
         pages = MenuPages(
-            source=HelpPages(filtered, em, bot.guild_prefix(ctx.guild), more_info),
+            source=HelpPages(commands, em, more_info),
             clear_reactions_after=True,
         )
         await pages.start(ctx)
 
     async def send_group_help(self, group):
         ctx = self.context
-        bot = ctx.bot
 
         filtered = await self.filter_commands(group.commands, sort=True)
+        commands = self.format_commands(filtered)
 
         em = self.get_base_embed()
 
-        em.description = f"**`{bot.guild_prefix(ctx.guild)}{group.name}"
-        em.description += f" {group.usage}`**" if group.usage is not None else "`**"
-
-        if group.description:
-            em.description += f" - {group.description}"
-
-        if group.help:
-            em.description += "\n" + group.help
-
-        if group.aliases:
-            formatted_aliases = []
-
-            for alias in group.aliases:
-                formatted_alias = f"`{bot.guild_prefix(ctx.guild)}"
-                formatted_alias += (
-                    f"{group.parent} " if group.parent is not None else ""
-                )
-
-                formatted_alias += alias + "`"
-                formatted_aliases.append(formatted_alias)
-
-            em.description += f"\nAliases: {', '.join(formatted_aliases)}"
+        em.description = self.format_command(group)
 
         if filtered:
             em.description += f"\n\n**Subcommands ({len(filtered)} total):**"
@@ -207,43 +221,19 @@ class ClamHelpCommand(commands.HelpCommand):
         more_info = f"{self.arg_help()}\n{self.i_cmd(ctx)}"
 
         pages = MenuPages(
-            source=HelpPages(filtered, em, bot.guild_prefix(ctx.guild), more_info),
+            source=HelpPages(commands, em, more_info),
             clear_reactions_after=True,
         )
         await pages.start(ctx)
 
     async def send_command_help(self, command):
         ctx = self.context
-        bot = ctx.bot
 
         em = self.get_base_embed()
 
         em.set_footer(text=em.Empty)
 
-        em.description = f"**`{bot.guild_prefix(ctx.guild)}"
-        em.description += f"{command.parent} " if command.parent is not None else ""
-        em.description += command.name
-        em.description += f" {command.usage}`**" if command.usage is not None else "`**"
-
-        if command.description:
-            em.description += f" - {command.description}"
-
-        if command.help:
-            em.description += "\n" + command.help + "\n"
-
-        if command.aliases:
-            formatted_aliases = []
-
-            for alias in command.aliases:
-                formatted_alias = f"`{bot.guild_prefix(ctx.guild)}"
-                formatted_alias += (
-                    f"{command.parent} " if command.parent is not None else ""
-                )
-
-                formatted_alias += alias + "`"
-                formatted_aliases.append(formatted_alias)
-
-            em.description += f"\nAliases: {', '.join(formatted_aliases)}"
+        em.description = self.format_command(command)
 
         await ctx.send(embed=em)
 
@@ -251,7 +241,7 @@ class ClamHelpCommand(commands.HelpCommand):
         traceback.print_exception(
             type(error), error, error.__traceback__, file=sys.stderr
         )
-        if isinstance(error, commands.CommandInvokeError):
+        if isinstance(error, PrivateCog):
             return await ctx.send("You don't have access to that cog.")
 
     async def command_callback(self, ctx, *, command=None):
@@ -554,7 +544,7 @@ class Meta(commands.Cog):
             msg += f"\n{i+1}. **`{prefix}`**"
         await ctx.send(msg)
 
-    @prefix.command(name="add", description="Add a prefix.", usage="[prefix]")
+    @prefix.command(name="add", description="Add a prefix.")
     @commands.guild_only()
     @has_manage_guild()
     async def _add_prefix(self, ctx, prefix: str):
@@ -576,7 +566,7 @@ class Meta(commands.Cog):
             )
         await ctx.send("Added prefix.")
 
-    @prefix.command(name="remove", description="Remove a prefix.", usage="[prefix]")
+    @prefix.command(name="remove", description="Remove a prefix.")
     @commands.guild_only()
     @has_manage_guild()
     async def _remove_prefix(self, ctx, prefix):
@@ -609,7 +599,7 @@ class Meta(commands.Cog):
         await ctx.send("Removed prefix.")
 
     @prefix.command(
-        name="default", description="Set a default prefix.", usage="[prefix]"
+        name="default", description="Set a default prefix."
     )
     @commands.guild_only()
     @has_manage_guild()
@@ -659,7 +649,7 @@ class Meta(commands.Cog):
         await ctx.send(f"{ctx.tick(True)} Set default prefix to `{prefix}`")
 
     @prefix.command(
-        name="reset", description="Reset prefixes to default.", usage="[prefix]"
+        name="reset", description="Reset prefixes to default."
     )
     @commands.guild_only()
     @has_manage_guild()

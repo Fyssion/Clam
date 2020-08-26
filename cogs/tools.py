@@ -254,7 +254,6 @@ class Tools(commands.Cog):
 
     @commands.command(
         description="Get the avatar of a member.",
-        usage="<member>",
         aliases=["profilepic"],
     )
     async def avatar(self, ctx, *, member: discord.Member = None):
@@ -281,7 +280,6 @@ class Tools(commands.Cog):
         name="userinfo",
         description="Get information about a user",
         aliases=["memberinfo", "ui", "whois"],
-        usage="<member>",
     )
     @commands.guild_only()
     async def userinfo_command(self, ctx, *, member: discord.Member = None):
@@ -430,7 +428,6 @@ class Tools(commands.Cog):
     @commands.command(
         name="snowstamp",
         description="Get timestamp from a Discord snowflake",
-        usage="[snowflake]",
         hidden=True,
     )
     async def snowstamp_command(self, ctx, snowflake=None):
@@ -445,7 +442,7 @@ class Tools(commands.Cog):
         else:
             return start <= x or x <= end
 
-    @commands.command(description="Parse a Discord token", usage="[token]", hidden=True)
+    @commands.command(description="Parse a Discord token", hidden=True)
     async def parsetoken(self, ctx, token):
         parsed = token.split(".")
         if len(parsed) != 3:
@@ -549,10 +546,9 @@ class Tools(commands.Cog):
     @search.command(
         name="username",
         description="Search server for a specified username",
-        usage="[username]",
         aliases=["user", "name"],
     )
-    async def search_username(self, ctx, username: str):
+    async def search_username(self, ctx, *, username):
         matches = []
         for member in ctx.guild.members:
             if username.lower() in member.name.lower():
@@ -568,10 +564,9 @@ class Tools(commands.Cog):
     @search.command(
         name="nickname",
         description="Search server for a specified nickname",
-        usage="[nickname]",
         aliases=["nick"],
     )
-    async def search_nickname(self, ctx, nickname: str):
+    async def search_nickname(self, ctx, *, nickname):
         matches = []
         for member in ctx.guild.members:
             if member.nick:
@@ -587,7 +582,6 @@ class Tools(commands.Cog):
     @search.command(
         name="discriminator",
         description="Search server for a specified descrininator",
-        usage="[discriminator]",
         aliases=["number", "discrim", "dis", "num"],
     )
     async def search_discriminator(self, ctx, discriminator: int):

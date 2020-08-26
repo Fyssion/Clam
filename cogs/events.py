@@ -689,7 +689,7 @@ class Events(commands.Cog):
         await ctx.send_help(ctx.command)
 
     @event.command(
-        name="new", usage="[name]", aliases=["create", "add"],
+        name="new", aliases=["create", "add"],
     )
     @commands.bot_has_permissions(manage_roles=True, manage_messages=True)
     async def event_new(
@@ -846,17 +846,17 @@ class Events(commands.Cog):
             )
 
     @event.command(
-        name="join", description="Join an event", usage="[name or id]", aliases=["rsvp"]
+        name="join", description="Join an event", aliases=["rsvp"]
     )
     async def event_join(self, ctx, event: EventConverter):
         pass
 
-    @event.command(name="leave", description="Leave an event", usage="[name or id]")
+    @event.command(name="leave", description="Leave an event")
     async def event_leave(self, ctx, event: EventConverter):
         pass
 
     @event.command(
-        name="edit", description="Edit an event", usage="[name or id]",
+        name="edit", description="Edit an event",
     )
     async def event_edit(self, ctx, *, event: EventConverter):
         await self.edit_event(event, ctx.author, ctx.channel, dm=False)
@@ -864,7 +864,6 @@ class Events(commands.Cog):
     @event.command(
         name="delete",
         description="Delete an event",
-        usage="[name or id]",
         aliases=["remove", "cancel"],
     )
     async def event_delete(self, ctx, *, event: EventConverter):
@@ -903,7 +902,6 @@ class Events(commands.Cog):
     @event.command(
         name="info",
         description="View info about an event",
-        usage="[name or id]",
         aliases=["information"],
         hidden=True,
     )

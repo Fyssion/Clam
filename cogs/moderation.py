@@ -473,7 +473,6 @@ class Moderation(commands.Cog):
         name="purge",
         description="Purge messages in a channel",
         aliases=["cleanup"],
-        usage="[amount]",
     )
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)

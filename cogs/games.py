@@ -530,7 +530,6 @@ class Games(commands.Cog):
         name="guess",
         description="Guess a letter in the current hangman game",
         aliases=["g"],
-        usage="[letter]",
     )
     async def hangman_guess(self, ctx, letter):
         if not ctx.hangman:

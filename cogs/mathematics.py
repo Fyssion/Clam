@@ -86,7 +86,7 @@ class Math(commands.Cog):
         self.log = self.bot.log
 
     @commands.command(
-        description="Solve the quadratic formula", aliases=["quad"], usage="[a b c]"
+        description="Solve the quadratic formula", aliases=["quad"]
     )
     async def quadratic(self, ctx, a: float, b: float, c: float):
         delta = (b ** 2) - (4 * a * c)
@@ -104,7 +104,7 @@ class Math(commands.Cog):
         await ctx.send(msg)
 
     @commands.command(
-        aliases=["dist"], usage="[points]",
+        aliases=["dist"],
     )
     async def distance(self, ctx, *, points: PointsConverter(max_points=2)):
         """Calculate the distance between two points.
@@ -122,7 +122,7 @@ class Math(commands.Cog):
         formula = f"√(({x2} - {x1})^2 + ({y2} - {y1})^2)"
         await ctx.send(f"Distance fomula: `{formula}`\n" f"Solution: `{ans}`")
 
-    @commands.command(aliases=["midpt"], usage="[points]")
+    @commands.command(aliases=["midpt"])
     async def midpoint(self, ctx, *, points: PointsConverter(max_points=5)):
         """Calculate the midpoint when given two or more points.
 

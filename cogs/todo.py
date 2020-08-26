@@ -113,7 +113,6 @@ class Todo(commands.Cog):
     @todo.command(
         name="add",
         description="Add an task to your todo list",
-        usage="[name]",
         aliases=["create", "new"],
     )
     async def todo_add(self, ctx, *, name):
@@ -149,7 +148,6 @@ class Todo(commands.Cog):
     @todo.command(
         name="check",
         description="Mark an task from your todo list as done",
-        usage="[name or id]",
         aliases=["done", "complete"],
     )
     async def todo_check(self, ctx, *, task):
@@ -175,7 +173,6 @@ class Todo(commands.Cog):
     @todo.command(
         name="uncheck",
         description="Mark a task from your todo list as not done",
-        usage="[name or id]",
         aliases=["undo"],
     )
     async def todo_uncheck(self, ctx, *, task):
@@ -201,7 +198,6 @@ class Todo(commands.Cog):
     @todo.command(
         name="delete",
         description="Delete a task from your todo list",
-        usage="[name or id]",
         aliases=["remove"],
     )
     async def todo_delete(self, ctx, *, task):
@@ -221,7 +217,6 @@ class Todo(commands.Cog):
     @todo.command(
         name="info",
         description="View info about a task",
-        usage="[name or id]",
         aliases=["information"],
     )
     async def todo_info(self, ctx, *, task: TodoTaskConverter):

@@ -482,7 +482,7 @@ class Tags(commands.Cog):
             await ctx.send(str(error))
             ctx.handled = True
 
-    @commands.group(usage="<tag>", invoke_without_command=True)
+    @commands.group(usage="[tag]", invoke_without_command=True)
     async def tag(self, ctx, *, name=None):
         """Tag stuff and retrieve it later
 
@@ -534,7 +534,6 @@ class Tags(commands.Cog):
         name="create",
         description="Create a new tag",
         aliases=["new"],
-        usage="[name] [content]",
     )
     async def tag_create(
         self, ctx, name: TagNameConverter, *, content: TagContentConverter
@@ -630,7 +629,6 @@ class Tags(commands.Cog):
     @tag.command(
         name="delete",
         description="Delete a tag you own",
-        usage="[tag name]",
         aliases=["remove"],
     )
     async def tag_delete(self, ctx, *, name):
@@ -673,7 +671,6 @@ class Tags(commands.Cog):
     @tag.command(
         name="edit",
         description="Edit a tag you own",
-        usage="[name] [new content]",
         aliases=["update"],
     )
     async def tag_edit(
@@ -697,7 +694,7 @@ class Tags(commands.Cog):
     @tag.command(
         name="alias",
         description="Set an alias for a tag",
-        usage="[original name] [alias name]",
+        usage="<original name> <alias name>",
     )
     async def tag_alias(self, ctx, original: TagNameConverter, alias: TagNameConverter):
         query = """INSERT INTO tag_aliases (name, owner_id, guild_id, tag_id)
@@ -725,7 +722,6 @@ class Tags(commands.Cog):
         name="transfer",
         description="Transfer a tag to another member",
         aliases=["move", "give"],
-        usage="[tag] [member]",
         hidden=True,
     )
     @commands.is_owner()
@@ -742,7 +738,7 @@ class Tags(commands.Cog):
         name="info",
         description="Get info about a tag",
         aliases=["about"],
-        usage="[tag]",
+        usage="<tag>",
     )
     async def tag_info(self, ctx, *, name):
         query = """SELECT
@@ -789,7 +785,6 @@ class Tags(commands.Cog):
     @tag.command(
         name="raw",
         description="Get a tag without markdown (for copy/pasting)",
-        usage="[tag name]",
     )
     async def tag_raw(self, ctx, *, tag: TagConverter):
         await ctx.send(discord.utils.escape_markdown(tag.content))
@@ -859,7 +854,6 @@ class Tags(commands.Cog):
     @tag.command(
         name="member",
         description="Get top ten tags for a member",
-        usage="[member]",
         aliases=["user"],
     )
     async def tag_member(self, ctx, *, member: discord.Member):
@@ -898,7 +892,7 @@ class Tags(commands.Cog):
         await ctx.send(embed=em)
 
     @tag.command(
-        name="search", description="Search for a tag", usage="[tag]", aliases=["find"],
+        name="search", description="Search for a tag", usage="<tag>", aliases=["find"],
     )
     async def tag_search(self, ctx, name):
         query = """SELECT     tag_aliases.name
@@ -1000,7 +994,6 @@ class Tags(commands.Cog):
     @faq.command(
         name="create",
         description="Create a new faq tag",
-        usage="[name]",
         aliases=["new"],
     )
     @faq_only()
@@ -1094,7 +1087,7 @@ class Tags(commands.Cog):
         ipt = self._in_progress_tags[ctx.guild.id]
         ipt.pop(ipt.index(name))
 
-    @faq.command(name="edit", description="Edit a FAQ tag you own", usage="[name]")
+    @faq.command(name="edit", description="Edit a FAQ tag you own")
     async def faq_edit(self, ctx, *, tag: TagConverter(faq=True, owner=True)):
         if tag.owner_id != ctx.author.id:
             raise commands.BadArgument("You do not have permission to edit that tag.")
@@ -1127,7 +1120,7 @@ class Tags(commands.Cog):
     @faq.command(
         name="alias",
         description="Alias for tag alias",
-        usage="[original name] [alias name]",
+        usage="<original name> <alias name>",
     )
     async def faq_alias(self, ctx, original: TagNameConverter, alias: TagNameConverter):
         await ctx.invoke(self.tag_alias, original=original, alias=alias)

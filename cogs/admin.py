@@ -210,11 +210,10 @@ class Admin(commands.Cog):
         name="reload",
         description="Reload an extension",
         aliases=["load"],
-        usage="[cog]",
         hidden=True,
     )
     @commands.is_owner()
-    async def _reload(self, ctx, cog="all"):
+    async def _reload(self, ctx, *, cog="all"):
         if cog == "all":
             msg = ""
 
@@ -322,20 +321,20 @@ class Admin(commands.Cog):
         )
         await pages.start(ctx)
 
-    @_error.command(aliases=["i", "find", "get", "search"], usage="[index]")
+    @_error.command(aliases=["i", "find", "get", "search"])
     @commands.is_owner()
-    async def index(self, ctx, i: int):
+    async def index(self, ctx, index: int):
         if len(self.bot.error_cache) == 0:
             return await ctx.send("No previous errors cached.")
         try:
-            e = self.bot.error_cache[i]
+            e = self.bot.error_cache[index]
         except IndexError:
             return await ctx.send(f"{ctx.tick(False)} There is no error at that index.")
         etype = type(e)
         trace = e.__traceback__
         verbosity = 4
         lines = traceback.format_exception(etype, e, trace, verbosity)
-        pages = MenuPages(source=ErrorSource(lines, i), clear_reactions_after=True,)
+        pages = MenuPages(source=ErrorSource(lines, index), clear_reactions_after=True,)
         await pages.start(ctx)
 
     @commands.command(

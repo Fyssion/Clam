@@ -108,7 +108,6 @@ class Stats(commands.Cog):
 
     @commands.group(
         description="View usage statistics for the current guild or a specified member.",
-        usage="<member>",
         aliases=["statistics"],
         invoke_without_command=True,
     )
