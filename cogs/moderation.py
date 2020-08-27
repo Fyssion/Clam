@@ -641,9 +641,8 @@ class Moderation(commands.Cog):
             )
             raise
 
-        friendly_time = human_time.human_timedelta(duration.dt, source=timer.created_at)
         await ctx.send(
-            f"{ctx.tick(True)} You have been muted for `{friendly_time}`.\n"
+            f"{ctx.tick(True)} You have been muted for `{human_friendly}`.\n"
             "Don't bug anyone about it!"
         )
 
