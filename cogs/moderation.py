@@ -46,9 +46,6 @@ class GuildSettings:
         return guild.get_role(self.mute_role_id)
 
     async def mute_member(self, member, reason):
-        role = self.mute_role
-        await member.add_roles(role, reason=reason)
-
         query = """UPDATE guild_settings
                    SET muted_members=$1
                    WHERE guild_id=$2;
@@ -58,10 +55,10 @@ class GuildSettings:
 
         await self.bot.pool.execute(query, self.muted_members, member.guild.id)
 
-    async def unmute_member(self, member, reason, *, execute_db=True):
         role = self.mute_role
-        await member.remove_roles(role, reason=reason)
+        await member.add_roles(role, reason=reason)
 
+    async def unmute_member(self, member, reason, *, execute_db=True):
         if execute_db:
             query = """UPDATE guild_settings
                        SET muted_members=$1
@@ -71,6 +68,9 @@ class GuildSettings:
             self.muted_members.pop(self.muted_members.index(member.id))
 
             await self.bot.pool.execute(query, self.muted_members, member.guild.id)
+
+        role = self.mute_role
+        await member.remove_roles(role, reason=reason)
 
 
 def role_hierarchy_check(ctx, user, target):
@@ -442,12 +442,16 @@ class Moderation(commands.Cog):
     async def mute_role_retain(self, member):
         settings = await self.get_guild_settings(member.guild.id)
 
+        if not settings:
+            return
+
         if not settings.mute_role:
             return
 
         if member.id in settings.muted_members:
             await member.add_roles(
-                settings.mute_role, reason="Member who rejoined server was muted before they left"
+                settings.mute_role,
+                reason="Member who rejoined server was muted before they left",
             )
 
     @commands.group(invoke_without_command=True)
@@ -467,6 +471,19 @@ class Moderation(commands.Cog):
         await settings.mute_member(member, reason)
 
         await ctx.send(f"{ctx.tick(True)} Muted `{member}`")
+
+    @commands.command()
+    async def selfmute(self, ctx, duration: human_time.FutureTime, *, reason=None):
+        human_friendly = human_time.human_timedelta(duration.dt)
+        confirm = await ctx.confirm(
+            f"Are you sure you want to mute yourself for {human_friendly}?\n"
+            "You won't be able to unmute yourself unless you ask a mod."
+        )
+
+        if not confirm:
+            return await ctx.send("Aborted selfmute")
+
+        settings = await self.get_guild_settings(ctx.guild.id)
 
     @commands.command()
     @can_mute()
