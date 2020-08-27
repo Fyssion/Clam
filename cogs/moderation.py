@@ -447,7 +447,7 @@ class Moderation(commands.Cog):
 
         if member.id in settings.muted_members:
             await member.add_roles(
-                settings.mute_role, reason="Member was muted before they left"
+                settings.mute_role, reason="Member who rejoined server was muted before they left"
             )
 
     @commands.group(invoke_without_command=True)
