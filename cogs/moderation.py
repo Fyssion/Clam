@@ -151,7 +151,7 @@ class BannedUser(commands.Converter):
 
 class NoMuteRole(commands.CommandError):
     def __init__(self):
-        super.__init__("A mute role for this server has not been set up.")
+        super().__init__("A mute role for this server has not been set up.")
 
 
 class RoleHierarchyFailure(commands.CommandError):
@@ -566,7 +566,8 @@ class Moderation(commands.Cog):
         return await ctx.send(f"This server's mute role is **`{settings.mute_role}`**")
 
     @mute_role.command(name="set", description="Set an existing mute role")
-    @can_mute()
+    @commands.bot_has_permissions(manage_roles=True)
+    @commands.has_permissions(manage_roles=True)
     async def mute_role_set(self, ctx, *, role: discord.Role):
         query = """UPDATE guild_settings
                    SET mute_role_id=$1
