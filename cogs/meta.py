@@ -200,8 +200,7 @@ class ClamHelpCommand(commands.HelpCommand):
         more_info = f"{self.arg_help()}\n{self.i_cmd(ctx)}"
 
         pages = MenuPages(
-            source=HelpPages(commands, em, more_info),
-            clear_reactions_after=True,
+            source=HelpPages(commands, em, more_info), clear_reactions_after=True,
         )
         await pages.start(ctx)
 
@@ -221,8 +220,7 @@ class ClamHelpCommand(commands.HelpCommand):
         more_info = f"{self.arg_help()}\n{self.i_cmd(ctx)}"
 
         pages = MenuPages(
-            source=HelpPages(commands, em, more_info),
-            clear_reactions_after=True,
+            source=HelpPages(commands, em, more_info), clear_reactions_after=True,
         )
         await pages.start(ctx)
 
@@ -495,6 +493,7 @@ class Meta(commands.Cog):
         )
 
     @commands.command(description="Get a link to my website", aliases=["site"])
+    @commands.is_owner()
     async def website(self, ctx):
         await ctx.send("My website: https://clambot.xyz")
 
@@ -514,7 +513,23 @@ class Meta(commands.Cog):
 
     @commands.command(name="invite", description="Invite me to your server")
     async def invite_command(self, ctx):
-        invite = f"https://discordapp.com/api/oauth2/authorize?client_id={self.bot.user.id}&permissions=470150358&scope=bot"
+        permissions = discord.Permissions(
+            view_audit_log=True,
+            manage_roles=True,
+            manage_channels=True,
+            manage_nicknames=True,
+            ban_members=True,
+            kick_members=True,
+            manage_messages=True,
+            read_messages=True,
+            send_messages=True,
+            embed_links=True,
+            attach_files=True,
+            read_message_history=True,
+            use_external_emojis=True,
+            add_reactions=True
+        )
+        invite = discord.utils.oauth_url(self.bot.user.id, permissions=permissions)
         await ctx.send(f"Invite link: <{invite}>")
 
     @commands.command(description="Get a link to my support server")
@@ -598,9 +613,7 @@ class Meta(commands.Cog):
             )
         await ctx.send("Removed prefix.")
 
-    @prefix.command(
-        name="default", description="Set a default prefix."
-    )
+    @prefix.command(name="default", description="Set a default prefix.")
     @commands.guild_only()
     @has_manage_guild()
     async def _default_prefix(self, ctx, prefix):
@@ -648,9 +661,7 @@ class Meta(commands.Cog):
             )
         await ctx.send(f"{ctx.tick(True)} Set default prefix to `{prefix}`")
 
-    @prefix.command(
-        name="reset", description="Reset prefixes to default."
-    )
+    @prefix.command(name="reset", description="Reset prefixes to default.")
     @commands.guild_only()
     @has_manage_guild()
     async def _reset_prefix(self, ctx):
