@@ -160,6 +160,9 @@ class RoleHierarchyFailure(commands.CommandError):
 
 def can_mute():
     async def predicate(ctx):
+        if ctx.author.id == ctx.bot.owner_id:
+            return True
+
         await commands.has_permissions(manage_roles=True).predicate(ctx)
         await commands.bot_has_permissions(manage_roles=True).predicate(ctx)
 
@@ -448,6 +451,7 @@ class Moderation(commands.Cog):
         await ctx.send(f"{ctx.tick(True)} Muted `{member}`")
 
     @commands.command()
+    @can_mute()
     async def unmute(self, ctx, member: typing.Union[discord.Member, int], *, reason=None):
         if isinstance(member, discord.Member) and not role_hierarchy_check(ctx, ctx.author, member):
             return await ctx.send(
@@ -594,15 +598,8 @@ class Moderation(commands.Cog):
             name="Muted", color=discord.Color.dark_grey(), reason=reason
         )
 
-        channels_to_update = [c for c in guild.text_channels if not c.category]
-
-        for category in guild.categories:
-            channels_to_update.append(category)
-
-            for channel in category.text_channels:
-                # not synced
-                if channel.overwrites != category.overwrites:
-                    channels_to_update.append(channel)
+        channels_to_update = [c for c in guild.text_channels]
+        channels_to_update.extend(c for c in guild.categories)
 
         succeeded = 0
         failed = []
@@ -615,7 +612,7 @@ class Moderation(commands.Cog):
                 succeeded += 1
 
             except discord.HTTPException:
-                failed.append(channel.mention)
+                failed.append(channel.mention if isinstance(channel, discord.TextChannel) else channel.name)
 
         query = """UPDATE guild_settings
                    SET mute_role_id=$1
