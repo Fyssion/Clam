@@ -10,36 +10,101 @@ import re
 from urllib.parse import urlparse
 from async_timeout import timeout
 
-from .utils import db
+from .utils import db, human_time
 from .utils.emojis import GREEN_TICK, RED_TICK
 from .utils.checks import has_manage_guild
 from .utils.utils import is_int
 
 
-@fill_with_flags()
-class LoggingFlags(BaseFlags):
-    """Describes what to log"""
-
-    @flag_value
-    def message_edit(self):
-        return 1 << 0
-
-    @flag_value
-    def message_delete(self):
-        return 1 << 1
-
-    @flag_value
-    def guild_join(self):
-        return 1 << 2
-
-    @flag_value
-    def guild_leave(self):
-        return 1 << 3
-
-
-class Logs(db.Table):
+class GuildSettingsTable(db.Table, table_name="guild_settings"):
     id = db.PrimaryKeyColumn()
-    guild_id = db.Column(db.Integer(big=True), index=True)
+    guild_id = db.Column(db.Integer(big=True))
+    mute_role_id = db.Column(db.Integer(big=True))
+    muted_members = db.Column(db.Array(db.Integer(big=True)))
+
+
+class GuildSettings:
+    @classmethod
+    def from_record(cls, record, bot):
+        self = cls()
+
+        self.bot = bot
+
+        self.id = record["id"]
+        self.guild_id = record["guild_id"]
+        self.mute_role_id = record["mute_role_id"]
+        self.muted_members = record["muted_members"]
+
+        return self
+
+    @property
+    def mute_role(self):
+        guild = self.bot.get_guild(self.guild_id)
+        if not guild:
+            return None
+
+        return guild.get_role(self.mute_role_id)
+
+    async def mute_member(self, member, reason):
+        role = self.mute_role
+        await member.add_roles(role, reason=reason)
+
+        query = """UPDATE guild_settings
+                   SET muted_members=$1
+                   WHERE guild_id=$2;
+                """
+
+        self.muted_members.append(member.id)
+
+        await self.bot.pool.execute(query, self.muted_members, member.guild.id)
+
+    async def unmute_member(self, member, reason, *, execute_db=True):
+        role = self.mute_role
+        await member.remove_roles(role, reason=reason)
+
+        if execute_db:
+            query = """UPDATE guild_settings
+                       SET muted_members=$1
+                       WHERE guild_id=$2;
+                    """
+
+            self.muted_members.pop(self.muted_members.index(member.id))
+
+            await self.bot.pool.execute(query, self.muted_members, member.guild.id)
+
+
+def role_hierarchy_check(ctx, user, target):
+    return (
+        user.id == ctx.bot.owner_id
+        or user == ctx.guild.owner
+        or user.top_role > target.top_role
+    )
+
+
+# @fill_with_flags()
+# class LoggingFlags(BaseFlags):
+#     """Describes what to log"""
+
+#     @flag_value
+#     def message_edit(self):
+#         return 1 << 0
+
+#     @flag_value
+#     def message_delete(self):
+#         return 1 << 1
+
+#     @flag_value
+#     def guild_join(self):
+#         return 1 << 2
+
+#     @flag_value
+#     def guild_leave(self):
+#         return 1 << 3
+
+
+# class Logs(db.Table):
+#     id = db.PrimaryKeyColumn()
+#     guild_id = db.Column(db.Integer(big=True), index=True)
 
 
 class BannedUser(commands.Converter):
@@ -84,6 +149,39 @@ class BannedUser(commands.Converter):
         )
 
 
+class NoMuteRole(commands.CommandError):
+    def __init__(self):
+        super.__init__("A mute role for this server has not been set up.")
+
+
+class RoleHierarchyFailure(commands.CommandError):
+    pass
+
+
+def can_mute():
+    async def predicate(ctx):
+        await commands.has_permissions(manage_roles=True).predicate(ctx)
+        await commands.bot_has_permissions(manage_roles=True).predicate(ctx)
+
+        settings = await ctx.cog.get_guild_settings(
+            ctx.guild.id, create_if_not_found=True
+        )
+
+        role = settings.mute_role
+        if not role:
+            raise NoMuteRole()
+
+        if ctx.guild.me.top_role < role:
+            raise RoleHierarchyFailure("The bot's role is lower than the mute role.")
+
+        if ctx.author.top_role < role:
+            raise RoleHierarchyFailure("Your role is lower than the mute role.")
+
+        return True
+
+    return commands.check(predicate)
+
+
 class Moderation(commands.Cog):
     """
     This cog has not been fully developed.
@@ -107,10 +205,54 @@ class Moderation(commands.Cog):
 
         self.ver_messages = {}
 
+    async def cog_command_error(self, ctx, error):
+        if isinstance(error, NoMuteRole) or isinstance(error, RoleHierarchyFailure):
+            await ctx.send(f"{ctx.tick(False)} {error}")
+            ctx.handled = True
+
+    async def create_guild_settings(self, guild_id):
+        query = """INSERT INTO guild_settings (guild_id, mute_role_id, muted_members)
+                   VALUES ($1, $2, $3)
+                   RETURNING id;
+                """
+
+        record = await self.bot.pool.fetchrow(query, guild_id, None, [])
+        record = {
+            "id": record[0],
+            "guild_id": guild_id,
+            "mute_role_id": None,
+            "muted_members": [],
+        }
+        return GuildSettings.from_record(record, self.bot)
+
+    async def get_guild_settings(self, guild_id, *, create_if_not_found=False):
+        query = """SELECT *
+                   FROM guild_settings
+                   WHERE guild_id=$1;
+                """
+
+        record = await self.bot.pool.fetchrow(query, guild_id)
+
+        if not record:
+            if create_if_not_found:
+                return await self.create_guild_settings(guild_id)
+            return None
+
+        return GuildSettings.from_record(record, self.bot)
+
     @commands.command()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def ban(self, ctx, user: typing.Union[discord.User, int], *, reason=None):
+    async def ban(
+        self, ctx, user: typing.Union[discord.Member, discord.User, int], *, reason=None
+    ):
+        if isinstance(user, discord.Member) and not role_hierarchy_check(
+            ctx, ctx.author, user
+        ):
+            return await ctx.send(
+                "You can't preform this action due to role hierarchy."
+            )
+
         if isinstance(user, discord.User):
             user_id = user.id
             human_friendly = f"`{str(user)}`"
@@ -126,6 +268,83 @@ class Moderation(commands.Cog):
             return await ctx.send(f"{ctx.tick(False)} I couldn't ban that user.")
 
         await ctx.send(f"{ctx.tick(True)} Banned user {human_friendly}")
+
+    @commands.command(description="Temporarily ban a user")
+    @commands.has_permissions(ban_members=True)
+    @commands.bot_has_permissions(ban_members=True)
+    async def tempban(
+        self,
+        ctx,
+        user: typing.Union[discord.Member, discord.User, int],
+        duration: human_time.FutureTime,
+        *,
+        reason=None,
+    ):
+        timers = self.bot.get_cog("Timers")
+        if not timers:
+            return await ctx.send(
+                "Sorry, that functionality isn't available right now. Try again later."
+            )
+
+        if isinstance(user, discord.Member) and not role_hierarchy_check(
+            ctx, ctx.author, user
+        ):
+            return await ctx.send(
+                "You can't preform this action due to role hierarchy."
+            )
+
+        if isinstance(user, discord.User):
+            if not role_hierarchy_check(ctx, ctx.author, user):
+                return await ctx.send(
+                    "You can't preform this action due to role hierarchy."
+                )
+            user_id = user.id
+            human_friendly = f"`{str(user)}`"
+        else:
+            user_id = user
+            human_friendly = f"with an ID of `{user_id}`"
+
+        to_be_banned = discord.Object(id=user_id)
+
+        friendly_time = human_time.human_timedelta(duration.dt)
+        reason = f"Tempban by {ctx.author} (ID: {ctx.author.id}) for {friendly_time} with reason: {reason}"
+
+        try:
+            await ctx.guild.ban(to_be_banned, reason=reason)
+            timer = await timers.create_timer(
+                duration.dt, "tempban", ctx.guild.id, ctx.author.id, user_id
+            )
+
+        except discord.HTTPException:
+            return await ctx.send(f"{ctx.tick(False)} I couldn't ban that user.")
+
+        except Exception:
+            await ctx.guild.unban(
+                to_be_banned, reason="Timer creation failed for previous tempban."
+            )
+            raise
+
+        friendly_time = human_time.human_timedelta(duration.dt, source=timer.created_at)
+        await ctx.send(
+            f"{ctx.tick(True)} Banned user {human_friendly} for `{friendly_time}`."
+        )
+
+    @commands.Cog.listener()
+    async def on_tempban_timer_complete(self, timer):
+        guild_id, mod_id, user_id = timer.args
+
+        guild = self.bot.get_guild(guild_id)
+
+        if not guild:
+            return
+
+        mod = guild.get_member(mod_id)
+        mod = f"{mod} (ID: {mod.id})" if mod else f"mod with ID {mod_id}"
+
+        reason = (
+            f"Automatic unban from tempban command. Command orignally invoked by {mod}"
+        )
+        await guild.unban(discord.Object(id=user_id), reason=reason)
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
@@ -144,6 +363,11 @@ class Moderation(commands.Cog):
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
     async def kick(self, ctx, user: discord.Member, *, reason=None):
+        if not role_hierarchy_check(ctx, ctx.author, user):
+            return await ctx.send(
+                "You can't preform this action due to role hierarchy."
+            )
+
         try:
             await ctx.guild.unban(user, reason=reason)
         except discord.HTTPException:
@@ -156,6 +380,276 @@ class Moderation(commands.Cog):
             channel_id = self.log_channels.get(str(guild))
             return self.bot.get_channel(int(channel_id))
         return None
+
+    @commands.Cog.listener("on_member_update")
+    async def mute_role_check(self, before, after):
+        if before.roles == after.roles:
+            return
+
+        settings = await self.get_guild_settings(before.guild.id)
+
+        if not settings:
+            return
+
+        role = settings.mute_role
+
+        if not role:
+            return
+
+        if (
+            role in before.roles
+            and role not in after.roles
+            and before.id not in settings.muted_members
+        ):
+            settings.muted_members.pop(settings.muted_members.index(before.id))
+
+        elif (
+            role not in before.roles
+            and role in after.roles
+            and before.id in settings.muted_members
+        ):
+            settings.muted_members.append(before.id)
+
+        query = """UPDATE guild_settings
+                   SET muted_members=$1
+                   WHERE guild_id=$2;
+                """
+
+        await self.bot.pool.execute(query, settings.muted_members, before.guild.id)
+
+    @commands.Cog.listener("on_member_join")
+    async def mute_role_retain(self, member):
+        settings = await self.guild.get_guild_settings(member.guild.id)
+
+        if not settings.mute_role:
+            return
+
+        if member.id in settings.muted_members:
+            await member.add_roles(
+                settings.mute_role, reason="Member was muted before they left"
+            )
+
+    @commands.group(invoke_without_command=True)
+    @can_mute()
+    async def mute(self, ctx, member: discord.Member, *, reason=None):
+        if not role_hierarchy_check(ctx, ctx.author, member):
+            return await ctx.send(
+                "You can't preform this action due to role hierarchy."
+            )
+
+        settings = await self.get_guild_settings(ctx.guild.id)
+
+        if member.id in settings.muted_members:
+            return await ctx.send(f"{ctx.tick(False)} That member is already muted")
+
+        reason = f"Mute by {ctx.author} (ID: {ctx.author.id}) with reason: {reason}"
+        await settings.mute_member(member, reason)
+
+        await ctx.send(f"{ctx.tick(True)} Muted `{member}`")
+
+    @commands.command()
+    async def unmute(self, ctx, member: typing.Union[discord.Member, int], *, reason=None):
+        if isinstance(member, discord.Member) and not role_hierarchy_check(ctx, ctx.author, member):
+            return await ctx.send(
+                "You can't preform this action due to role hierarchy."
+            )
+
+        settings = await self.get_guild_settings(ctx.guild.id)
+
+        if isinstance(member, int):
+            if member not in settings.muted_members:
+                return await ctx.send(f"{ctx.tick(False)} That user isn't muted")
+
+            settings.muted_members.pop(settings.muted_members.index(member))
+            query = """UPDATE guild_settings
+                       SET muted_members=$1
+                       WHERE guild_id=$2;
+                    """
+            await ctx.db.execute(query, settings.muted_members, ctx.guild.id)
+            return await ctx.send(f"{ctx.tick(True)} Unmuted user with ID `{member}`")
+
+        if member.id not in settings.muted_members:
+            return await ctx.send(f"{ctx.tick(False)} That member isn't muted")
+
+        reason = f"Unmute by {ctx.author} (ID: {ctx.author.id}) with reason: {reason}"
+        await settings.unmute_member(member, reason)
+
+        await ctx.send(f"{ctx.tick(True)} Unmuted `{member}`")
+
+    @commands.command()
+    @can_mute()
+    async def tempmute(
+        self,
+        ctx,
+        member: discord.Member,
+        duration: human_time.FutureTime,
+        *,
+        reason=None,
+    ):
+        timers = self.bot.get_cog("Timers")
+        if not timers:
+            return await ctx.send(
+                "Sorry, that functionality isn't available right now. Try again later."
+            )
+
+        if not role_hierarchy_check(
+            ctx, ctx.author, member
+        ):
+            return await ctx.send(
+                "You can't preform this action due to role hierarchy."
+            )
+
+        settings = await self.get_guild_settings(ctx.guild.id)
+        role = settings.mute_role
+
+        friendly_time = human_time.human_timedelta(duration.dt)
+        reason = f"Tempmute by {ctx.author} (ID: {ctx.author.id}) for {friendly_time} with reason: {reason}"
+
+        try:
+            await settings.mute_member(member, reason)
+            timer = await timers.create_timer(
+                duration.dt, "tempmute", ctx.guild.id, role.id, ctx.author.id, member.id
+            )
+
+        except Exception:
+            await settings.unmute_member(
+                member, reason="Timer creation failed for previous tempmute."
+            )
+            raise
+
+        friendly_time = human_time.human_timedelta(duration.dt, source=timer.created_at)
+        await ctx.send(
+            f"{ctx.tick(True)} Muted `{member}` for `{friendly_time}`."
+        )
+
+    @commands.Cog.listener()
+    async def on_tempmute_timer_complete(self, timer):
+        guild_id, role_id, mod_id, member_id = timer.args
+
+        settings = await self.get_guild_settings(guild_id)
+
+        query = """UPDATE guild_settings
+                   SET muted_members=$1
+                   WHERE guild_id=$2;
+                """
+        if member_id in settings.muted_members:
+            settings.muted_members.pop(settings.muted_members.index(member_id))
+            await self.bot.pool.execute(query, settings.muted_members, guild_id)
+
+        guild = self.bot.get_guild(guild_id)
+
+        if not guild:
+            return
+
+        mod = guild.get_member(mod_id)
+        mod = f"{mod} (ID: {mod.id})" if mod else f"mod with ID {mod_id}"\
+
+        role = guild.get_role(role_id)
+        if not role:
+            return
+
+        member = guild.get_member(member_id)
+        if not member:
+            return
+
+        reason = (
+            f"Automatic unmute from tempmute command. Command orignally invoked by {mod}"
+        )
+        await settings.unmute_member(member, reason=reason, execute_db=False)
+
+    @mute.group(name="role", invoke_without_command=True)
+    async def mute_role(self, ctx):
+        settings = await self.get_guild_settings(ctx.guild.id)
+        if not settings.mute_role:
+            return await ctx.send("No mute role has been set for this server.")
+
+        return await ctx.send(f"This server's mute role is **`{settings.mute_role}`**")
+
+    @mute_role.command(name="set", description="Set an existing mute role")
+    @can_mute()
+    async def mute_role_set(self, ctx, *, role: discord.Role):
+        query = """UPDATE guild_settings
+                   SET mute_role_id=$1
+                   WHERE guild_id=$2;
+                """
+
+        await ctx.db.execute(query, role.id, ctx.guild.id)
+
+        await ctx.send(f"{ctx.tick(True)} Set mute role to **`{role}`**")
+
+    @mute_role.command(
+        name="create",
+        description="Create a new mute role and change channel overwrites",
+    )
+    @commands.bot_has_permissions(manage_channels=True, manage_roles=True)
+    @commands.has_permissions(manage_channels=True, manage_roles=True)
+    async def mute_role_create(self, ctx):
+        settings = await self.get_guild_settings(ctx.guild.id, create_if_not_found=True)
+
+        guild = ctx.guild
+        reason = f"Creation of Muted role by {ctx.author} (ID: {ctx.author.id})"
+
+        role = await guild.create_role(
+            name="Muted", color=discord.Color.dark_grey(), reason=reason
+        )
+
+        channels_to_update = [c for c in guild.text_channels if not c.category]
+
+        for category in guild.categories:
+            channels_to_update.append(category)
+
+            for channel in category.text_channels:
+                # not synced
+                if channel.overwrites != category.overwrites:
+                    channels_to_update.append(channel)
+
+        succeeded = 0
+        failed = []
+
+        for channel in channels_to_update:
+            overwrites = channel.overwrites
+            overwrites[role] = discord.PermissionOverwrite(send_messages=False)
+            try:
+                await channel.edit(overwrites=overwrites, reason=reason)
+                succeeded += 1
+
+            except discord.HTTPException:
+                failed.append(channel.mention)
+
+        query = """UPDATE guild_settings
+                   SET mute_role_id=$1
+                   WHERE guild_id=$2;
+                """
+
+        await ctx.db.execute(query, role.id, ctx.guild.id)
+
+        message = (
+            "Created mute role and changed channel overwrites.\n"
+            f"Attempted to change {len(channels_to_update)} channels:"
+            f"\n  - {succeeded} succeeded\n  - {len(failed)} failed"
+        )
+
+        if failed:
+            formatted = ", ".join(failed)
+            message += f"\n\nChannels failed: {formatted}"
+
+        await ctx.send(message)
+
+    @mute_role.command(
+        name="unbind", description="Unbind the current mute role without deleting it"
+    )
+    @can_mute()
+    async def mute_role_unbind(self, ctx):
+        settings = await self.get_guild_settings(ctx.guild.id)
+
+        query = """UPDATE guild_settings
+                   SET mute_role_id=$1, muted_members=$2
+                   WHERE guild_id=$3;
+                """
+
+        await ctx.db.execute(query, None, [], ctx.guild.id)
+
+        await ctx.send(f"{ctx.tick(True)} Unbound mute role")
 
     async def get_bin(self, url="https://hastebin.com"):
         parsed = urlparse(url)
@@ -470,9 +964,7 @@ class Moderation(commands.Cog):
         await bot_message.clear_reactions()
 
     @commands.command(
-        name="purge",
-        description="Purge messages in a channel",
-        aliases=["cleanup"],
+        name="purge", description="Purge messages in a channel", aliases=["cleanup"],
     )
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
