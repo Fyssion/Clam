@@ -45,15 +45,16 @@ class GuildSettings:
 
         return guild.get_role(self.mute_role_id)
 
-    async def mute_member(self, member, reason):
-        query = """UPDATE guild_settings
-                   SET muted_members=$1
-                   WHERE guild_id=$2;
-                """
+    async def mute_member(self, member, reason, *, execute_db=True):
+        if execute_db:
+            query = """UPDATE guild_settings
+                       SET muted_members=$1
+                       WHERE guild_id=$2;
+                    """
 
-        self.muted_members.append(member.id)
+            self.muted_members.append(member.id)
 
-        await self.bot.pool.execute(query, self.muted_members, member.guild.id)
+            await self.bot.pool.execute(query, self.muted_members, member.guild.id)
 
         role = self.mute_role
         await member.add_roles(role, reason=reason)
@@ -71,14 +72,6 @@ class GuildSettings:
 
         role = self.mute_role
         await member.remove_roles(role, reason=reason)
-
-
-def role_hierarchy_check(ctx, user, target):
-    return (
-        user.id == ctx.bot.owner_id
-        or user == ctx.guild.owner
-        or user.top_role > target.top_role
-    )
 
 
 # @fill_with_flags()
@@ -158,12 +151,19 @@ class RoleHierarchyFailure(commands.CommandError):
     pass
 
 
+def role_hierarchy_check(ctx, user, target):
+    return (
+        user.id == ctx.bot.owner_id
+        or user == ctx.guild.owner
+        or (user.top_role > target.top_role and ctx.guild.owner != target)
+    )
+
+
 def can_mute():
     async def predicate(ctx):
-        if ctx.author.id == ctx.bot.owner_id:
-            return True
+        if ctx.author.id != ctx.bot.owner_id:
+            await commands.has_permissions(manage_roles=True).predicate(ctx)
 
-        await commands.has_permissions(manage_roles=True).predicate(ctx)
         await commands.bot_has_permissions(manage_roles=True).predicate(ctx)
 
         settings = await ctx.cog.get_guild_settings(
@@ -177,7 +177,7 @@ def can_mute():
         if ctx.guild.me.top_role < role:
             raise RoleHierarchyFailure("The bot's role is lower than the mute role.")
 
-        if ctx.author.top_role < role:
+        if ctx.author.id != ctx.bot.owner_id and ctx.author.top_role < role:
             raise RoleHierarchyFailure("Your role is lower than the mute role.")
 
         return True
@@ -420,14 +420,14 @@ class Moderation(commands.Cog):
         if (
             role in before.roles
             and role not in after.roles
-            and before.id not in settings.muted_members
+            and before.id in settings.muted_members
         ):
             settings.muted_members.pop(settings.muted_members.index(before.id))
 
         elif (
             role not in before.roles
             and role in after.roles
-            and before.id in settings.muted_members
+            and before.id not in settings.muted_members
         ):
             settings.muted_members.append(before.id)
 
@@ -543,11 +543,13 @@ class Moderation(commands.Cog):
         settings = await self.get_guild_settings(ctx.guild.id)
         role = settings.mute_role
 
+        execute_db = False if member.id in settings.muted_members else True
+
         friendly_time = human_time.human_timedelta(duration.dt)
         reason = f"Tempmute by {ctx.author} (ID: {ctx.author.id}) for {friendly_time} with reason: {reason}"
 
         try:
-            await settings.mute_member(member, reason)
+            await settings.mute_member(member, reason, execute_db=execute_db)
             timer = await timers.create_timer(
                 duration.dt, "tempmute", ctx.guild.id, role.id, ctx.author.id, member.id
             )
