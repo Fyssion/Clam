@@ -608,11 +608,11 @@ class Moderation(commands.Cog):
     @commands.has_permissions(manage_roles=True)
     async def mute_role_set(self, ctx, *, role: discord.Role):
         query = """UPDATE guild_settings
-                   SET mute_role_id=$1
-                   WHERE guild_id=$2;
+                   SET mute_role_id=$1, muted_members=$2
+                   WHERE guild_id=$3;
                 """
 
-        await ctx.db.execute(query, role.id, ctx.guild.id)
+        await ctx.db.execute(query, role.id, [], ctx.guild.id)
 
         await ctx.send(f"{ctx.tick(True)} Set mute role to **`{role}`**")
 
