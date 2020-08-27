@@ -236,7 +236,7 @@ class Tools(commands.Cog):
         self.sniped_messages.insert(0, message)
 
         if len(self.sniped_messages) > 1000:
-            self.sniped_messages.pop(len(self.sniped_messages - 1))
+            self.sniped_messages.pop(len(self.sniped_messages) - 1)
 
     async def get_average_color(self, icon):
         bytes = io.BytesIO(await icon.read())
