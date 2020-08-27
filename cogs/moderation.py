@@ -384,6 +384,20 @@ class Moderation(commands.Cog):
             return self.bot.get_channel(int(channel_id))
         return None
 
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, role):
+        settings = await self.get_guild_settings(role.guild.id)
+
+        if role.id != settings.muted_role_id:
+            return
+
+        query = """UPDATE guild_settings
+                   SET muted_role_id=$1, muted_members=$2
+                   WHERE guild_id=$3;
+                """
+
+        await self.bot.pool.execute(query, None, [], role.guild.id)
+
     @commands.Cog.listener("on_member_update")
     async def mute_role_check(self, before, after):
         if before.roles == after.roles:
@@ -452,8 +466,12 @@ class Moderation(commands.Cog):
 
     @commands.command()
     @can_mute()
-    async def unmute(self, ctx, member: typing.Union[discord.Member, int], *, reason=None):
-        if isinstance(member, discord.Member) and not role_hierarchy_check(ctx, ctx.author, member):
+    async def unmute(
+        self, ctx, member: typing.Union[discord.Member, int], *, reason=None
+    ):
+        if isinstance(member, discord.Member) and not role_hierarchy_check(
+            ctx, ctx.author, member
+        ):
             return await ctx.send(
                 "You can't preform this action due to role hierarchy."
             )
@@ -496,9 +514,7 @@ class Moderation(commands.Cog):
                 "Sorry, that functionality isn't available right now. Try again later."
             )
 
-        if not role_hierarchy_check(
-            ctx, ctx.author, member
-        ):
+        if not role_hierarchy_check(ctx, ctx.author, member):
             return await ctx.send(
                 "You can't preform this action due to role hierarchy."
             )
@@ -522,9 +538,7 @@ class Moderation(commands.Cog):
             raise
 
         friendly_time = human_time.human_timedelta(duration.dt, source=timer.created_at)
-        await ctx.send(
-            f"{ctx.tick(True)} Muted `{member}` for `{friendly_time}`."
-        )
+        await ctx.send(f"{ctx.tick(True)} Muted `{member}` for `{friendly_time}`.")
 
     @commands.Cog.listener()
     async def on_tempmute_timer_complete(self, timer):
@@ -546,8 +560,7 @@ class Moderation(commands.Cog):
             return
 
         mod = guild.get_member(mod_id)
-        mod = f"{mod} (ID: {mod.id})" if mod else f"mod with ID {mod_id}"\
-
+        mod = f"{mod} (ID: {mod.id})" if mod else f"mod with ID {mod_id}"
         role = guild.get_role(role_id)
         if not role:
             return
@@ -556,9 +569,7 @@ class Moderation(commands.Cog):
         if not member:
             return
 
-        reason = (
-            f"Automatic unmute from tempmute command. Command orignally invoked by {mod}"
-        )
+        reason = f"Automatic unmute from tempmute command. Command orignally invoked by {mod}"
         await settings.unmute_member(member, reason=reason, execute_db=False)
 
     @mute.group(name="role", invoke_without_command=True)
@@ -612,7 +623,11 @@ class Moderation(commands.Cog):
                 succeeded += 1
 
             except discord.HTTPException:
-                failed.append(channel.mention if isinstance(channel, discord.TextChannel) else channel.name)
+                failed.append(
+                    channel.mention
+                    if isinstance(channel, discord.TextChannel)
+                    else channel.name
+                )
 
         query = """UPDATE guild_settings
                    SET mute_role_id=$1
