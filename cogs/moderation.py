@@ -2,6 +2,7 @@ from discord.ext import commands
 from discord.flags import BaseFlags, fill_with_flags, flag_value
 import discord
 
+import datetime
 import json
 import typing
 from datetime import datetime as d
@@ -473,19 +474,6 @@ class Moderation(commands.Cog):
         await ctx.send(f"{ctx.tick(True)} Muted `{member}`")
 
     @commands.command()
-    async def selfmute(self, ctx, duration: human_time.FutureTime, *, reason=None):
-        human_friendly = human_time.human_timedelta(duration.dt)
-        confirm = await ctx.confirm(
-            f"Are you sure you want to mute yourself for {human_friendly}?\n"
-            "You won't be able to unmute yourself unless you ask a mod."
-        )
-
-        if not confirm:
-            return await ctx.send("Aborted selfmute")
-
-        settings = await self.get_guild_settings(ctx.guild.id)
-
-    @commands.command()
     @can_mute()
     async def unmute(
         self, ctx, member: typing.Union[discord.Member, int], *, reason=None
@@ -545,7 +533,7 @@ class Moderation(commands.Cog):
 
         execute_db = False if member.id in settings.muted_members else True
 
-        friendly_time = human_time.human_timedelta(duration.dt)
+        friendly_time = human_time.human_timedelta(duration.dt, source=ctx.message.created_at)
         reason = f"Tempmute by {ctx.author} (ID: {ctx.author.id}) for {friendly_time} with reason: {reason}"
 
         try:
@@ -560,7 +548,6 @@ class Moderation(commands.Cog):
             )
             raise
 
-        friendly_time = human_time.human_timedelta(duration.dt, source=timer.created_at)
         await ctx.send(f"{ctx.tick(True)} Muted `{member}` for `{friendly_time}`.")
 
     @commands.Cog.listener()
@@ -594,6 +581,71 @@ class Moderation(commands.Cog):
 
         reason = f"Automatic unmute from tempmute command. Command orignally invoked by {mod}"
         await settings.unmute_member(member, reason=reason, execute_db=False)
+
+    @commands.command()
+    @commands.guild_only()
+    async def selfmute(self, ctx, duration: human_time.ShortTime, *, reason=None):
+        timers = self.bot.get_cog("Timers")
+        if not timers:
+            return await ctx.send(
+                "Sorry, that functionality isn't available right now. Try again later."
+            )
+
+        created_at = ctx.message.created_at
+        if duration.dt > (created_at + datetime.timedelta(days=1)):
+            raise commands.BadArgument("Duration cannot be more than 24 hours.")
+
+        if duration.dt < (created_at + datetime.timedelta(minutes=5)):
+            raise commands.BadArgument("Duration cannot be less than 5 minutes.")
+
+        human_friendly = human_time.human_timedelta(duration.dt, source=ctx.message.created_at)
+        confirm = await ctx.confirm(
+            f"Are you sure you want to mute yourself for {human_friendly}?\n"
+            "You won't be able to unmute yourself unless you ask a mod."
+        )
+
+        if not confirm:
+            return await ctx.send("Aborted selfmute")
+
+        settings = await self.get_guild_settings(ctx.guild.id)
+
+        if not settings:
+            raise NoMuteRole()
+
+        role = settings.mute_role
+
+        if not role:
+            raise NoMuteRole()
+
+        if role in ctx.author.roles:
+            return await ctx.send("You've already been muted.")
+
+        execute_db = False if ctx.author.id in settings.muted_members else True
+
+        reason = f"Selfmute by {ctx.author} (ID: {ctx.author.id}) for {human_friendly} with reason: {reason}"
+
+        try:
+            await settings.mute_member(ctx.author, reason, execute_db=execute_db)
+            timer = await timers.create_timer(
+                duration.dt,
+                "tempmute",
+                ctx.guild.id,
+                role.id,
+                ctx.author.id,
+                ctx.author.id,
+            )
+
+        except Exception:
+            await settings.unmute_member(
+                ctx.author, reason="Timer creation failed for previous selfmute."
+            )
+            raise
+
+        friendly_time = human_time.human_timedelta(duration.dt, source=timer.created_at)
+        await ctx.send(
+            f"{ctx.tick(True)} You have been muted for `{friendly_time}`.\n"
+            "Don't bug anyone about it!"
+        )
 
     @mute.group(name="role", invoke_without_command=True)
     async def mute_role(self, ctx):
@@ -640,7 +692,7 @@ class Moderation(commands.Cog):
 
         for channel in channels_to_update:
             overwrites = channel.overwrites
-            overwrites[role] = discord.PermissionOverwrite(send_messages=False)
+            overwrites[role] = discord.PermissionOverwrite(send_messages=False, add_reactions=False)
             try:
                 await channel.edit(overwrites=overwrites, reason=reason)
                 succeeded += 1
