@@ -372,7 +372,7 @@ class Moderation(commands.Cog):
             )
 
         try:
-            await ctx.guild.unban(user, reason=reason)
+            await ctx.guild.kick(user, reason=reason)
         except discord.HTTPException:
             return await ctx.send(f"{ctx.tick(False)} I couldn't kick that user.")
 
