@@ -579,7 +579,7 @@ class Moderation(commands.Cog):
         if not member:
             return
 
-        reason = f"Automatic unmute from tempmute command. Command orignally invoked by {mod}"
+        reason = f"Automatic unmute from mute timer. Command orignally invoked by {mod}"
         await settings.unmute_member(member, reason=reason, execute_db=False)
 
     @commands.command()
