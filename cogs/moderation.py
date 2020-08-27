@@ -646,6 +646,34 @@ class Moderation(commands.Cog):
             "Don't bug anyone about it!"
         )
 
+    @commands.command(description="View members with the muted role")
+    @commands.has_permissions(manage_roles=True)
+    async def muted(self, ctx):
+        settings = await self.get_guild_settings(ctx.guild.id)
+
+        if not settings:
+            raise NoMuteRole()
+
+        role = settings.mute_role
+
+        if not role:
+            raise NoMuteRole()
+
+        if not settings.muted_members:
+            return await ctx.send("No muted members.")
+
+        members = []
+        for member_id in settings.muted_members:
+            member = ctx.guild.get_member(member_id)
+
+            if not member:
+                members.append(f"User with ID {member_id}")
+            else:
+                members.append(f"{member} (ID: {member.id})")
+
+        pages = ctx.pages(members, title="Muted Members")
+        await pages.start(ctx)
+
     @mute.group(name="role", invoke_without_command=True)
     async def mute_role(self, ctx):
         settings = await self.get_guild_settings(ctx.guild.id)
