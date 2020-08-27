@@ -264,6 +264,7 @@ class Moderation(commands.Cog):
             human_friendly = f"with an ID of `{user_id}`"
 
         to_be_banned = discord.Object(id=user_id)
+        reason = f"Ban by {ctx.author} (ID: {ctx.author.id}) with reason: {reason}"
 
         try:
             await ctx.guild.ban(to_be_banned, reason=reason)
@@ -354,6 +355,7 @@ class Moderation(commands.Cog):
     @commands.bot_has_permissions(ban_members=True)
     async def unban(self, ctx, user: BannedUser, *, reason=None):
         to_be_unbanned = discord.Object(id=user.id)
+        reason = f"Unban by {ctx.author} (ID: {ctx.author.id}) with reason: {reason}"
 
         try:
             await ctx.guild.unban(to_be_unbanned, reason=reason)
@@ -370,6 +372,8 @@ class Moderation(commands.Cog):
             return await ctx.send(
                 "You can't preform this action due to role hierarchy."
             )
+
+        reason = f"Kick by {ctx.author} (ID: {ctx.author.id}) with reason: {reason}"
 
         try:
             await ctx.guild.kick(user, reason=reason)
@@ -436,7 +440,7 @@ class Moderation(commands.Cog):
 
     @commands.Cog.listener("on_member_join")
     async def mute_role_retain(self, member):
-        settings = await self.guild.get_guild_settings(member.guild.id)
+        settings = await self.get_guild_settings(member.guild.id)
 
         if not settings.mute_role:
             return
