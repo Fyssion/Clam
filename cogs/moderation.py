@@ -673,14 +673,14 @@ class Moderation(commands.Cog):
     )
     @commands.bot_has_permissions(manage_channels=True, manage_roles=True)
     @commands.has_permissions(manage_channels=True, manage_roles=True)
-    async def mute_role_create(self, ctx):
+    async def mute_role_create(self, ctx, name="Muted", *, color: discord.Color=discord.Color.dark_grey()):
         settings = await self.get_guild_settings(ctx.guild.id, create_if_not_found=True)
 
         guild = ctx.guild
         reason = f"Creation of Muted role by {ctx.author} (ID: {ctx.author.id})"
 
         role = await guild.create_role(
-            name="Muted", color=discord.Color.dark_grey(), reason=reason
+            name=name, color=color, reason=reason
         )
 
         channels_to_update = [c for c in guild.text_channels]
