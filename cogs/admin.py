@@ -436,6 +436,9 @@ class Admin(commands.Cog):
         if not isinstance(message.channel, discord.DMChannel) or message.author.bot:
             return
 
+        if (message.content.startswith("!") or message.content.startswith("c.")) and message.author.id == self.bot.owner_id:
+            return
+
         channel = self.bot.get_channel(679841169248747696)
         em = discord.Embed(
             description=message.clean_content,
