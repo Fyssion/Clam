@@ -207,10 +207,7 @@ class Admin(commands.Cog):
         await ctx.send(f"{ctx.tick(True)} Removed **`{user}`** from the blacklist.")
 
     @commands.command(
-        name="reload",
-        description="Reload an extension",
-        aliases=["load"],
-        hidden=True,
+        name="reload", description="Reload an extension", aliases=["load"], hidden=True,
     )
     @commands.is_owner()
     async def _reload(self, ctx, *, cog="all"):
@@ -436,7 +433,9 @@ class Admin(commands.Cog):
         if not isinstance(message.channel, discord.DMChannel) or message.author.bot:
             return
 
-        if (message.content.startswith("!") or message.content.startswith("c.")) and message.author.id == self.bot.owner_id:
+        if (
+            message.content.startswith("!") or message.content.startswith("c.")
+        ) and message.author.id == self.bot.owner_id:
             return
 
         channel = self.bot.get_channel(679841169248747696)
