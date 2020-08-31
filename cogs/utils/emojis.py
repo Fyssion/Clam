@@ -22,3 +22,5 @@ STOP = "<:tstop:711774320556245004>"
 # Third set (edited myself)
 GREEN_TICK = "<:tickGreen:721558020076863509>"
 RED_TICK = "<:tickRed:721558020039114794>"
+
+LOADING = "<a:loading:749356637420257391>"

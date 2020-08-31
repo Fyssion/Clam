@@ -6,6 +6,7 @@ import traceback
 import psutil
 import typing
 import time
+import io
 from jishaku.codeblocks import codeblock_converter
 
 from .utils.utils import TabularData
@@ -190,7 +191,7 @@ class Admin(commands.Cog):
 
         self.bot.add_to_blacklist(user)
 
-        await ctx.send(f"{ctx.tick(True)} Added **`{user}`** to the blacklist.")
+        await ctx.send(ctx.tick(True, f"Added **`{user}`** to the blacklist."))
 
     @blacklist.command(
         name="remove",
@@ -204,7 +205,7 @@ class Admin(commands.Cog):
 
         self.bot.remove_from_blacklist(user)
 
-        await ctx.send(f"{ctx.tick(True)} Removed **`{user}`** from the blacklist.")
+        await ctx.send(ctx.tick(True, f"Removed **`{user}`** from the blacklist."))
 
     @commands.command(
         name="reload", description="Reload an extension", aliases=["load"], hidden=True,
@@ -326,7 +327,7 @@ class Admin(commands.Cog):
         try:
             e = self.bot.error_cache[index]
         except IndexError:
-            return await ctx.send(f"{ctx.tick(False)} There is no error at that index.")
+            return await ctx.send(ctx.tick(False, f"There is no error at that index."))
         etype = type(e)
         trace = e.__traceback__
         verbosity = 4
@@ -369,7 +370,7 @@ class Admin(commands.Cog):
         if type(user) == int:
             user = self.bot.get_user(user)
             if not user:
-                return await ctx.send(f"{ctx.tick(False)} I couldn't find that user.")
+                return await ctx.send(ctx.tick(False, f"I couldn't find that user."))
         category = ctx.guild.get_channel(CLAM_DMS_CATEGORY)
         channel = await category.create_text_channel(
             name=str(user), reason="Create DM session"

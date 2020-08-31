@@ -3,6 +3,7 @@ from discord.flags import BaseFlags, fill_with_flags, flag_value
 import discord
 
 import datetime
+import io
 import json
 import typing
 from datetime import datetime as d
@@ -12,7 +13,7 @@ from urllib.parse import urlparse
 from async_timeout import timeout
 
 from .utils import db, human_time
-from .utils.emojis import GREEN_TICK, RED_TICK
+from .utils.emojis import GREEN_TICK, RED_TICK, LOADING
 from .utils.checks import has_manage_guild
 from .utils.utils import is_int
 
@@ -99,6 +100,38 @@ class GuildSettings:
 # class Logs(db.Table):
 #     id = db.PrimaryKeyColumn()
 #     guild_id = db.Column(db.Integer(big=True), index=True)
+
+
+class WelcomeContent:
+    def __init__(self, original, messages):
+        self.original = original
+        self.messages = messages
+
+
+class BinConverter(commands.Converter):
+    async def get_bin(self, ctx, url):
+        parsed = urlparse(url)
+        newpath = "/raw" + parsed.path
+        url = parsed.scheme + "://" + parsed.netloc + newpath
+
+        try:
+            async with ctx.bot.session.get(url, timeout=10) as resp:
+                f = await resp.read()
+                f = f.decode("utf-8")
+                return f
+
+        except asyncio.TimeoutError:
+            raise commands.BadArgument("Could not fetch data from specified url.")
+
+    async def convert(self, ctx, arg):
+        # Attempt to parse the argument by optionally
+        # fetching from a bin and then parsing the content
+
+        if arg.startswith("http"):
+            return await self.get_bin(ctx, arg)
+
+        else:
+            return arg
 
 
 class BannedUser(commands.Converter):
@@ -435,8 +468,8 @@ class Moderation(commands.Cog):
         query = """UPDATE guild_settings
                    SET muted_members=$1
                    WHERE guild_id=$2;
-                """
 
+                """
         await self.bot.pool.execute(query, settings.muted_members, before.guild.id)
 
     @commands.Cog.listener("on_member_join")
@@ -533,7 +566,9 @@ class Moderation(commands.Cog):
 
         execute_db = False if member.id in settings.muted_members else True
 
-        friendly_time = human_time.human_timedelta(duration.dt, source=ctx.message.created_at)
+        friendly_time = human_time.human_timedelta(
+            duration.dt, source=ctx.message.created_at
+        )
         reason = f"Tempmute by {ctx.author} (ID: {ctx.author.id}) for {friendly_time} with reason: {reason}"
 
         try:
@@ -598,7 +633,9 @@ class Moderation(commands.Cog):
         if duration.dt < (created_at + datetime.timedelta(minutes=5)):
             raise commands.BadArgument("Duration cannot be less than 5 minutes.")
 
-        human_friendly = human_time.human_timedelta(duration.dt, source=ctx.message.created_at)
+        human_friendly = human_time.human_timedelta(
+            duration.dt, source=ctx.message.created_at
+        )
         confirm = await ctx.confirm(
             f"Are you sure you want to mute yourself for {human_friendly}?\n"
             "You won't be able to unmute yourself unless you ask a mod."
@@ -701,15 +738,15 @@ class Moderation(commands.Cog):
     )
     @commands.bot_has_permissions(manage_channels=True, manage_roles=True)
     @commands.has_permissions(manage_channels=True, manage_roles=True)
-    async def mute_role_create(self, ctx, name="Muted", *, color: discord.Color=discord.Color.dark_grey()):
+    async def mute_role_create(
+        self, ctx, name="Muted", *, color: discord.Color = discord.Color.dark_grey()
+    ):
         settings = await self.get_guild_settings(ctx.guild.id, create_if_not_found=True)
 
         guild = ctx.guild
         reason = f"Creation of Muted role by {ctx.author} (ID: {ctx.author.id})"
 
-        role = await guild.create_role(
-            name=name, color=color, reason=reason
-        )
+        role = await guild.create_role(name=name, color=color, reason=reason)
 
         channels_to_update = [c for c in guild.text_channels]
         channels_to_update.extend(c for c in guild.categories)
@@ -719,7 +756,9 @@ class Moderation(commands.Cog):
 
         for channel in channels_to_update:
             overwrites = channel.overwrites
-            overwrites[role] = discord.PermissionOverwrite(send_messages=False, add_reactions=False)
+            overwrites[role] = discord.PermissionOverwrite(
+                send_messages=False, add_reactions=False
+            )
             try:
                 await channel.edit(overwrites=overwrites, reason=reason)
                 succeeded += 1
@@ -766,25 +805,6 @@ class Moderation(commands.Cog):
 
         await ctx.send(f"{ctx.tick(True)} Unbound mute role")
 
-    async def get_bin(self, url="https://hastebin.com"):
-        parsed = urlparse(url)
-        newpath = "/raw" + parsed.path
-        url = parsed.scheme + "://" + parsed.netloc + newpath
-        try:
-            async with timeout(10):
-                async with self.bot.session.get(url) as resp:
-                    f = await resp.read()
-        except asyncio.TimeoutError:
-            raise TimeoutError(
-                ":warning: Could not fetch data from hastebin. \
-            Is the site down? Try https://www.pastebin.com"
-            )
-            return None
-        async with self.bot.session.get(url) as resp:
-            f = await resp.read()
-            f = f.decode("utf-8")
-            return f
-
     async def wait_for_message(self, author, channel, timeout=120):
         def check(msg):
             return msg.author == author and msg.channel == channel
@@ -799,40 +819,107 @@ class Moderation(commands.Cog):
             await channel.send("You took too long! Please try again.")
             return None
 
+    async def get_attachment(self, ctx, url, index):
+        if not url.endswith((".jpg", ".gif", ".png")):
+            raise commands.BadArgument(f"Attachment URL (`{url}`) must end in `.jpg`, `.png`, or `.gif`.")
+
+        ending = url[-3:]
+
+        async with ctx.bot.session.get(url) as resp:
+            buffer = io.BytesIO(await resp.read())
+            file = discord.File(buffer, f"attachment{index}.{ending}")
+            return file
+
     @commands.command(
-        description="Create a server info message for your server.", hidden=True
+        name="welcome-message",
+        description="Create a server info message for your server.",
+        hidden=True,
     )
     @commands.guild_only()
     @has_manage_guild()
     @commands.is_owner()
-    async def welcome(self, ctx):
-        await ctx.send("Beginning interactive message generator in your DMs.")
-        author = ctx.author
-        await author.send(
-            "Welcome to the interactive message generator!\n"
-            "Paste the message you want to send here, or give me a bin link "
-            "(hastebin, mystbin, or your other bin preference)."
-        )
-        message = await self.wait_for_message(author, author.dm_channel)
-        content = message.content
-        if content.startswith("http"):
-            content = await self.get_bin(message.content)
-            if len(content) > 2000:
-                if "$$BREAK$$" not in content:
-                    return await author.send(
-                        "That message is too long, and I couldn't find any message breaks in it.\n"
-                        "Add message breaks with they keyword `$$BREAK$$`, and I will split the message there."
+    async def welcome_message(
+        self, ctx, channel: discord.TextChannel, *, content: BinConverter
+    ):
+        """Send a welcome or about message to a channel
+
+        Please note that this will purge the specified channel of all it's messages.
+
+        Formatting guide:
+        - $$BREAK$$ | Split the content before and after this point into two messages
+        - $$ATTACHMENT=attachment_url$$ | Add an image or attachment to the message at this point
+        """
+        done = ctx.tick(True)
+        loading = LOADING
+
+        tasks = {
+            "Prepare content": done,
+            "Split content into messages": loading,
+            "Find attachments": loading,
+            f"Send messages to {channel.mention}": loading
+        }
+
+        def format_tasks():
+            return "\n\n".join(f"{v} {k}" for k, v in tasks.items())
+
+        progress_message = await ctx.send(format_tasks())
+
+        if len(content) > 2000:
+            if "$$BREAK$$" not in content:
+                raise commands.BadArgument(
+                    "That message is too long, and I couldn't find any message breaks in it.\n"
+                    "Add message breaks with they keyword `$$BREAK$$`, and I will split the message there."
                     )
             all_contents = content.split("$$BREAK$$")
+            all_contents = [c.strip() for c in all_contents]
         else:
-            all_contents = [content]
+            all_contents = content.split("$$BREAK$$")
+            all_contents = [c.strip() for c in all_contents]
+
+        tasks["Split content into messages"] = done
+        await progress_message.edit(content=format_tasks())
+
+        attachment_regex = re.compile(r"\$\$ATTACHMENT=(.*)\$\$")
+
+        contents = []
+        for i, message in enumerate(all_contents):
+            urls = attachment_regex.findall(message)
+
+            if not urls:
+                contents.append(message)
+
+            else:
+                for i, url in enumerate(urls):
+                    attachment = await self.get_attachment(ctx, url, i)
+
+                    full_str = f"$$ATTACHMENT={url}$$"
+                    start = message.find(full_str)
+                    before = message[:start].strip()
+                    contents.append(before)
+                    message = message[start+len(full_str):].strip()
+                    contents.append(attachment)
+
+                contents.append(message)
+
+        tasks["Find attachments"] = done
+        await progress_message.edit(content=format_tasks())
+
         messages = []
-        for message in all_contents:
-            kwargs = {"content": message, "embed": None}
-            messages.append(kwargs)
-        await author.send("Sending message to server...")
-        for message in messages:
-            await author.send(**message)
+        for entity in contents:
+
+            if isinstance(entity, discord.File):
+                messages.append({"file": entity})
+            elif entity:
+                messages.append({"content": entity.strip()})
+
+        content = WelcomeContent(content, messages)
+
+        await channel.purge()
+        for message in content.messages:
+            await channel.send(**message)
+
+        tasks[f"Send messages to {channel.mention}"] = done
+        await progress_message.edit(content=format_tasks())
 
     @commands.group(
         description="View the current verification system", invoke_without_command=True

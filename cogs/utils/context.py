@@ -134,10 +134,11 @@ class Context(commands.Context):
     def db(self):
         return self.bot.pool
 
-    def tick(self, tick):
-        tick = bool(tick)
+    def tick(self, tick, label=None):
         ticks = {True: GREEN_TICK, False: RED_TICK}
-        return ticks[tick]
+        tick = ticks[tick]
+
+        return f"{tick} {label}" if label else tick
 
     async def confirm(self, message):
         return await Confirm(message).prompt(self)

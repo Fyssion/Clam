@@ -462,8 +462,8 @@ class Meta(commands.Cog):
 
         elif isinstance(error, commands.CommandInvokeError):
             original = error.original
-            # if True: # for debugging
-            if not isinstance(original, discord.HTTPException):
+            if True: # for debugging
+            # if not isinstance(original, discord.HTTPException):
                 print(
                     "Ignoring exception in command {}:".format(ctx.command),
                     file=sys.stderr,
