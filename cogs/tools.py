@@ -16,6 +16,7 @@ import dateparser
 import asyncio
 
 from .utils import colors
+from .utils.human_time import plural
 
 
 def snowstamp(snowflake):
@@ -363,7 +364,7 @@ class Tools(commands.Cog):
             em.set_footer(text="No servers shared")
 
         else:
-            em.set_footer(text=f"{len(shared)} server(s) shared")
+            em.set_footer(text=f"{plural(len(shared)):server} shared")
 
         await ctx.send(embed=em)
 
