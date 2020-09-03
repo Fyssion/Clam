@@ -497,7 +497,9 @@ class Moderation(commands.Cog):
             )
 
         if not role_hierarchy_check(ctx, ctx.guild.me, member):
-            return await ctx.send("The bot can't preform this action due to role hierarchy.")
+            return await ctx.send(
+                "The bot can't preform this action due to role hierarchy."
+            )
 
         settings = await self.get_guild_settings(ctx.guild.id)
 
@@ -521,8 +523,12 @@ class Moderation(commands.Cog):
                 "You can't preform this action due to role hierarchy."
             )
 
-        if isinstance(member, discord.Member) and not role_hierarchy_check(ctx, ctx.guild.me, member):
-            return await ctx.send("The bot can't preform this action due to role hierarchy.")
+        if isinstance(member, discord.Member) and not role_hierarchy_check(
+            ctx, ctx.guild.me, member
+        ):
+            return await ctx.send(
+                "The bot can't preform this action due to role hierarchy."
+            )
 
         settings = await self.get_guild_settings(ctx.guild.id)
 
@@ -568,7 +574,9 @@ class Moderation(commands.Cog):
             )
 
         if not role_hierarchy_check(ctx, ctx.guild.me, member):
-            return await ctx.send("The bot can't preform this action due to role hierarchy.")
+            return await ctx.send(
+                "The bot can't preform this action due to role hierarchy."
+            )
 
         settings = await self.get_guild_settings(ctx.guild.id)
         role = settings.mute_role
@@ -636,7 +644,9 @@ class Moderation(commands.Cog):
             )
 
         if not role_hierarchy_check(ctx, ctx.guild.me, ctx.author):
-            return await ctx.send("The bot can't preform this action due to role hierarchy.")
+            return await ctx.send(
+                "The bot can't preform this action due to role hierarchy."
+            )
 
         created_at = ctx.message.created_at
         if duration.dt > (created_at + datetime.timedelta(days=1)):
@@ -833,7 +843,9 @@ class Moderation(commands.Cog):
 
     async def get_attachment(self, ctx, url, index):
         if not url.endswith((".jpg", ".gif", ".png")):
-            raise commands.BadArgument(f"Attachment URL (`{url}`) must end in `.jpg`, `.png`, or `.gif`.")
+            raise commands.BadArgument(
+                f"Attachment URL (`{url}`) must end in `.jpg`, `.png`, or `.gif`."
+            )
 
         ending = url[-3:]
 
@@ -868,7 +880,7 @@ class Moderation(commands.Cog):
             "Prepare content": done,
             "Split content into messages": loading,
             "Find attachments": loading,
-            f"Send messages to {channel.mention}": loading
+            f"Send messages to {channel.mention}": loading,
         }
 
         def format_tasks():
@@ -881,7 +893,7 @@ class Moderation(commands.Cog):
                 raise commands.BadArgument(
                     "That message is too long, and I couldn't find any message breaks in it.\n"
                     "Add message breaks with they keyword `$$BREAK$$`, and I will split the message there."
-                    )
+                )
             all_contents = content.split("$$BREAK$$")
             all_contents = [c.strip() for c in all_contents]
         else:
@@ -908,7 +920,7 @@ class Moderation(commands.Cog):
                     start = message.find(full_str)
                     before = message[:start].strip()
                     contents.append(before)
-                    message = message[start+len(full_str):].strip()
+                    message = message[start + len(full_str) :].strip()
                     contents.append(attachment)
 
                 contents.append(message)
