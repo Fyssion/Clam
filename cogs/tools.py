@@ -29,6 +29,8 @@ def snowstamp(snowflake):
 class GlobalUser(commands.Converter):
     async def convert(self, ctx, arg):
         try:
+            if not ctx.guild:
+                raise commands.BadArgument() # blank to skip
             user = await commands.MemberConverter().convert(ctx, arg)
 
         except commands.BadArgument:
