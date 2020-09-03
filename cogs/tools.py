@@ -183,33 +183,23 @@ class Tools(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @commands.group(
-        invoke_without_command=True,
-        description="Get the previous deleted message in this channel",
+    @commands.command(
+        description="Get the previous or a specific deleted message in this channel",
     )
-    async def snipe(self, ctx):
+    async def snipe(self, ctx, message_id: int = None):
         sniped = [m for m in self.sniped_messages if m.channel == ctx.channel]
 
         if not sniped:
             return await ctx.send("I haven't sniped any messages in this channel.")
 
-        message = sniped[0]
+        if not message_id:
+            message = discord.utils.get(sniped, id=id)
 
-        await self.send_sniped_message(ctx, message)
+            if not message:
+                raise commands.BadArgument("I don't have a sniped message with that ID.")
 
-    @snipe.command(
-        name="id", description="Get a sniped message by it's id (found with snipe all)"
-    )
-    async def snipe_id(self, ctx, id):
-        sniped = [m for m in self.sniped_messages if m.channel == ctx.channel]
-
-        if not sniped:
-            return await ctx.send("I haven't sniped any messages in this channel.")
-
-        message = discord.utils.get(sniped, id=id)
-
-        if not message:
-            return await ctx.send("I don't have a sniped message with that ID.")
+        else:
+            message = sniped[0]
 
         await self.send_sniped_message(ctx, message)
 
