@@ -213,12 +213,10 @@ class Tools(commands.Cog):
 
         await self.send_sniped_message(ctx, message)
 
-    @snipe.command(
-        name="all",
+    @commands.command(
         description="Get all sniped messages in this channel",
-        aliases=["list"],
     )
-    async def snipe_all(self, ctx):
+    async def sniped(self, ctx):
         sniped = [m for m in self.sniped_messages if m.channel == ctx.channel]
 
         if not sniped:
@@ -253,8 +251,7 @@ class Tools(commands.Cog):
             return None
 
     @commands.command(
-        description="Get the avatar of a member.",
-        aliases=["profilepic"],
+        description="Get the avatar of a member.", aliases=["profilepic"],
     )
     async def avatar(self, ctx, *, member: discord.Member = None):
         if not member:
