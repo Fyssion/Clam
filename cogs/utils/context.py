@@ -94,6 +94,7 @@ class EmbedPageSource(menus.ListPageSource):
     def __init__(self, entries, per_page, embed):
         super().__init__(entries, per_page=per_page)
         self.embed = embed
+        self.original_description = embed.description or ""
 
     def format_page(self, menu, entries):
         offset = menu.current_page * self.per_page
@@ -101,7 +102,7 @@ class EmbedPageSource(menus.ListPageSource):
         formatted = "\n".join(
             f"{i+1}. {v}" for i, v in enumerate(entries, start=offset)
         )
-        self.embed.description = self.embed.description or ""
+        self.embed.description = self.original_description
         self.embed.description += "\n\n" + formatted
 
         return self.embed
