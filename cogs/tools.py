@@ -293,7 +293,6 @@ class Tools(commands.Cog):
         description="Get information about a user",
         aliases=["memberinfo", "ui", "whois"],
     )
-    @commands.guild_only()
     async def userinfo(self, ctx, *, user: GlobalUser = None):
         await ctx.trigger_typing()
 
