@@ -193,7 +193,7 @@ class Tools(commands.Cog):
             return await ctx.send("I haven't sniped any messages in this channel.")
 
         if message_id:
-            message = discord.utils.get(sniped, id=id)
+            message = discord.utils.get(sniped, id=message_id)
 
             if not message:
                 raise commands.BadArgument("I don't have a sniped message with that ID.")
