@@ -15,7 +15,7 @@ import typing
 import dateparser
 import asyncio
 
-from .utils import colors
+from .utils import colors, emojis
 from .utils.human_time import plural
 
 
@@ -30,7 +30,7 @@ class GlobalUser(commands.Converter):
     async def convert(self, ctx, arg):
         try:
             if not ctx.guild:
-                raise commands.BadArgument() # blank to skip
+                raise commands.BadArgument()  # blank to skip
             user = await commands.MemberConverter().convert(ctx, arg)
 
         except commands.BadArgument:
@@ -43,12 +43,16 @@ class GlobalUser(commands.Converter):
 
                 except ValueError:
                     arg = discord.utils.escape_mentions(arg)
-                    raise commands.BadArgument(f"Could not find a member or user `{arg}` with that name. Try with their ID instead.")
+                    raise commands.BadArgument(
+                        f"Could not find a member or user `{arg}` with that name. Try with their ID instead."
+                    )
                 try:
                     user = await ctx.bot.fetch_user(arg)
 
                 except discord.HTTPException:
-                    raise commands.BadArgument(f"Could not find a member or user with the ID of `{arg}`.")
+                    raise commands.BadArgument(
+                        f"Could not find a member or user with the ID of `{arg}`."
+                    )
 
         return user
 
@@ -224,16 +228,16 @@ class Tools(commands.Cog):
             message = discord.utils.get(sniped, id=message_id)
 
             if not message:
-                raise commands.BadArgument("I don't have a sniped message with that ID.")
+                raise commands.BadArgument(
+                    "I don't have a sniped message with that ID."
+                )
 
         else:
             message = sniped[0]
 
         await self.send_sniped_message(ctx, message)
 
-    @commands.command(
-        description="Get all sniped messages in this channel",
-    )
+    @commands.command(description="Get all sniped messages in this channel",)
     async def sniped(self, ctx):
         sniped = [m for m in self.sniped_messages if m.channel == ctx.channel]
 
@@ -302,7 +306,21 @@ class Tools(commands.Cog):
 
         is_member = isinstance(user, discord.Member)
 
-        desc = ""
+        badge_mapping = {
+            discord.UserFlags.staff: emojis.DISCORD_DEVELOPER,
+            discord.UserFlags.partner: emojis.PARTNER,
+            discord.UserFlags.hypesquad: emojis.HYPESQUAD_EVENTS,
+            discord.UserFlags.bug_hunter: emojis.BUG_HUNTER,
+            discord.UserFlags.hypesquad_bravery: emojis.HYPESQUAD_BRAVERY,
+            discord.UserFlags.hypesquad_brilliance: emojis.HYPESQUAD_BRILLIANCE,
+            discord.UserFlags.hypesquad_balance: emojis.HYPESQUAD_BALANCE,
+            discord.UserFlags.early_supporter: emojis.EARLY_SUPPORTER,
+            discord.UserFlags.verified_bot_developer: emojis.EARLY_VERIFIED_DEVELOPER,
+        }
+
+        badges = [badge_mapping[f] for f in user.public_flags.all()]
+
+        desc = " ".join(badges)
         if user.id == self.bot.owner_id:
             created_or_owns = "created" if user.id == 224513210471022592 else "owns"
             desc += f"\n:gear: This user {created_or_owns} this bot."
@@ -359,7 +377,9 @@ class Tools(commands.Cog):
                     roles += f"{role.mention} "
                 em.add_field(name="Roles", value=roles, inline=False)
 
-        shared = [g for g in self.bot.guilds if discord.utils.get(g.members, id=user.id)]
+        shared = [
+            g for g in self.bot.guilds if discord.utils.get(g.members, id=user.id)
+        ]
 
         if not shared:
             em.set_footer(text="No servers shared")
