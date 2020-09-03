@@ -25,6 +25,31 @@ def snowstamp(snowflake):
     return d.utcfromtimestamp(timestamp).strftime("%b %d, %Y at %#I:%M %p")
 
 
+class GlobalUser(commands.Converter):
+    async def convert(self, ctx, arg):
+        try:
+            user = await commands.MemberConverter().convert(ctx, arg)
+
+        except commands.BadArgument:
+            try:
+                user = await commands.UserConverter().convert(ctx, arg)
+
+            except commands.BadArgument:
+                try:
+                    arg = int(arg)
+
+                except ValueError:
+                    arg = discord.utils.escape_mentions(arg)
+                    raise commands.BadArgument(f"Could not find a member or user `{arg}` with that name. Try with their ID instead.")
+                try:
+                    user = await ctx.bot.fetch_user(arg)
+
+                except discord.HTTPException:
+                    raise commands.BadArgument(f"Could not find a member or user with the ID of `{arg}`.")
+
+        return user
+
+
 class SearchPages(menus.ListPageSource):
     def __init__(self, data):
         pages_limit = 10
@@ -264,85 +289,82 @@ class Tools(commands.Cog):
         await ctx.send(embed=em)
 
     @commands.command(
-        name="userinfo",
         description="Get information about a user",
         aliases=["memberinfo", "ui", "whois"],
     )
     @commands.guild_only()
-    async def userinfo_command(self, ctx, *, member: discord.Member = None):
+    async def userinfo(self, ctx, *, user: GlobalUser = None):
         await ctx.trigger_typing()
 
-        member = member or ctx.author
+        user = user or ctx.author
 
-        if member == ctx.author:
-            self.log.info(
-                f"{str(ctx.author)} successfully used the "
-                "userinfo command on themself"
-            )
-        else:
-            self.log.info(
-                f"{str(ctx.author)} successfully used the "
-                f"userinfo command on '{member}'"
-            )
-
-        # def time_ago(user, dt):
-        #     if dt is None:
-        #         return ""
-        #     return f"{snowstamp(user.id)}\n"
-        #            f"({time.human_timedelta(dt, accuracy=3)})"
+        is_member = isinstance(user, discord.Member)
 
         desc = ""
-        if member.id == self.bot.owner_id:
-            created_or_owns = "created" if member.id == 224513210471022592 else "owns"
+        if user.id == self.bot.owner_id:
+            created_or_owns = "created" if user.id == 224513210471022592 else "owns"
             desc += f"\n:gear: This user {created_or_owns} this bot."
-        if member == self.bot.user:
+        if user == self.bot.user:
             desc += "\n:wave:Hey, that's me!"
-        if member.bot is True:
+        if user.bot is True:
             desc += "\n:robot: This user is a bot."
-        if member.id == ctx.guild.owner_id:
+        if is_member and user.id == ctx.guild.owner_id:
             desc += "\n<:owner:649355683598303260> This user owns this server."
-        if member.premium_since:
-            formatted = member.premium_since.strftime("%b %d, %Y at %#I:%M %p")
+        if is_member and user.premium_since:
+            formatted = user.premium_since.strftime("%b %d, %Y at %#I:%M %p")
             desc += (
                 "\n<:boost:649644112034922516> "
                 "This user has been boosting this server since "
                 f"{formatted}."
             )
 
-        author = str(member)
-        if member.nick:
-            author += f" ({member.nick})"
-        author += f" - {str(member.id)}"
+        author = str(user)
+        if is_member and user.nick:
+            author += f" ({user.nick})"
+        author += f" - {str(user.id)}"
 
-        icon = member.avatar_url
+        icon = user.avatar_url
         color = await self.get_average_color(icon) if icon else None
-        color = color or member.color or colors.PRIMARY
+        color = color or (user.color if is_member and user.color else colors.PRIMARY)
 
         em = discord.Embed(description=desc, color=color)
 
-        em.set_thumbnail(url=member.avatar_url)
-        em.set_author(name=author, icon_url=member.avatar_url)
-        humanized = humanize.naturaltime(member.created_at)
+        em.set_thumbnail(url=user.avatar_url)
+        em.set_author(name=author, icon_url=user.avatar_url)
+        humanized = humanize.naturaltime(user.created_at)
         em.add_field(
             name=":clock1: Account Created",
-            value=f"{humanize.naturaldate(member.created_at).capitalize()} ({humanized})",
+            value=f"{humanize.naturaldate(user.created_at).capitalize()} ({humanized})",
             inline=True,
         )
-        humanized = humanize.naturaltime(member.joined_at)
-        em.add_field(
-            name="<:join:649722959958638643> Joined Server",
-            value=f"{humanize.naturaldate(member.joined_at).capitalize()} ({humanized})",
-            inline=True,
-        )
-        members = ctx.guild.members
-        members.sort(key=lambda x: x.joined_at)
-        position = members.index(member)
-        em.add_field(name=":family: Join Position", value=position + 1)
-        if member.roles[1:]:
-            roles = ""
-            for role in member.roles[1:]:
-                roles += f"{role.mention} "
-            em.add_field(name="Roles", value=roles, inline=False)
+
+        if is_member:
+            humanized = humanize.naturaltime(user.joined_at)
+            em.add_field(
+                name="<:join:649722959958638643> Joined Server",
+                value=f"{humanize.naturaldate(user.joined_at).capitalize()} ({humanized})",
+                inline=True,
+            )
+
+            members = ctx.guild.members
+            members.sort(key=lambda x: x.joined_at)
+            position = members.index(user)
+            em.add_field(name=":family: Join Position", value=position + 1)
+
+            if user.roles[1:]:
+                roles = ""
+                for role in user.roles[1:]:
+                    roles += f"{role.mention} "
+                em.add_field(name="Roles", value=roles, inline=False)
+
+        shared = [g for g in self.bot.guilds if discord.utils.get(g.members, id=user.id)]
+
+        if not shared:
+            em.set_footer(text="No servers shared")
+
+        else:
+            em.set_footer(text=f"{len(shared)} server(s) shared")
+
         await ctx.send(embed=em)
 
     @commands.command(
