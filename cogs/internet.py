@@ -8,6 +8,11 @@ import importlib
 import re
 import os
 import ast
+import base64
+import json
+import functools
+import io
+from PIL import Image
 from bs4 import BeautifulSoup
 
 from .utils import aiopypi, aioxkcd, fuzzy, colors
@@ -23,7 +28,9 @@ class DocsSource(menus.ListPageSource):
     def format_page(self, menu, entries):
         offset = menu.current_page * self.per_page
 
-        em = discord.Embed(title=f"`Results for '{self.object}'`", colour=colors.PRIMARY)
+        em = discord.Embed(
+            title=f"`Results for '{self.object}'`", colour=colors.PRIMARY
+        )
         em.set_footer(
             text=f"{len(self.entries)} results | Page {menu.current_page + 1}/{self.get_max_pages()}"
         )
@@ -156,6 +163,103 @@ class Internet(commands.Cog):
             )
 
         await ctx.send(embed=em)
+
+    def crop_skin(self, raw_img):
+        img = Image.open(raw_img)
+        # coords of the face in the skin
+        cropped = img.crop((8, 8, 16, 16))
+        resized = cropped.resize((500, 500), resample=Image.NEAREST)
+
+        output = io.BytesIO()
+        resized.save(output, format="png")
+        output.seek(0)
+
+        return output
+
+    @commands.command(
+        description="Fetch information about a Minecraft user", aliases=["mc"]
+    )
+    @commands.cooldown(2, 30, commands.BucketType.user)
+    async def minecraft(self, ctx, *, user):
+        # Get the user's UUID
+        async with self.bot.session.get(
+            f"https://api.mojang.com/users/profiles/minecraft/{user}"
+        ) as resp:
+            if resp.status != 200:
+                return await ctx.send("Could not find user. Sorry")
+
+            data = await resp.json()
+
+        name = data["name"]
+        uuid = data["id"]
+
+        # Get the user's name history
+        async with self.bot.session.get(
+            f"https://api.mojang.com/user/profiles/{uuid}/names"
+        ) as resp:
+            if resp.status != 200:
+                return await ctx.send(
+                    "An error occurred while fetching name history from Mojang. Sorry."
+                )
+
+            name_history = await resp.json()
+
+        previous_names = []
+
+        for name_data in reversed(name_history):
+            p_name = name_data["name"]
+            timestamp = name_data.get("changedToAt")
+
+            if not timestamp:
+                previous_names.append(f"{p_name} (N/A)")
+                continue
+
+            seconds = timestamp / 1000
+            date = datetime.fromtimestamp(seconds + (timestamp % 1000.0) / 1000.0)
+
+            date_str = date.strftime("%m/%d/%y")
+            human_friendly = f"{p_name} ({date_str})"
+            previous_names.append(discord.utils.escape_markdown(human_friendly))
+
+        # Get more information about the user
+        async with self.bot.session.get(
+            f"https://sessionserver.mojang.com/session/minecraft/profile/{uuid}"
+        ) as resp:
+            if resp.status != 200:
+                return await ctx.send(
+                    "An error occurred while fetching profile data from Mojang. Sorry."
+                )
+
+            profile_data = await resp.json()
+
+        raw_texture_data = profile_data["properties"][0]["value"]
+        texture_data = json.loads(base64.b64decode(raw_texture_data))
+
+        # Get the skin image itself
+        async with self.bot.session.get(
+            texture_data["textures"]["SKIN"]["url"]
+        ) as resp:
+            if resp.status != 200:
+                return await ctx.send(
+                    "An error occurred while fetching skin data from Mojang. Sorry."
+                )
+
+            bytes = await resp.read()
+            img = io.BytesIO(bytes)
+
+        # Crop out only the face of the skin
+        partial = functools.partial(self.crop_skin, img)
+        face = await self.bot.loop.run_in_executor(None, partial)
+
+        em = discord.Embed(title=name, color=0x70B237,)
+        em.set_thumbnail(url="attachment://face.png")
+        em.set_footer(text=f"UUID: {uuid}")
+
+        formatted_names = "\n".join(previous_names)
+        em.add_field(name="Previous Names", value=formatted_names)
+
+        file = discord.File(face, filename="face.png")
+        await ctx.send(embed=em, file=file)
 
     @commands.command(
         description="Fetch info about a Roblox profile", usage="[username]"
@@ -397,9 +501,7 @@ class Internet(commands.Cog):
         await ctx.send("It has been done.")
 
     @commands.group(
-        name="xkcd",
-        description="Fetch an xdcd comic",
-        invoke_without_command=True,
+        name="xkcd", description="Fetch an xdcd comic", invoke_without_command=True,
     )
     async def _xkcd(self, ctx, number: int = None):
         if not number:
