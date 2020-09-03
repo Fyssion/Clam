@@ -496,6 +496,9 @@ class Moderation(commands.Cog):
                 "You can't preform this action due to role hierarchy."
             )
 
+        if not role_hierarchy_check(ctx, ctx.guild.me, member):
+            return await ctx.send("The bot can't preform this action due to role hierarchy.")
+
         settings = await self.get_guild_settings(ctx.guild.id)
 
         if member.id in settings.muted_members:
@@ -517,6 +520,9 @@ class Moderation(commands.Cog):
             return await ctx.send(
                 "You can't preform this action due to role hierarchy."
             )
+
+        if isinstance(member, discord.Member) and not role_hierarchy_check(ctx, ctx.guild.me, member):
+            return await ctx.send("The bot can't preform this action due to role hierarchy.")
 
         settings = await self.get_guild_settings(ctx.guild.id)
 
@@ -560,6 +566,9 @@ class Moderation(commands.Cog):
             return await ctx.send(
                 "You can't preform this action due to role hierarchy."
             )
+
+        if not role_hierarchy_check(ctx, ctx.guild.me, member):
+            return await ctx.send("The bot can't preform this action due to role hierarchy.")
 
         settings = await self.get_guild_settings(ctx.guild.id)
         role = settings.mute_role
@@ -625,6 +634,9 @@ class Moderation(commands.Cog):
             return await ctx.send(
                 "Sorry, that functionality isn't available right now. Try again later."
             )
+
+        if not role_hierarchy_check(ctx, ctx.guild.me, ctx.author):
+            return await ctx.send("The bot can't preform this action due to role hierarchy.")
 
         created_at = ctx.message.created_at
         if duration.dt > (created_at + datetime.timedelta(days=1)):
