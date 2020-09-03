@@ -311,6 +311,7 @@ class Tools(commands.Cog):
             discord.UserFlags.partner: emojis.PARTNER,
             discord.UserFlags.hypesquad: emojis.HYPESQUAD_EVENTS,
             discord.UserFlags.bug_hunter: emojis.BUG_HUNTER,
+            discord.UserFlags.bug_hunter_level_2: emojis.BUG_HUNTER_2,
             discord.UserFlags.hypesquad_bravery: emojis.HYPESQUAD_BRAVERY,
             discord.UserFlags.hypesquad_brilliance: emojis.HYPESQUAD_BRILLIANCE,
             discord.UserFlags.hypesquad_balance: emojis.HYPESQUAD_BALANCE,
@@ -318,7 +319,12 @@ class Tools(commands.Cog):
             discord.UserFlags.verified_bot_developer: emojis.EARLY_VERIFIED_DEVELOPER,
         }
 
-        badges = [badge_mapping[f] for f in user.public_flags.all()]
+        badges = []
+        for f in user.public_flags.all():
+            badge = badge_mapping.get(f)
+
+            if badge:
+                badges.append(badge)
 
         desc = " ".join(badges)
         if user.id == self.bot.owner_id:
@@ -327,7 +333,8 @@ class Tools(commands.Cog):
         if user == self.bot.user:
             desc += "\n:wave:Hey, that's me!"
         if user.bot is True:
-            desc += "\n:robot: This user is a bot."
+            verified = "verified " if user.public_flags.verified_bot else ""
+            desc += f"\n:robot: This user is a {verified}bot."
         if is_member and user.id == ctx.guild.owner_id:
             desc += "\n<:owner:649355683598303260> This user owns this server."
         if is_member and user.premium_since:
