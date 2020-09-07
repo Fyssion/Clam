@@ -713,7 +713,7 @@ class Internet(commands.Cog):
     @docs.command(name="telegram.py", aliases=["tpy", "telegram"])
     async def docs_telegampy(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a telegram.py entity."""
-        await self.do_docs(ctx, "telegramp", obj)
+        await self.do_docs(ctx, "telegrampy", obj)
 
 
 def setup(bot):
