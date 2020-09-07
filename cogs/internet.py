@@ -634,6 +634,7 @@ class Internet(commands.Cog):
             "asyncpg": "https://magicstack.github.io/asyncpg/current",
             "flask": "https://flask.palletsprojects.com/en/1.1.x",
             "sqlalchemy": "https://docs.sqlalchemy.org/en/13",
+            "telegrampy": "https://telegrampy.readthedocs.io/en/latest"
         }
 
         if obj is None:
@@ -708,6 +709,11 @@ class Internet(commands.Cog):
     async def docs_sqlalchemy(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a SQLAlchemy entity."""
         await self.do_docs(ctx, "sqlalchemy", obj)
+
+    @docs.command(name="telegram.py", aliases=["tpy", "telegram"])
+    async def docs_telegampy(self, ctx, *, obj: str = None):
+        """Gives you a documentation link for a telegram.py entity."""
+        await self.do_docs(ctx, "telegramp", obj)
 
 
 def setup(bot):
