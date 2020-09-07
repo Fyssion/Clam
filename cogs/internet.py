@@ -606,6 +606,9 @@ class Internet(commands.Cog):
             if projname == "discord.py":
                 key = key.replace("discord.ext.commands.", "").replace("discord.", "")
 
+            if projname == "telegram.py":
+                key = key.replace("telegrampy.ext.commands.", "").replace("telegrampy.", "")
+
             result[f"{prefix}{key}"] = os.path.join(url, location)
 
         return result
