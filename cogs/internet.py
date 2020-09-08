@@ -88,6 +88,7 @@ class Internet(commands.Cog):
         self.emoji = ":globe_with_meridians:"
 
     @commands.command(description="Preform a google search and display the results")
+    @commands.cooldown(5, 30, commands.BucketType.user)
     async def google(self, ctx, *, query):
         google_client = self.bot.google_client
 
