@@ -1178,13 +1178,13 @@ class Moderation(commands.Cog):
         if emoji == GREEN_TICK:
             await member.add_roles(role, reason="Verification")
             await bot_message.edit(
-                content=f"**{GREEN_TICK} `{user}` accepted `{member}` into the server.**"
+                content=f"{GREEN_TICK} **`{user}` accepted `{member}`** into the server."
             )
         elif emoji == RED_TICK:
-            await bot_message.edit(content=f"{RED_TICK} `{user}` ignored `{member}`")
+            await bot_message.edit(content=f"{RED_TICK} **`{user}` ignored `{member}`**")
         else:
             await bot_message.edit(
-                content=f"**{RED_TICK} Timed out! Ignored `{member}`"
+                content=f"**{RED_TICK} Timed out!** Ignored `{member}`"
             )
 
         await bot_message.clear_reactions()
