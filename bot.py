@@ -8,6 +8,7 @@ from datetime import datetime as d
 import aiohttp
 import traceback
 import json
+import async_cse
 import collections
 import os
 
@@ -141,6 +142,7 @@ class Clam(commands.Bot):
 
     async def prepare_bot(self):
         self.pool = await db.Table.create_pool(self.config.database_uri)
+        self.google_client = async_cse.Search(self.config.google_api_key)
         self.session = aiohttp.ClientSession(loop=self.loop)
         self._adapter = discord.AsyncWebhookAdapter(self.session)
 
@@ -242,24 +244,25 @@ class Clam(commands.Bot):
 
         self.log.info(f"Logged in as {self.user.name} - {self.user.id}")
 
-        if self.status_hook:
+        if self.config.status_hook:
             await self.status_hook.send("Received READY event")
 
     async def on_connect(self):
-        if self.status_hook:
+        if self.config.status_hook:
             await self.status_hook.send("Connected to Discord")
 
     async def on_resumed(self):
-        if self.status_hook:
+        if self.config.status_hook:
             await self.status_hook.send("Resumed connection with Discord")
 
     async def on_disconnect(self):
-        if not self.session.closed and self.status_hook:
+        if not self.session.closed and self.config.status_hook:
             await self.status_hook.send("Disconnected from Discord")
 
     async def logout(self):
         await super().logout()
         await self.pool.close()
+        await self.google_client.close()
 
     def run(self):
         super().run(self.config.bot_token)

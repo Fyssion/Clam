@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands, menus
 
 from datetime import datetime
+from urllib.parse import urlparse
 import dateparser
 import aiohttp
 import importlib
@@ -12,12 +13,14 @@ import base64
 import json
 import functools
 import io
+import async_cse
 from PIL import Image
 from bs4 import BeautifulSoup
 
 from .utils import aiopypi, aioxkcd, fuzzy, colors
 from .utils.menus import MenuPages
 from .utils.utils import SphinxObjectFileReader
+from .utils.human_time import plural
 
 
 class DocsSource(menus.ListPageSource):
@@ -45,6 +48,32 @@ class DocsSource(menus.ListPageSource):
         return em
 
 
+class GoogleResultPages(menus.ListPageSource):
+    def __init__(self, entries, query):
+        super().__init__(entries, per_page=1)
+        self.query = query
+
+    def format_page(self, menu, entry):
+        em = discord.Embed(title=entry.title, url=entry.url, color=0x4285F4)
+
+        parsed = urlparse(entry.url)
+        simplified_url = parsed.netloc
+        if parsed.path not in ["/", "\\"]:
+            simplified_url += parsed.path
+
+        em.description = f"[`{simplified_url}`]({entry.url})\n\n{entry.description}"
+        em.set_author(name=f"Google results for '{self.query}'")
+
+        if entry.image_url:
+            em.set_thumbnail(url=entry.image_url)
+
+        em.set_footer(
+            text=f"{plural(len(self.entries)):result} | Result {menu.current_page + 1}/{self.get_max_pages()}"
+        )
+
+        return em
+
+
 class Internet(commands.Cog):
     """Various commands that use the internet.
 
@@ -57,6 +86,19 @@ class Internet(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.emoji = ":globe_with_meridians:"
+
+    @commands.command(description="Preform a google search and display the results")
+    async def google(self, ctx, *, query):
+        google_client = self.bot.google_client
+
+        try:
+            results = await google_client.search(query, safesearch=False)
+
+        except async_cse.NoResults:
+            return await ctx.send(f"No results for `{query}`. Sorry.")
+
+        pages = MenuPages(GoogleResultPages(results, query), clear_reactions_after=True)
+        await pages.start(ctx)
 
     @commands.group(
         description="Fetch a PyPI package.",
