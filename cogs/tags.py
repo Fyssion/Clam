@@ -531,9 +531,7 @@ class Tags(commands.Cog):
                 )
 
     @tag.command(
-        name="create",
-        description="Create a new tag",
-        aliases=["new"],
+        name="create", description="Create a new tag", aliases=["new"],
     )
     async def tag_create(
         self, ctx, name: TagNameConverter, *, content: TagContentConverter
@@ -608,8 +606,8 @@ class Tags(commands.Cog):
 
         try:
             message = await self.bot.wait_for(
-                "message", check=check, timeout=180.0
-            )  # 3 minutes
+                "message", check=check, timeout=180.0  # 3 minutes
+            )
         except asyncio.TimeoutError:
             return await ctx.send(f"{ctx.tick(False)} You timed out. Aborting.")
 
@@ -628,7 +626,7 @@ class Tags(commands.Cog):
 
     @tag.command(
         name="delete",
-        description="Delete a tag you own",
+        description="Delete a tag you own (unless you are a mod)",
         aliases=["remove"],
     )
     async def tag_delete(self, ctx, *, name):
@@ -669,9 +667,7 @@ class Tags(commands.Cog):
             )
 
     @tag.command(
-        name="edit",
-        description="Edit a tag you own",
-        aliases=["update"],
+        name="edit", description="Edit a tag you own", aliases=["update"],
     )
     async def tag_edit(
         self, ctx, tag: TagNameConverter, *, content: TagContentConverter
@@ -719,16 +715,105 @@ class Tags(commands.Cog):
                 )
 
     @tag.command(
-        name="transfer",
-        description="Transfer a tag to another member",
-        aliases=["move", "give"],
-        hidden=True,
+        name="transfer", description="Transfer a tag to another member",
     )
-    @commands.is_owner()
-    async def tag_transfer(self, ctx, name, *, member: discord.Member):
-        pass
+    async def tag_transfer(self, ctx, tag, *, member: discord.Member):
+        confirm = await ctx.confirm(
+            f"Are you sure you want to transfer tag `{tag}` to `{member}`?"
+        )
+
+        if not confirm:
+            return await ctx.send("Aborted tag transfer.")
+
+        bypass_owner_check = (
+            ctx.author.id == self.bot.owner_id
+            or ctx.author.guild_permissions.manage_messages
+        )
+        clause = "LOWER(name)=$2 AND guild_id=$3"
+
+        if bypass_owner_check:
+            args = [member.id, tag, ctx.guild.id]
+        else:
+            args = [member.id, tag, ctx.guild.id, ctx.author.id]
+            clause = f"{clause} AND owner_id=$4"
+
+        query = f"""UPDATE tags
+                    SET owner_id=$1
+                    WHERE {clause}
+                    RETURNING id;
+                """
+
+        transferred = await ctx.db.fetchrow(query, *args)
+
+        if not transferred:
+            raise commands.BadArgument(
+                "Could not complete the transfer. "
+                "\nEither:\n- that tag doesn't exist\n- you do not own that tag or have manage messages."
+            )
+
+        await ctx.send(ctx.tick(True, f"Transfered tag `{tag}` to `{member}`."))
+
+        em = discord.Embed(
+            title=f"Tag `{tag}` transferred to you.", color=discord.Color.green()
+        )
+        em.description = f"Tag `{tag}` was just transferred to you.\nThis message was sent to notify you of this action."
+
+        em.add_field(name="Server", value=str(ctx.guild))
+        em.add_field(name="Transferred by", value=str(ctx.author))
+
+        try:
+            await member.send("Tag transfer notification", embed=em)
+
+        except discord.Forbidden:
+            pass
+
+    @tag.command(name="claim")
+    async def tag_claim(self, ctx, *, tag):
+        """Claim a tag
+
+        To claim a tag, **one** of the following requirements must be met:
+        - the original tag owner is no longer in the server
+        - you have manage messages
+        """
+        query = "SELECT id, owner_id FROM tags WHERE guild_id=$1;"
+        record = await ctx.db.fetchrow(query, ctx.guild.id)
+
+        if not record:
+            raise commands.BadArgument("Tag not found.")
+
+        print(record)
+        tag_id, owner_id = record
+
+        bypass_owner_check = (
+            ctx.author.id == self.bot.owner_id
+            or ctx.author.guild_permissions.manage_messages
+        )
+
+        query = """UPDATE tags SET owner_id=$1 WHERE LOWER(name)=$2 AND guild_id=$3 RETURNING id;"""
+        args = [ctx.author.id, tag, ctx.guild.id]
+
+        member = ctx.guild.get_member(owner_id)
+        if member and not bypass_owner_check:
+            raise commands.BadArgument("Tag owner is in the server.")
+
+        transferred = await ctx.db.fetchrow(query, *args)
+
+        if not transferred:
+            raise commands.BadArgument(
+                (
+                    "Tag claim failed.\n"
+                    "To claim a tag, **one** of the following requirements must be met:\n"
+                    "- the original tag owner is no longer in the server\n"
+                    "- you have manage messages"
+                )
+            )
+
+        await ctx.send(ctx.tick(True, f"Claimed tag `{tag}`."))
 
     def _owner_kwargs(self, guild, owner_id):
+        if not owner_id:
+            return {"name": "Unclaimed tag (no owner)"}
+
         member = guild.get_member(owner_id)
         if not member:
             return {"name": owner_id}
@@ -783,8 +868,7 @@ class Tags(commands.Cog):
         await ctx.send(embed=em)
 
     @tag.command(
-        name="raw",
-        description="Get a tag without markdown (for copy/pasting)",
+        name="raw", description="Get a tag without markdown (for copy/pasting)",
     )
     async def tag_raw(self, ctx, *, tag: TagConverter):
         await ctx.send(discord.utils.escape_markdown(tag.content))
@@ -852,9 +936,7 @@ class Tags(commands.Cog):
         await ctx.send(embed=em)
 
     @tag.command(
-        name="member",
-        description="Get top ten tags for a member",
-        aliases=["user"],
+        name="member", description="Get top ten tags for a member", aliases=["user"],
     )
     async def tag_member(self, ctx, *, member: discord.Member):
         query = """SELECT id, name, uses, faq
@@ -992,9 +1074,7 @@ class Tags(commands.Cog):
         return response.content
 
     @faq.command(
-        name="create",
-        description="Create a new faq tag",
-        aliases=["new"],
+        name="create", description="Create a new faq tag", aliases=["new"],
     )
     @faq_only()
     async def faq_create(self, ctx, *, name: TagNameConverter):
