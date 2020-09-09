@@ -265,6 +265,9 @@ class ClamHelpCommand(commands.HelpCommand):
                 cog = bot.cogs[name]
                 break
 
+        if cog and hasattr(cog, "display_over_commands"):
+            return await self.send_cog_help(cog)
+
         maybe_coro = discord.utils.maybe_coroutine
 
         # At this point, the command could either be a cog

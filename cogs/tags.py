@@ -472,6 +472,7 @@ class Tags(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.emoji = ":bookmark:"
+        self.display_over_commands = True
         self.log = self.bot.log
 
         # guild_id: List[tag_name]
