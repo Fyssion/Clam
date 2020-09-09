@@ -397,6 +397,33 @@ class Meta(commands.Cog):
 
         await ctx.console.send(embed=em)
 
+    async def info_reaction(self, message, ctx, error):
+        info_emoji = "\N{INFORMATION SOURCE}"
+        await message.add_reaction(info_emoji)
+
+        def check(pd):
+            return (
+                pd.message_id == message.id
+                and pd.user_id == ctx.author.id
+                and str(pd.emoji) == info_emoji
+            )
+
+        try:
+            await self.bot.wait_for(
+                "raw_reaction_add", check=check, timeout=180  # 3 min
+            )
+        except asyncio.TimeoutError:
+            await message.remove_reaction(info_emoji, self.bot.user)
+            return
+
+        try:
+            await message.clear_reaction(info_emoji)
+
+        except discord.Forbidden:
+            await message.remove_reaction(info_emoji, self.bot.user)
+
+        await ctx.send_help(ctx.command)
+
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         stats = self.bot.get_cog("Stats")
@@ -412,16 +439,18 @@ class Meta(commands.Cog):
             if isinstance(error, ignored_error):
                 return
 
+            message = None
+
         if isinstance(error, commands.NoPrivateMessage):
-            await ctx.send(
+            message = await ctx.send(
                 f"{ctx.tick(False)} Sorry, this command can't be used in DMs."
             )
 
         elif isinstance(error, commands.ArgumentParsingError):
-            await ctx.send(f"{ctx.tick(False)} {error}")
+            message = await ctx.send(f"{ctx.tick(False)} {error}")
 
         elif isinstance(error, commands.CommandOnCooldown):
-            await ctx.send(
+            message = await ctx.send(
                 f"{ctx.tick(False)} **You are on cooldown.** Try again after {int(error.retry_after)} seconds."
             )
 
@@ -434,7 +463,7 @@ class Meta(commands.Cog):
                 )
                 perms += f"\n- `{formatted}`"
 
-            await ctx.send(
+            message = await ctx.send(
                 f"{ctx.tick(False)} I am missing some required permission(s):{perms}"
             )
 
@@ -445,12 +474,14 @@ class Meta(commands.Cog):
                 # param = param.replace('"', "").strip()
                 # param = discord.utils.escape_mentions(param)
                 # param = discord.utils.escape_markdown(param)
-                await ctx.send(f"{ctx.tick(False)} You must specify a number.")
+                message = await ctx.send(
+                    f"{ctx.tick(False)} You must specify a number."
+                )
             else:
-                await ctx.send(f"{ctx.tick(False)} {error}")
+                message = await ctx.send(f"{ctx.tick(False)} {error}")
 
         elif isinstance(error, commands.errors.MissingRequiredArgument):
-            await ctx.send(
+            message = await ctx.send(
                 f"{ctx.tick(False)} Missing a required argument: `{error.param.name}`"
             )
 
@@ -462,8 +493,8 @@ class Meta(commands.Cog):
 
         elif isinstance(error, commands.CommandInvokeError):
             original = error.original
-            if True: # for debugging
-            # if not isinstance(original, discord.HTTPException):
+            # if True: # for debugging
+            if not isinstance(original, discord.HTTPException):
                 print(
                     "Ignoring exception in command {}:".format(ctx.command),
                     file=sys.stderr,
@@ -473,6 +504,10 @@ class Meta(commands.Cog):
                 )
 
                 await self.send_unexpected_error(ctx, error)
+                return
+
+        if message:
+            await self.bot.loop.create_task(self.info_reaction(message, ctx, error))
 
     def get_guild_prefixes(self, guild):
         if not guild:
@@ -527,7 +562,7 @@ class Meta(commands.Cog):
             attach_files=True,
             read_message_history=True,
             use_external_emojis=True,
-            add_reactions=True
+            add_reactions=True,
         )
         invite = discord.utils.oauth_url(self.bot.user.id, permissions=permissions)
         await ctx.send(f"Invite link: <{invite}>")
