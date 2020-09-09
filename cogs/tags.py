@@ -620,6 +620,16 @@ class Tags(commands.Cog):
 
         content = await TagContentConverter().convert(ctx, message.content)
 
+        if not content and not message.attachments:
+            raise commands.BadArgument("You must specify text or an image to put in the tag.")
+
+        if message.attachments:
+            url = message.attachments[0].url
+            if not content:
+                content = url
+            else:
+                content += f"\n{url}"
+
         await self.create_tag(ctx, name, content)
 
         ipt = self._in_progress_tags[ctx.guild.id]
