@@ -12,7 +12,7 @@ from jishaku.codeblocks import codeblock_converter
 from .utils.utils import TabularData
 from .utils.menus import MenuPages
 from .utils.human_time import plural
-from .utils import colors
+from .utils import colors, human_time
 
 
 CLAM_DMS_CATEGORY = 714981398540451841
@@ -172,20 +172,21 @@ class Admin(commands.Cog):
         else:
             await ctx.send(fmt)
 
-    @commands.group(
-        description="View the blacklist", hidden=True, invoke_without_command=True
-    )
-    async def blacklist(self, ctx):
-        formatted = "\n".join(self.bot.blacklist)
-        await ctx.send(f"Blacklisted Users:\n{formatted}")
-
-    @blacklist.command(
-        name="add",
-        description="Add someone to the blacklist",
+    @commands.command(
+        description="View or add someone to the blacklist",
         hidden=True,
-        invoke_without_command=True,
+        aliases=["block"],
     )
-    async def blacklist_add(self, ctx, *, user: discord.User):
+    async def blacklist(self, ctx, *, user: discord.User = None):
+        if not user:
+            blacklist = self.bot.blacklist
+
+            if not blacklist:
+                return await ctx.send("No blacklisted users")
+
+            pages = ctx.pages(blacklist, title="Blacklisted users")
+            return await pages.start(ctx)
+
         if user == ctx.author:
             return await ctx.send("Don't blacklist yourself! That'd be a real pain.")
 
@@ -196,13 +197,12 @@ class Admin(commands.Cog):
 
         await ctx.send(ctx.tick(True, f"Added **`{user}`** to the blacklist."))
 
-    @blacklist.command(
-        name="remove",
+    @commands.command(
         description="Remove someone from the blacklist",
         hidden=True,
-        invoke_without_command=True,
+        aliases=["unblock"],
     )
-    async def blacklist_remove(self, ctx, user_id: int):
+    async def unblacklist(self, ctx, user_id: int):
         if str(user_id) not in self.bot.blacklist:
             return await ctx.send("That user isn't blacklisted.")
 
@@ -217,6 +217,68 @@ class Admin(commands.Cog):
             human_friendly = f"Removed user **`{user}`** from the blacklist."
 
         await ctx.send(ctx.tick(True, human_friendly))
+
+    @commands.command(
+        description="Temporarily blacklist a user", hidden=True, aliases=["tempblock"]
+    )
+    async def tempblacklist(
+        self, ctx, user: discord.User, duration: human_time.FutureTime
+    ):
+        timers = self.bot.get_cog("Timers")
+        if not timers:
+            return await ctx.send(
+                "Sorry, that functionality isn't available right now. Try again later."
+            )
+
+        if user == ctx.author:
+            return await ctx.send("Don't blacklist yourself! That'd be a real pain.")
+
+        if str(user.id) not in self.bot.blacklist:
+            self.bot.add_to_blacklist(user)
+
+        timer = await timers.create_timer(duration.dt, "tempblacklist", user.id)
+
+        friendly_time = human_time.human_timedelta(duration.dt, source=ctx.message.created_at)
+        await ctx.send(
+            ctx.tick(True, f"Blacklisted user `{user}` for {friendly_time}.")
+        )
+
+    @commands.Cog.listener()
+    async def on_tempblacklist_timer_complete(self, timer):
+        user_id = timer.args[0]
+
+        self.bot.remove_from_blacklist(user_id)
+
+        user = self.bot.get_user(user_id)
+
+        if not user:
+            human_friendly = f"Removed tempblacklisted user with ID **`{user_id}`** from the blacklist."
+
+        else:
+            human_friendly = (
+                f"Removed tempblacklisted user **`{user}`** from the blacklist."
+            )
+
+        human_friendly += f"\nOriginally tempblacklisted {human_time.human_timedelta(timer.created_at)}."
+
+        em = discord.Embed(
+            title="Tempblacklist Expiration",
+            timestamp=timer.created_at,
+            color=discord.Color.green(),
+        )
+        value = f"{user} (ID: {user.id})" if user else f"User with ID {user_id}"
+        em.add_field(name="User", value=value, inline=False)
+        em.add_field(
+            name="Originally tempblacklisted",
+            value=human_time.human_timedelta(timer.created_at),
+        )
+        em.set_footer(text="Blacklist date")
+
+        if user:
+            em.set_thumbnail(url=user.avatar_url)
+
+        console = self.bot.console
+        await console.send(embed=em)
 
     @commands.command(
         name="reload", description="Reload an extension", aliases=["load"], hidden=True,
