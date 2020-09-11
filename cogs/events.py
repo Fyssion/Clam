@@ -662,7 +662,7 @@ class Events(commands.Cog):
             )
 
     async def handle_reaction(self, payload):
-        if payload.user_id in self.bot.blacklist:
+        if str(payload.user_id) in self.bot.blacklist:
             return
 
         if str(payload.emoji) == "✅":

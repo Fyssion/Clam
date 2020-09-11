@@ -1098,6 +1098,9 @@ class Moderation(commands.Cog):
 
     @commands.Cog.listener("on_raw_reaction_add")
     async def verification_reaction(self, payload):
+        if str(payload.user_id) in self.bot.blacklist:
+            return
+
         if str(payload.guild_id) not in self.verifications.keys():
             return
         if (
