@@ -186,6 +186,9 @@ class Admin(commands.Cog):
         invoke_without_command=True,
     )
     async def blacklist_add(self, ctx, *, user: discord.User):
+        if user == ctx.author:
+            return await ctx.send("Don't blacklist yourself! That'd be a real pain.")
+
         if str(user.id) in self.bot.blacklist:
             return await ctx.send("That user is already blacklisted.")
 
@@ -199,13 +202,21 @@ class Admin(commands.Cog):
         hidden=True,
         invoke_without_command=True,
     )
-    async def blacklist_remove(self, ctx, user: int):
-        if str(user) not in self.bot.blacklist:
+    async def blacklist_remove(self, ctx, user_id: int):
+        if str(user_id) not in self.bot.blacklist:
             return await ctx.send("That user isn't blacklisted.")
 
-        self.bot.remove_from_blacklist(user)
+        self.bot.remove_from_blacklist(user_id)
 
-        await ctx.send(ctx.tick(True, f"Removed **`{user}`** from the blacklist."))
+        user = self.bot.get_user(user_id)
+
+        if not user:
+            human_friendly = f"Removed user with ID **`{user_id}`** from the blacklist."
+
+        else:
+            human_friendly = f"Removed user **`{user}`** from the blacklist."
+
+        await ctx.send(ctx.tick(True, human_friendly))
 
     @commands.command(
         name="reload", description="Reload an extension", aliases=["load"], hidden=True,

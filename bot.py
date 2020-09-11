@@ -146,19 +146,22 @@ class Clam(commands.Bot):
         # this is the ultimate block because the bot ignores
         # everything from the blacklisted user
 
+        def is_blacklisted(user_id):
+            return str(user_id) in self.blacklist and user_id != self.owner_id
+
         if event in ["message", "message_delete", "message_edit"]:
             message = args[0]
-            if str(message.author.id) in self.blacklist:
+            if is_blacklisted(message.author.id):
                 return
 
         elif event == "reaction_add":
             user = args[1]
-            if str(user.id) in self.blacklist:
+            if is_blacklisted(user.id):
                 return
 
         elif event in ["raw_reaction_add", "raw_reaction_remove"]:
             payload = args[0]
-            if str(payload.user_id) in self.blacklist:
+            if is_blacklisted(payload.user_id):
                 return
 
         super().dispatch(event, *args, **kwargs)
@@ -170,7 +173,9 @@ class Clam(commands.Bot):
         self._adapter = discord.AsyncWebhookAdapter(self.session)
 
         if self.config.status_hook:
-            self.status_hook = discord.Webhook.from_url(self.config.status_hook, adapter=self._adapter)
+            self.status_hook = discord.Webhook.from_url(
+                self.config.status_hook, adapter=self._adapter
+            )
             await self.status_hook.send("Starting Clam...")
 
         else:
@@ -216,6 +221,30 @@ class Clam(commands.Bot):
     async def get_context(self, message, *, cls=None):
         return await super().get_context(message, cls=cls or Context)
 
+    async def log_spammer(self, ctx, bucket, retry_after, *, blacklisted=False):
+        message = ctx.message
+        guild_name = ctx.guild.name if ctx.guild else "DMs"
+        guild_id = ctx.guild.id if ctx.guild else "None"
+        user = ctx.author
+
+        fmt = "User %s (ID: %s) in guild %s (ID: %s) was spamming. Retry after: %.2fs."
+        self.log.warning(fmt, user, user.id, guild_name, guild_id, retry_after)
+
+        if not blacklisted:
+            return
+
+        em = discord.Embed(title="User Auto-Blacklisted", color=discord.Color.red())
+        em.set_thumbnail(url=user.avatar_url)
+        em.add_field(name="User", value=f"{user} (ID: {user.id})", inline=False)
+        em.add_field(name="Guild", value=f"{guild_name} (ID: {guild_id})", inline=False)
+        em.add_field(
+            name="Channel",
+            value=f"{message.channel} (ID: {message.channel.id})",
+            inline=False,
+        )
+
+        await self.console.send(embed=em)
+
     async def process_commands(self, message):
         if message.author.bot:
             return
@@ -225,23 +254,31 @@ class Clam(commands.Bot):
         if ctx.command is None:
             return
 
-        if str(ctx.author.id) in self.blacklist:
+        is_owner = ctx.author.id == self.owner_id
+
+        if str(ctx.author.id) in self.blacklist and not is_owner:
             return
 
         bucket = self._cd.get_bucket(ctx.message)
         retry_after = bucket.update_rate_limit()
         spammers = self.spammers
-        if retry_after and ctx.author.id != self.owner_id:
+        if retry_after and not is_owner:
             if ctx.author.id in spammers:
                 spammers[ctx.author.id] += 1
             else:
                 spammers[ctx.author.id] = 1
-            if spammers[ctx.author.id] > 10:
+            if spammers[ctx.author.id] > 5:
+                await self.log_spammer(ctx, bucket, retry_after, blacklisted=True)
                 self.add_to_blacklist(ctx.author)
                 del spammers[ctx.author.id]
-                raise Blacklisted("You are blacklisted.")
+                return await ctx.send(
+                    f"You have been permanently blacklisted for spamming.\n"
+                    "If you wish appeal, please contact the owner of the bot, "
+                    "who can be found here: <https://www.discord.gg/wfCGTrp>"
+                )
+            await self.log_spammer(ctx, bucket, retry_after)
             return await ctx.send(
-                f"**You are on cooldown.** Try again after {int(retry_after)} seconds."
+                f"You are on global cooldown. Try again after {int(retry_after)} seconds."
             )
         else:
             try:
