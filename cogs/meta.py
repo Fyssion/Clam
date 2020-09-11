@@ -74,6 +74,19 @@ class ClamHelpCommand(commands.HelpCommand):
             f"use: **`{self.context.bot.guild_prefix(self.context.guild)}help <command>`‍**"
         )
 
+    def get_command_signature(self, command):
+        sig = command.signature
+        name = command.qualified_name
+        prefix = self.context.guild_prefix
+
+        result = f"{prefix}{name}"
+
+        if sig:
+            result += f" {sig}"
+
+        return result
+
+    @property
     def arg_help(self):
         return "**Key:** `<required>` `[optional]`\n**Remove `<>` and `[]` when using the command.**"
 
@@ -156,7 +169,7 @@ class ClamHelpCommand(commands.HelpCommand):
         for alias in command.aliases:
             formatted_alias = f"`{self.context.guild_prefix}"
             formatted_alias += (
-                f"{command.parent} " if command.parent is not None else ""
+                f"{command.full_parent_name} " if command.parent is not None else ""
             )
 
             formatted_alias += alias + "`"
@@ -166,18 +179,19 @@ class ClamHelpCommand(commands.HelpCommand):
 
     def format_command(self, command):
         signature = self.get_command_signature(command)
-        description = command.description or command.brief or command.short_doc
 
         formatted_command = f"**`{signature}`**"
 
-        if description:
-            formatted_command += f" - {description}"
+        if command.description:
+            formatted_command += f" - {command.description}"
+
+        if command.aliases:
+            formatted_command += f"\n{self.format_aliases(command)}"
 
         if command.help:
             formatted_command += f"\n{command.help}\n"
 
-        if command.aliases:
-            formatted_command += f"\n{self.format_aliases(command)}"
+        formatted_command += f"\n{self.arg_help}"
 
         return formatted_command
 
@@ -197,7 +211,7 @@ class ClamHelpCommand(commands.HelpCommand):
         if cog.description:
             em.description += f"\n{cog.description}"
 
-        more_info = f"{self.arg_help()}\n{self.i_cmd(ctx)}"
+        more_info = f"{self.arg_help}\n{self.i_cmd(ctx)}"
 
         pages = MenuPages(
             source=HelpPages(commands, em, more_info), clear_reactions_after=True,
@@ -217,7 +231,7 @@ class ClamHelpCommand(commands.HelpCommand):
         if filtered:
             em.description += f"\n\n**Subcommands ({len(filtered)} total):**"
 
-        more_info = f"{self.arg_help()}\n{self.i_cmd(ctx)}"
+        more_info = f"{self.arg_help}\n{self.i_cmd(ctx)}"
 
         pages = MenuPages(
             source=HelpPages(commands, em, more_info), clear_reactions_after=True,
