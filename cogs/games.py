@@ -459,10 +459,15 @@ class Games(commands.Cog):
 
     @commands.command(description="Start a Connect 4 game", usage="[opponent]")
     async def connect4(self, ctx, opponent: discord.Member):
+        if str(opponent.id) in self.bot.blacklist:
+            return await ctx.send(f"Opponent `{opponent}` is blacklisted from the bot.")
+
         if opponent.bot:
             return await ctx.send("You cannot play with a bot.")
+
         if ctx.author == opponent:
             return await ctx.send("You can't play Connect 4 with yourself.")
+
         game = Connect4([ctx.author, opponent])
         await game.start(ctx)
 
