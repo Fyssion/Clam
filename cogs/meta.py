@@ -446,7 +446,7 @@ class Meta(commands.Cog):
 
         if isinstance(error, commands.NoPrivateMessage):
             message = await ctx.send(
-                f"{ctx.tick(False)} Sorry, this command can't be used in DMs."
+                f"{ctx.tick(False)} This command can't be used in DMs. Sorry."
             )
 
         elif isinstance(error, commands.ArgumentParsingError):
@@ -454,7 +454,7 @@ class Meta(commands.Cog):
 
         elif isinstance(error, commands.CommandOnCooldown):
             message = await ctx.send(
-                f"{ctx.tick(False)} **You are on cooldown.** Try again after {int(error.retry_after)} seconds."
+                f"{ctx.tick(False)} You are on cooldown. Try again after {int(error.retry_after)} seconds."
             )
 
         elif isinstance(error, commands.errors.BotMissingPermissions):
