@@ -140,6 +140,29 @@ class Clam(commands.Bot):
 
         self.ordered_cogs = [c for c in self.cogs.keys()]
 
+    def dispatch(self, event, *args, **kwargs):
+        # we override dispatch to block any events from
+        # firing if the user is blacklisted.
+        # this is the ultimate block because the bot ignores
+        # everything from the blacklisted user
+
+        if event in ["message", "message_delete", "message_edit"]:
+            message = args[0]
+            if str(message.author.id) in self.blacklist:
+                return
+
+        elif event == "reaction_add":
+            user = args[1]
+            if str(user.id) in self.blacklist:
+                return
+
+        elif event in ["raw_reaction_add", "raw_reaction_remove"]:
+            payload = args[0]
+            if str(payload.user_id) in self.blacklist:
+                return
+
+        super().dispatch(event, *args, **kwargs)
+
     async def prepare_bot(self):
         self.pool = await db.Table.create_pool(self.config.database_uri)
         self.google_client = async_cse.Search(self.config.google_api_key)
