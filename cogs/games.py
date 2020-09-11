@@ -458,7 +458,7 @@ class Games(commands.Cog):
             ctx.hangman = None
 
     @commands.command(description="Start a Connect 4 game", usage="[opponent]")
-    async def connect4(self, ctx, opponent: discord.Member):
+    async def connect4(self, ctx, *, opponent: discord.Member):
         if str(opponent.id) in self.bot.blacklist:
             return await ctx.send(f"Opponent `{opponent}` is blacklisted from the bot.")
 
