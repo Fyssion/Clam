@@ -349,12 +349,22 @@ class Connect4(MultiPlayerGame):
 
 
 class Hangman:
-    def __init__(self, word):
-        self.word = word
+    def __init__(self, words):
+        self.words = words
         self.guesses_left = 6
         self.correct_letters = []
         self.incorrect_letters = []
         self.game_status = None
+        self.timeout = None
+
+    @property
+    def wordlist(self):
+        return "".join(self.words)
+
+    async def timeout_task(self):
+        await asyncio.sleep(600)  # 10m
+        await self.stop("Game timed out. Nobody guessed for 10 minutes.")
+        self.ctx.cog.hangman_games.pop(self.channel.id)  # delete itself
 
     def create_embed(self):
         desc = f"Guess a letter with `{self.ctx.guild_prefix}hangman guess [letter]`"
@@ -362,8 +372,9 @@ class Hangman:
         if self.game_status == "win":
             desc = ":tada: All letters guessed correctly!"
         elif self.game_status == "lose":
+            word = " ".join(self.words)
             desc = (
-                f"Game over. You ran out of guesses.\nThe word was... ||{self.word}||"
+                f"Game over. You ran out of guesses.\nThe word was... ||{word}||"
             )
 
         em = discord.Embed(title="Hangman", description=desc, color=colors.PRIMARY)
@@ -375,10 +386,14 @@ class Hangman:
         em.set_thumbnail(url=url)
 
         # Generate the word display
-        word_display = " ".join(
-            l if l in self.correct_letters else "_" for l in self.word
-        )
-        word_display = discord.utils.escape_markdown(word_display)
+        words = []
+        for word in self.words:
+            words.append(" ".join(
+                l if l.lower() in self.correct_letters else "_" for l in word
+            ))
+
+        word_display = "   ".join(words)
+        word_display = f"`{word_display}`"
 
         em.add_field(name="Word", value=word_display, inline=False)
 
@@ -400,22 +415,33 @@ class Hangman:
         embed = self.create_embed()
         self.message = await ctx.send(embed=embed)
 
-    async def guess(self, ctx, letter):
-        if letter in self.correct_letters or letter in self.incorrect_letters:
-            raise commands.BadArgument("That letter has already been guessed.")
+        self.timeout = ctx.bot.loop.create_task(self.timeout_task())
 
-        if letter in list(self.word):
+    async def mark_error(self, ctx, message):
+        await ctx.message.add_reaction("\N{HEAVY EXCLAMATION MARK SYMBOL}")
+        await ctx.send(ctx.tick(False, message), delete_after=5.0)
+
+    async def guess(self, ctx, letter):
+        if self.timeout:
+            self.timeout.cancel()
+
+        self.timeout = ctx.bot.loop.create_task(self.timeout_task())
+
+        if letter in self.correct_letters or letter in self.incorrect_letters:
+            return await self.mark_error(ctx, "That letter has already been guessed.")
+
+        if letter in list(self.wordlist.lower()):
             self.correct_letters.append(letter)
 
             unguessed = []
-            for letter in self.word:
+            for letter in self.wordlist.lower():
                 if letter not in self.correct_letters:
                     unguessed.append(letter)
 
             if not unguessed:
                 self.game_status = "win"
 
-            await ctx.send(f"{ctx.tick(True)} You guessed correctly!")
+            await ctx.message.add_reaction(ctx.tick(True))
 
         else:
             self.incorrect_letters.append(letter)
@@ -425,7 +451,7 @@ class Hangman:
             if self.guesses_left <= 0:
                 self.game_status = "lose"
 
-            await ctx.send(f"{ctx.tick(False)} Sorry, you guessed incorrectly.")
+            await ctx.message.add_reaction(ctx.tick(False))
 
         await self.message.edit(embed=self.create_embed())
 
@@ -433,7 +459,8 @@ class Hangman:
 
     async def stop(self, message="Game stopped by creator or moderator."):
         em = self.create_embed()
-        em.description = f"{self.ctx.tick(False)} {message}"
+        word = " ".join(self.words)
+        em.description = f"{self.ctx.tick(False)} {message}\nThe word was... ||{word}||"
 
         await self.message.edit(embed=em)
 
@@ -504,9 +531,9 @@ class Games(commands.Cog):
                 f"{ctx.tick(False)} There is already a hangman game in this channel."
             )
 
-        await ctx.send("Please enter a word in your DMs...", delete_after=10.0)
+        await ctx.send("Please enter a word in your DMs...", delete_after=5.0)
         await ctx.author.send(
-            "What is your word? Note that the word can only have letters A-Z."
+            "What is your word? Note that the word can only have letters A-Z and spaces."
         )
 
         def check(ms):
@@ -518,14 +545,16 @@ class Games(commands.Cog):
             return await ctx.send(f"{ctx.tick(False)} You timed out. Aborting.")
 
         # Remove mentions from the word and strip it
-        word = discord.utils.escape_mentions(message.content.lower().strip())
+        word = discord.utils.escape_mentions(message.content.strip())
 
-        if not word.isalpha():
+        words = word.split()
+
+        if not "".join(words).isalpha():
             return await ctx.author.send(
                 f"{ctx.tick(False)}  That word has characters that aren't in the English alphabet. Aborting."
             )
 
-        hangman = Hangman(word)
+        hangman = Hangman(words)
         self.hangman_games[ctx.channel.id] = hangman
         await hangman.start(ctx)
 
@@ -542,20 +571,20 @@ class Games(commands.Cog):
                 f"{ctx.tick(False)} There is no running hangman game in this channel."
             )
 
+        mark_error = ctx.hangman.mark_error
+
         if ctx.author == ctx.hangman.creator:
-            return await ctx.send(
-                f"{ctx.tick(False)} You can't guess in your own game."
+            return await mark_error(
+                ctx, "You can't guess in your own game."
             )
 
         letter = letter.lower().strip()
 
         if len(letter) > 1:
-            raise commands.BadArgument("Your letter must be a single character.")
+            return await mark_error(ctx, "Your letter must be a single character.")
 
         if not letter.isalpha():
-            raise commands.BadArgument(
-                "Your letter must be a letter in the English alphabet."
-            )
+            return await mark_error(ctx, "Your letter must be in the English alphabet.")
 
         status = await ctx.hangman.guess(ctx, letter)
 
