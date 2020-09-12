@@ -390,6 +390,10 @@ class Admin(commands.Cog):
             return await ctx.send(stdout)
 
         modules = self.find_modules_from_git(stdout)
+
+        if not modules:
+            return await ctx.send("No modules need to be updated.")
+
         mods_text = "\n".join(
             f"{index}. `{module}`" for index, (_, module) in enumerate(modules, start=1)
         )
