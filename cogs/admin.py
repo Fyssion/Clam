@@ -114,7 +114,7 @@ class Admin(commands.Cog):
         return True
 
     # https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/admin.py#L353-L419
-    @commands.command(hidden=True)
+    @commands.command()
     async def sql(self, ctx, *, code: codeblock_converter):
         """Run some SQL."""
         # the imports are here because I imagine some people would want to use
@@ -154,7 +154,7 @@ class Admin(commands.Cog):
         else:
             await ctx.send(fmt)
 
-    @commands.command(hidden=True)
+    @commands.command()
     async def sql_table(self, ctx, *, table_name: str):
         """Runs a query describing the table schema."""
 
@@ -180,7 +180,6 @@ class Admin(commands.Cog):
 
     @commands.command(
         description="View or add someone to the blacklist",
-        hidden=True,
         aliases=["block"],
     )
     async def blacklist(self, ctx, *, user: discord.User = None):
@@ -205,7 +204,6 @@ class Admin(commands.Cog):
 
     @commands.command(
         description="Remove someone from the blacklist",
-        hidden=True,
         aliases=["unblock"],
     )
     async def unblacklist(self, ctx, user_id: int):
@@ -225,7 +223,7 @@ class Admin(commands.Cog):
         await ctx.send(ctx.tick(True, human_friendly))
 
     @commands.command(
-        description="Temporarily blacklist a user", hidden=True, aliases=["tempblock"]
+        description="Temporarily blacklist a user", aliases=["tempblock"]
     )
     async def tempblacklist(
         self, ctx, user: discord.User, duration: human_time.FutureTime
@@ -292,7 +290,6 @@ class Admin(commands.Cog):
         name="reload",
         description="Reload an extension",
         aliases=["load"],
-        hidden=True,
         invoke_without_command=True,
     )
     @commands.is_owner()
@@ -375,7 +372,7 @@ class Admin(commands.Cog):
         except commands.ExtensionNotLoaded:
             self.bot.load_extension(module)
 
-    @_reload.command(name="all", hidden=True)
+    @_reload.command(name="all")
     async def _reload_all(self, ctx):
         """Reloads all modules, while pulling from git."""
 
@@ -457,7 +454,7 @@ class Admin(commands.Cog):
         return f"{gigs}gb"
 
     @commands.group(
-        name="process", hidden=True, aliases=["computer", "comp", "cpu", "ram"]
+        name="process", aliases=["computer", "comp", "cpu", "ram"]
     )
     @commands.is_owner()
     async def _process(self, ctx):
@@ -480,7 +477,7 @@ class Admin(commands.Cog):
         await ctx.send(embed=em)
 
     @commands.group(
-        name="error", hidden=True, aliases=["e"], invoke_without_command=True,
+        name="error", aliases=["e"], invoke_without_command=True,
     )
     @commands.is_owner()
     async def _error(self, ctx):
@@ -523,7 +520,7 @@ class Admin(commands.Cog):
         await pages.start(ctx)
 
     @commands.command(
-        name="logout", description="Logs out and shuts down bot", hidden=True
+        name="logout", description="Logs out and shuts down bot"
     )
     @commands.is_owner()
     async def logout_command(self, ctx):
