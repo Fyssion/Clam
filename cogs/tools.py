@@ -114,39 +114,32 @@ class Tools(commands.Cog):
 
     async def prompt(self, ctx, msg, *, timeout=180.0, check=None):
         def default_check(ms):
-            return ms.author == ctx.author and ms.channel == ctx.channel
+            return ms.author == ctx.author and not ms.guild
 
         check = check or default_check
 
-        await ctx.send(msg)
+        await ctx.author.send(msg)
 
         try:
             message = await self.bot.wait_for("message", timeout=timeout, check=check)
 
         except asyncio.TimeoutError:
-            raise commands.BadArgument("You timed out. Aborting.")
+            await ctx.author.send("You timed out. Aborting.")
+            raise commands.BadArgument("Poll creation cancelled.")
 
         return message.content
 
-    @commands.command(description="Create a poll and send it to any channel")
+    @commands.command(
+        description="Create a poll through DMs and send it to the current channel"
+    )
     async def poll(self, ctx):
-        content = await self.prompt(ctx, "What channel should the poll be sent to?")
+        try:
+            await ctx.author.send("Welcome to the interactive poll maker")
 
-        channel = await commands.TextChannelConverter().convert(ctx, content)
-
-        content = await self.prompt(
-            ctx, "Mention everyone when creating the poll? (y/n)"
-        )
-        lowered = content.lower()
-
-        if lowered.startswith("y"):
-            mention = "@everyone "
-
-        elif lowered.startswith("n"):
-            mention = ""
-
-        else:
-            raise commands.BadArgument("You must respond with y or n. Aborting.")
+        except discord.Forbidden:
+            raise commands.BadArgument(
+                "You must allow me to send you DMs. Poll creation cancelled."
+            )
 
         title = await self.prompt(ctx, "What is the title of the poll?")
 
@@ -165,13 +158,13 @@ class Tools(commands.Cog):
 
         options = []
 
-        await ctx.send(
+        await ctx.author.send(
             "Type options for your poll in separate messages.\n"
-            f"When you are done, type `{ctx.prefix}create poll` to create the poll."
+            f"When you are done, type `{ctx.prefix}done` to create the poll."
         )
 
         def check(ms):
-            return ms.author == ctx.author and ms.channel == ctx.channel
+            return ms.author == ctx.author and not ms.guild
 
         while len(options) <= 10:
             try:
@@ -180,25 +173,38 @@ class Tools(commands.Cog):
             except asyncio.TimeoutError:
                 return await ctx.send(f"{ctx.tick(False)} You timed out. Aborting.")
 
-            if message.content.lower() == f"{ctx.prefix}create poll":
+            if message.content.lower() == f"{ctx.prefix}done":
                 break
 
             options.append(message.content)
 
             await message.add_reaction(ctx.tick(True))
 
-        await ctx.send("Creating your poll...")
+        await ctx.author.send("Sending your poll...")
 
         description = []
 
         for i, option in enumerate(options):
             description.append(f"{emojis[i]} | {option}")
 
+        human_friendly = "\n".join(description)
+
         em = discord.Embed(
-            title=title, description="\n".join(description), color=colors.PRIMARY
+            title=title,
+            description="Vote for an option by clicking the associated reaction."
+            f"\n\n{human_friendly}",
+            color=colors.PRIMARY,
         )
 
-        poll_message = await channel.send(f"{mention}**New Poll!**", embed=em)
+        if ctx.author.nick:
+            name = f"{ctx.author.nick} ({str(ctx.author)})"
+        else:
+            name = str(ctx.author)
+
+        em.set_author(name=name, icon_url=ctx.author.avatar_url)
+
+        poll_message = await ctx.send("New Poll", embed=em)
+        await ctx.author.send(ctx.tick(True, "Poll sent!"))
 
         for i in range(len(options)):
             await poll_message.add_reaction(emojis[i])
