@@ -14,4 +14,4 @@ parsedatetime
 pytz
 beautifulsoup4
 async-cse
-pygit2
+gitpython

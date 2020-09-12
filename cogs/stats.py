@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands, tasks
 import asyncpg
 import humanize
-import pygit2
+import git
 import itertools
 
 from .utils.utils import get_lines_of_code
@@ -544,30 +544,22 @@ class Stats(commands.Cog):
 
         await ctx.send(embed=em)
 
-    # https://github.com/Rapptz/RoboDanny/blob/6211293d8fe19ad46a266ded2464752935a3fb94/cogs/stats.py#L202-L215
     def format_commit(self, commit):
-        short, _, _ = commit.message.partition("\n")
-        short_sha2 = commit.hex[0:6]
-        commit_tz = timezone(
-            timedelta(minutes=commit.commit_time_offset)
-        )
-        commit_time = datetime.fromtimestamp(commit.commit_time).replace(
-            tzinfo=commit_tz
-        )
+        short = commit.summary
+        short_sha2 = commit.name_rev[0:6]
 
         # [`hash`](url) message (offset)
         offset = human_time.human_timedelta(
-            commit_time.astimezone(timezone.utc).replace(tzinfo=None),
+            commit.committed_datetime.astimezone(timezone.utc).replace(tzinfo=None),
             accuracy=1,
         )
-        return f"[`{short_sha2}`](https://github.com/Fyssion/Clam/commit/{commit.hex}) {short} ({offset})"
+        commit_hex = commit.name_rev.split()[0]
+        return f"[`{short_sha2}`](https://github.com/Fyssion/Clam/commit/{commit_hex}) {short} ({offset})"
 
     def get_latest_commits(self, count=3):
-        repo = pygit2.Repository(".git")
+        repo = git.Repo(".")
         commits = list(
-            itertools.islice(
-                repo.walk(repo.head.target, pygit2.GIT_SORT_TOPOLOGICAL), count
-            )
+            list(repo.iter_commits("main", max_count=3))
         )
         return "\n".join(self.format_commit(c) for c in commits)
 
