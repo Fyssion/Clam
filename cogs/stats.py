@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from collections import Counter
 import asyncio
 import functools
@@ -7,9 +7,11 @@ import discord
 from discord.ext import commands, tasks
 import asyncpg
 import humanize
+import pygit2
+import itertools
 
 from .utils.utils import get_lines_of_code
-from .utils import db, colors
+from .utils import db, colors, human_time
 
 
 class Commands(db.Table):
@@ -542,11 +544,43 @@ class Stats(commands.Cog):
 
         await ctx.send(embed=em)
 
+    # https://github.com/Rapptz/RoboDanny/blob/6211293d8fe19ad46a266ded2464752935a3fb94/cogs/stats.py#L202-L215
+    def format_commit(self, commit):
+        short, _, _ = commit.message.partition("\n")
+        short_sha2 = commit.hex[0:6]
+        commit_tz = timezone(
+            timedelta(minutes=commit.commit_time_offset)
+        )
+        commit_time = datetime.fromtimestamp(commit.commit_time).replace(
+            tzinfo=commit_tz
+        )
+
+        # [`hash`](url) message (offset)
+        offset = human_time.human_timedelta(
+            commit_time.astimezone(timezone.utc).replace(tzinfo=None),
+            accuracy=1,
+        )
+        return f"[`{short_sha2}`](https://github.com/Fyssion/Clam/commit/{commit.hex}) {short} ({offset})"
+
+    def get_latest_commits(self, count=3):
+        repo = pygit2.Repository(".git")
+        commits = list(
+            itertools.islice(
+                repo.walk(repo.head.target, pygit2.GIT_SORT_TOPOLOGICAL), count
+            )
+        )
+        return "\n".join(self.format_commit(c) for c in commits)
+
     @commands.command(
         name="about", description="Display info about the bot", aliases=["info"],
     )
     async def about(self, ctx):
-        em = discord.Embed(title="About", color=colors.PRIMARY)
+        revisions = self.get_latest_commits()
+        em = discord.Embed(
+            title="About",
+            description=f"Latest changes:\n{revisions}",
+            color=colors.PRIMARY,
+        )
 
         em.set_footer(
             text=f"Made with \N{HEAVY BLACK HEART} using discord.py v{discord.__version__}"
