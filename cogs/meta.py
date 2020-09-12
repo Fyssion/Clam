@@ -46,7 +46,8 @@ class HelpPages(menus.ListPageSource):
         offset = menu.current_page * self.per_page
         em = self.embed_base
         em.description = self.original_description
-        page_count = f"Page {menu.current_page + 1}/{self.get_max_pages()}"
+        max_pages = self.get_max_pages()
+        page_count = f"Page {menu.current_page + 1}/{max_pages}"
         em.set_author(name=page_count)
         em.set_footer(
             text=f"{page_count} \N{BULLET} Note that you can only view commands that you can use"
@@ -54,8 +55,15 @@ class HelpPages(menus.ListPageSource):
 
         commands = [c for i, c in enumerate(entries, start=offset)]
         formatted = "\n".join(commands)
+
+        if max_pages > 1 and menu.current_page + 1 != max_pages: 
+            more_pages = "\n*More commands on the next page -->*"
+
+        else:
+            more_pages = ""
+
         if formatted:
-            em.description += f"\n\n{formatted}\n\n{self.more_info}"
+            em.description += f"\n\n{formatted}{more_pages}\n\n{self.more_info}"
         else:
             em.description += f"\n\n{self.more_info}"
         return em
