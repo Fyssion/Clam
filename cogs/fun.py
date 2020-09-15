@@ -89,7 +89,6 @@ class Fun(commands.Cog):
 
     @commands.command(
         description="Search for an emoji I have access to and react with it",
-        usage="[emoji name] <message position>",
     )
     async def react(self, ctx, emoji, message=-1):
         emoji = discord.utils.get(self.bot.emojis, name=emoji)
