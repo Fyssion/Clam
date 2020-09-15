@@ -8,10 +8,12 @@ from discord.ext import commands, tasks
 import asyncpg
 import humanize
 import git
+import psutil
 import itertools
 
 from .utils.utils import get_lines_of_code
 from .utils import db, colors, human_time
+from .utils.emojis import TEXT_CHANNEL, VOICE_CHANNEL
 
 
 class Commands(db.Table):
@@ -585,13 +587,34 @@ class Stats(commands.Cog):
         em.add_field(name=":gear: Creator", value=str(dev))
         em.add_field(name=":adult: User Count", value=len(self.bot.users))
         em.add_field(name=":family: Server Count", value=len(self.bot.guilds))
+
+        channels = 0
+        text_channels = 0
+        voice_channels = 0
+
+        for channel in self.bot.get_all_channels():
+            channels += 1
+
+            if isinstance(channel, discord.TextChannel):
+                text_channels += 1
+
+            elif isinstance(channel, discord.VoiceChannel):
+                voice_channels += 1
+
         em.add_field(
             name=":speech_balloon: Channel Count",
-            value=len(list(self.bot.get_all_channels())),
+            value=f"{channels} ({TEXT_CHANNEL}{text_channels} {VOICE_CHANNEL}{voice_channels})",
         )
+
         em.add_field(
-            name="<:online:649270802088460299> Uptime", value=humanize.naturaldelta(up),
+            name="<:online:649270802088460299> Uptime", value=humanize.naturaldelta(up).capitalize(),
         )
+        cpu = psutil.cpu_percent()
+
+        proc = psutil.Process()
+        mem = proc.memory_full_info()
+        used = humanize.naturalsize(mem.uss)
+        em.add_field(name="Process", value=f"{cpu}% CPU\n{used} memory")
 
         partial = functools.partial(get_lines_of_code)
         lines = await self.bot.loop.run_in_executor(None, partial)
@@ -612,8 +635,9 @@ class Stats(commands.Cog):
     )
     async def uptime(self, ctx):
         up = datetime.now() - self.bot.startup_time
+        uptime = human_time.human_timedelta(self.bot.startup_time, source=datetime.now())
         await ctx.send(
-            f"<:online:649270802088460299> I booted up {humanize.naturaltime(up)}."
+            f"<:online:649270802088460299> I booted up **{uptime}**"
         )
 
     @commands.Cog.listener()
