@@ -523,13 +523,6 @@ class Moderation(commands.Cog):
                 "You can't preform this action due to role hierarchy."
             )
 
-        if isinstance(member, discord.Member) and not role_hierarchy_check(
-            ctx, ctx.guild.me, member
-        ):
-            return await ctx.send(
-                "The bot can't preform this action due to role hierarchy."
-            )
-
         settings = await self.get_guild_settings(ctx.guild.id)
 
         if isinstance(member, int):
@@ -571,11 +564,6 @@ class Moderation(commands.Cog):
         if not role_hierarchy_check(ctx, ctx.author, member):
             return await ctx.send(
                 "You can't preform this action due to role hierarchy."
-            )
-
-        if not role_hierarchy_check(ctx, ctx.guild.me, member):
-            return await ctx.send(
-                "The bot can't preform this action due to role hierarchy."
             )
 
         settings = await self.get_guild_settings(ctx.guild.id)
@@ -641,11 +629,6 @@ class Moderation(commands.Cog):
         if not timers:
             return await ctx.send(
                 "Sorry, that functionality isn't available right now. Try again later."
-            )
-
-        if not role_hierarchy_check(ctx, ctx.guild.me, ctx.author):
-            return await ctx.send(
-                "The bot can't preform this action due to role hierarchy."
             )
 
         created_at = ctx.message.created_at
@@ -765,32 +748,45 @@ class Moderation(commands.Cog):
     ):
         settings = await self.get_guild_settings(ctx.guild.id, create_if_not_found=True)
 
+        if settings.mute_role:
+            result = await ctx.confirm(
+                "A mute role is already set for this server. "
+                "Are you sure you want to create a new one?"
+            )
+
+            if not result:
+                return await ctx.send("Aborted.")
+
+        await ctx.trigger_typing()
+
         guild = ctx.guild
         reason = f"Creation of Muted role by {ctx.author} (ID: {ctx.author.id})"
 
         role = await guild.create_role(name=name, color=color, reason=reason)
 
-        channels_to_update = [c for c in guild.text_channels]
-        channels_to_update.extend(c for c in guild.categories)
-
         succeeded = 0
         failed = []
 
-        for channel in channels_to_update:
+        for channel in guild.channels:
             overwrites = channel.overwrites
             overwrites[role] = discord.PermissionOverwrite(
-                send_messages=False, add_reactions=False
+                send_messages=False, add_reactions=False, speak=False
             )
             try:
                 await channel.edit(overwrites=overwrites, reason=reason)
                 succeeded += 1
 
             except discord.HTTPException:
-                failed.append(
-                    channel.mention
-                    if isinstance(channel, discord.TextChannel)
-                    else channel.name
-                )
+                if isinstance(channel, discord.TextChannel):
+                    formatted = channel.mention
+
+                elif isinstance(channel, discord.VoiceChannel):
+                    formatted = f"<:voice_channel:665577300552843294> {channel.name}"
+
+                else:
+                    formatted = channel.name
+
+                failed.append(formatted)
 
         query = """UPDATE guild_settings
                    SET mute_role_id=$1
@@ -801,7 +797,7 @@ class Moderation(commands.Cog):
 
         message = (
             "Created mute role and changed channel overwrites.\n"
-            f"Attempted to change {len(channels_to_update)} channels:"
+            f"Attempted to change {len(guild.channels)} channels:"
             f"\n  - {succeeded} succeeded\n  - {len(failed)} failed"
         )
 
@@ -1184,7 +1180,9 @@ class Moderation(commands.Cog):
                 content=f"{GREEN_TICK} **`{user}` accepted `{member}`** into the server."
             )
         elif emoji == RED_TICK:
-            await bot_message.edit(content=f"{RED_TICK} **`{user}` ignored `{member}`**")
+            await bot_message.edit(
+                content=f"{RED_TICK} **`{user}` ignored `{member}`**"
+            )
         else:
             await bot_message.edit(
                 content=f"**{RED_TICK} Timed out!** Ignored `{member}`"
