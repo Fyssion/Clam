@@ -199,7 +199,8 @@ class ClamHelpCommand(commands.HelpCommand):
         if command.help:
             formatted_command += f"\n{command.help}\n"
 
-        formatted_command += f"\n{self.arg_help}"
+        if not isinstance(command, commands.Group) or not command.commands:
+            formatted_command += f"\n\n{self.arg_help}"
 
         return formatted_command
 
