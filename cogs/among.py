@@ -68,9 +68,14 @@ class AmongUs(commands.Cog, name="Among Us"):
         if not code:
             return await ctx.send("A code has not been set for this server.")
 
-        await ctx.send(f"Among Us code: **`{code}`** (region: `{code.region}`)\n"f"Set by `{code.author}` {human_time.human_timedelta(code.set_at)}.")
+        await ctx.send(
+            f"Among Us code: **`{code}`** (region: `{code.region}`)\n"
+            f"Set by `{code.author}` {human_time.human_timedelta(code.set_at)}."
+        )
 
-    @among_code.command(name="set", description="Set the current code for Among Us", aliases=["create"])
+    @among_code.command(
+        name="set", description="Set the current code for Among Us", aliases=["create"]
+    )
     async def among_code_set(self, ctx, code, *, region="North America"):
         old_code = self.get_code(ctx.guild.id)
 
@@ -85,9 +90,15 @@ class AmongUs(commands.Cog, name="Among Us"):
 
         self.among_codes[ctx.guild.id] = AmongUsCode(code.upper(), region, ctx.author)
 
-        await ctx.send(ctx.tick(True, f"Among Us code set to **`{code}`** (region: `{region}`)"))
+        await ctx.send(
+            ctx.tick(True, f"Among Us code set to **`{code.upper()}`** (region: `{region}`)")
+        )
 
-    @among_code.command(name="clear", description="Clear the current code for Among Us", aliases=["reset"])
+    @among_code.command(
+        name="clear",
+        description="Clear the current code for Among Us",
+        aliases=["reset"],
+    )
     async def among_code_clear(self, ctx):
         old_code = self.get_code(ctx.guild.id)
 
