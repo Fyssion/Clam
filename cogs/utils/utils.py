@@ -15,6 +15,11 @@ import pathlib
 import os
 
 
+async def reply_to(message, content, **kwargs):
+    formatted = f"Replying to {message.author.mention} from {message.jump_url}\n{content}"
+    await message.channel.send(formatted, **kwargs)
+
+
 def get_lines_of_code(comments=False):
     total = 0
     file_amount = 0

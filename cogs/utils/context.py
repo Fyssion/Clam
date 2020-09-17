@@ -4,6 +4,7 @@ import discord
 import enum
 
 from . import colors
+from .utils import reply_to
 from .emojis import GREEN_TICK, RED_TICK
 from .menus import MenuPages
 
@@ -134,6 +135,9 @@ class Context(commands.Context):
     @property
     def db(self):
         return self.bot.pool
+
+    async def reply(self, content, **kwargs):
+        await reply_to(self.message, content, **kwargs)
 
     def tick(self, tick, label=None):
         ticks = {True: GREEN_TICK, False: RED_TICK}
