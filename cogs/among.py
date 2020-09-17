@@ -11,8 +11,9 @@ class AmongUsGame:
 
 
 class AmongUsCode:
-    def __init__(self, code, author):
+    def __init__(self, code, region, author):
         self.code = code
+        self.region = region
         self.author = author
         self.set_at = datetime.datetime.utcnow()
 
@@ -67,24 +68,24 @@ class AmongUs(commands.Cog, name="Among Us"):
         if not code:
             return await ctx.send("A code has not been set for this server.")
 
-        await ctx.send(f"Among Us code: **`{code}`**\nSet by `{code.author}` {human_time.human_timedelta(code.set_at)}.")
+        await ctx.send(f"Among Us code: **`{code}`** (region: `{code.region}`)\n"f"Set by `{code.author}` {human_time.human_timedelta(code.set_at)}.")
 
     @among_code.command(name="set", description="Set the current code for Among Us", aliases=["create"])
-    async def among_code_set(self, ctx, code):
+    async def among_code_set(self, ctx, code, *, region="North America"):
         old_code = self.get_code(ctx.guild.id)
 
         if old_code:
             result = await ctx.confirm(
-                f"There is already a code set: `{old_code}`. Do you want to overwrite it?\n"
+                f"There is already a code set: `{old_code}` (region: `{old_code.region}`). Do you want to overwrite it?\n"
                 f"This code was set by `{old_code.author}` {human_time.human_timedelta(old_code.set_at)}."
             )
 
             if not result:
                 return await ctx.send("Aborted.")
 
-        self.among_codes[ctx.guild.id] = AmongUsCode(code.upper(), ctx.author)
+        self.among_codes[ctx.guild.id] = AmongUsCode(code.upper(), region, ctx.author)
 
-        await ctx.send(ctx.tick(True, f"Among Us code set to **`{code}`**"))
+        await ctx.send(ctx.tick(True, f"Among Us code set to **`{code}`** (region: `{region}`)"))
 
     @among_code.command(name="clear", description="Clear the current code for Among Us", aliases=["reset"])
     async def among_code_clear(self, ctx):
@@ -94,7 +95,7 @@ class AmongUs(commands.Cog, name="Among Us"):
             return await ctx.send("A code has not been set for this server.")
 
         result = await ctx.confirm(
-            f"The current code is `{old_code}`. Do you want to clear it?\n"
+            f"The current code is `{old_code}` (region: `{old_code.region}`). Do you want to clear it?\n"
             f"This code was set by `{old_code.author}` {human_time.human_timedelta(old_code.set_at)}."
         )
 
