@@ -55,7 +55,7 @@ class AmongUs(commands.Cog, name="Among Us"):
         invoke_without_command=True,
     )
     async def among(self, ctx):
-        await ctx.send_help(ctx.command)
+        await ctx.invoke(self.among_code)
 
     @among.group(name="code", invoke_without_command=True)
     async def among_code(self, ctx):
@@ -69,8 +69,8 @@ class AmongUs(commands.Cog, name="Among Us"):
             return await ctx.send("A code has not been set for this server.")
 
         await ctx.send(
-            f"Among Us code: **`{code}`** (region: `{code.region}`)\n"
-            f"Set by `{code.author}` {human_time.human_timedelta(code.set_at)}."
+            f"Among Us code: `{code}` (region: `{code.region}`)\n"
+            f"Set by `{code.author}` {human_time.human_timedelta(code.set_at, accuracy=1)}."
         )
 
     @among_code.command(
@@ -82,7 +82,7 @@ class AmongUs(commands.Cog, name="Among Us"):
         if old_code:
             result = await ctx.confirm(
                 f"There is already a code set: `{old_code}` (region: `{old_code.region}`). Do you want to overwrite it?\n"
-                f"This code was set by `{old_code.author}` {human_time.human_timedelta(old_code.set_at)}."
+                f"This code was set by `{old_code.author}` {human_time.human_timedelta(old_code.set_at, accuracy=1)}."
             )
 
             if not result:
@@ -105,14 +105,6 @@ class AmongUs(commands.Cog, name="Among Us"):
         if not old_code:
             return await ctx.send("A code has not been set for this server.")
 
-        result = await ctx.confirm(
-            f"The current code is `{old_code}` (region: `{old_code.region}`). Do you want to clear it?\n"
-            f"This code was set by `{old_code.author}` {human_time.human_timedelta(old_code.set_at)}."
-        )
-
-        if not result:
-            return await ctx.send("Aborted.")
-
         self.among_codes.pop(ctx.guild.id)
 
         await ctx.send(ctx.tick(True, "Cleared code."))
@@ -121,6 +113,7 @@ class AmongUs(commands.Cog, name="Among Us"):
         name="start",
         description="Start the Among Us game and mute everyone in the channel",
     )
+    @commands.is_owner()
     async def among_start(self, ctx):
         result = await ctx.confirm(
             "Start the Among Us game?\n**This will mute `num` members in the voice channel.**"
