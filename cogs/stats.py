@@ -561,7 +561,7 @@ class Stats(commands.Cog):
     def get_latest_commits(self, count=3):
         repo = git.Repo(".")
         commits = list(
-            list(repo.iter_commits("main", max_count=3))
+            list(repo.iter_commits("main", max_count=count))
         )
         return "\n".join(self.format_commit(c) for c in commits)
 
@@ -620,6 +620,18 @@ class Stats(commands.Cog):
         lines = await self.bot.loop.run_in_executor(None, partial)
         em.add_field(name=":page_facing_up: Code", value=lines, inline=False)
 
+        await ctx.send(embed=em)
+
+    @commands.command(description="Get the latest changes for the bot", aliases=["latest", "news"])
+    async def changes(self, ctx):
+        async with ctx.typing():
+            revisions = self.get_latest_commits(10)
+
+        em = discord.Embed(
+            title="Latest changes",
+            description=f"{revisions}\n[...view all changes](https://github.com/Fyssion/Clam/commits/main)",
+            color=colors.PRIMARY,
+        )
         await ctx.send(embed=em)
 
     @commands.command(
