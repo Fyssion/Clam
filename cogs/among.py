@@ -77,17 +77,6 @@ class AmongUs(commands.Cog, name="Among Us"):
         name="set", description="Set the current code for Among Us", aliases=["create"]
     )
     async def among_code_set(self, ctx, code, *, region="North America"):
-        old_code = self.get_code(ctx.guild.id)
-
-        if old_code:
-            result = await ctx.confirm(
-                f"There is already a code set: `{old_code}` (region: `{old_code.region}`). Do you want to overwrite it?\n"
-                f"This code was set by `{old_code.author}` {human_time.human_timedelta(old_code.set_at, accuracy=1)}."
-            )
-
-            if not result:
-                return await ctx.send("Aborted.")
-
         self.among_codes[ctx.guild.id] = AmongUsCode(code.upper(), region, ctx.author)
 
         await ctx.send(
