@@ -48,7 +48,8 @@ class Music(commands.Cog):
         self.bot = bot
         self.emoji = ":notes:"
         self.private = True
-        self.hidden = True
+        self.private_user_overrides = [612816777994305566]
+        self.private_guild_overrides = [722184677984698398, 592510013222682669, 704692704113721426]
 
         # Check if the cache folder is created
         if not os.path.exists("cache"):

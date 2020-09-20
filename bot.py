@@ -22,9 +22,7 @@ formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s
 file_logger = logging.getLogger("discord")
 file_logger.setLevel(logging.DEBUG)
 file_handler = logging.FileHandler(filename="clam.log", encoding="utf-8", mode="w")
-file_handler.setFormatter(
-    formatter
-)
+file_handler.setFormatter(formatter)
 file_logger.addHandler(file_handler)
 
 sh = logging.StreamHandler()
@@ -217,8 +215,20 @@ class Clam(commands.Bot):
         if (
             hasattr(ctx.command.cog, "private")
             and ctx.guild.id not in [454469821376102410, 621123303343652867,]
-            and ctx.author.id != self.owner_id
+            and ctx.author.id not in [self.bot.owner_id, 224513210471022592]
         ):
+            if (
+                hasattr(ctx.command.cog, "private_user_overrides")
+                and ctx.author.id in ctx.command.cog.private_user_overrides
+            ):
+                return True
+
+            if (
+                hasattr(ctx.command.cog, "private_guild_overrides")
+                and ctx.guild.id in ctx.command.cog.private_guild_overrides
+            ):
+                return True
+
             raise PrivateCog("This is a private cog.")
 
         return True
