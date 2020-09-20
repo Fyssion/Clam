@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 
-import coloredlogs
 import logging
 import yaml
 from datetime import datetime as d
@@ -18,17 +17,27 @@ from cogs.utils.context import Context
 from cogs.utils.errors import PrivateCog, Blacklisted
 
 
+formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+
 file_logger = logging.getLogger("discord")
 file_logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler(filename="clam.log", encoding="utf-8", mode="w")
-handler.setFormatter(
-    logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s")
+file_handler = logging.FileHandler(filename="clam.log", encoding="utf-8", mode="w")
+file_handler.setFormatter(
+    formatter
 )
-file_logger.addHandler(handler)
+file_logger.addHandler(file_handler)
+
+sh = logging.StreamHandler()
+sh.setFormatter(formatter)
 
 logger = logging.getLogger("discord")
 logger.setLevel(logging.INFO)
-logger.addHandler(logging.StreamHandler())
+logger.addHandler(sh)
+
+log = logging.getLogger("clam")
+log.setLevel(logging.INFO)
+log.addHandler(sh)
+log.addHandler(file_handler)
 
 
 def get_prefix(bot, message):
@@ -69,6 +78,7 @@ initial_extensions = [
     "cogs.mathematics",
     "cogs.meta",
     "cogs.moderation",
+    "cogs.music",
     # "cogs.reddit",
     "cogs.stats",
     "cogs.tags",
@@ -95,13 +105,7 @@ class Clam(commands.Bot):
             owner_id=224513210471022592,
             case_insensitive=True,
         )
-        self.log = logging.getLogger(__name__)
-        coloredlogs.install(
-            level="DEBUG",
-            logger=self.log,
-            fmt="(%(asctime)s) %(levelname)s %(message)s",
-            datefmt="%m/%d/%y - %H:%M:%S %Z",
-        )
+        self.log = log
 
         with open("prefixes.json", "r") as f:
             self.guild_prefixes = json.load(f)
@@ -324,6 +328,12 @@ class Clam(commands.Bot):
         await super().logout()
         await self.pool.close()
         await self.google_client.close()
+        if not self.session.closed:
+            await self.session.close()
+
+        music = self.get_cog("Music")
+        if music:
+            await music.stop_all_players()
 
     def run(self):
         super().run(self.config.bot_token)

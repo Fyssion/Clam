@@ -11,3 +11,4 @@ ffmpeg.exe
 *.webm
 env/*
 clam.log
+cache/
