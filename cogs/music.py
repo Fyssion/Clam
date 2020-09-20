@@ -378,6 +378,7 @@ class Music(commands.Cog):
 
         ctx.player.volume = volume / 100
         ctx.player.voice.volume = volume / 100
+        ctx.player.current.source.volume = volume / 100
 
         await ctx.send(f"**{self.get_volume_emoji(volume)} Volume:** `{volume}%`")
 
