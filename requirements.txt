@@ -1,5 +1,4 @@
 discord.py[voice]>=1.2.5
-coloredlogs
 pyyaml
 matplotlib
 jishaku
