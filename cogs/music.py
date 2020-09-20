@@ -42,7 +42,7 @@ def is_dj():
 
 
 class Music(commands.Cog):
-    """The actual music player"""
+    """Play music in a voice channel through the bot"""
 
     def __init__(self, bot):
         self.bot = bot
