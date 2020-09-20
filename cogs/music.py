@@ -679,7 +679,7 @@ class Music(commands.Cog):
         if not ctx.player.is_playing:
             return await ctx.send("Nothing being played at the moment.")
 
-        song = ctx.player.current.remake_source()
+        song = ctx.player.current.make_source()
 
         ctx.player.startover = True
 
