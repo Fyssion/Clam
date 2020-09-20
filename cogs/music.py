@@ -679,7 +679,9 @@ class Music(commands.Cog):
         if not ctx.player.is_playing:
             return await ctx.send("Nothing being played at the moment.")
 
-        song = ctx.player.current.make_source()
+        current = ctx.player.current
+
+        song = ytdl.Song(ctx, data=current.data, filename=current.filename,)
 
         ctx.player.startover = True
 
