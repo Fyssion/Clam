@@ -215,7 +215,7 @@ class Clam(commands.Bot):
         if (
             hasattr(ctx.command.cog, "private")
             and ctx.guild.id not in [454469821376102410, 621123303343652867,]
-            and ctx.author.id not in [self.bot.owner_id, 224513210471022592]
+            and ctx.author.id not in [self.owner_id, 224513210471022592]
         ):
             if (
                 hasattr(ctx.command.cog, "private_user_overrides")
