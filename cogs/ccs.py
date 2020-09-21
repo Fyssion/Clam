@@ -109,7 +109,7 @@ class CCS(commands.Cog):
         description="Kick a bot from a voice channel (music bot testing)"
     )
     @commands.has_role(CODER)
-    @commands.bot_has_permissions(move_members=True)
+    @commands.bot_has_guild_permissions(move_members=True)
     async def kickvoice(self, ctx, *, member: discord.Member):
         if not member.bot:
             raise commands.BadArgument("You can only kick bots.")
