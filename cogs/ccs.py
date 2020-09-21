@@ -105,6 +105,22 @@ class CCS(commands.Cog):
             await member.edit(nick=member.display_name.replace(RETIRED_EMOJI, ""))
             await ctx.send(f"{ctx.tick(True)} Unretired `{member}`")
 
+    @commands.command(
+        description="Kick a bot from a voice channel (music bot testing)"
+    )
+    @commands.has_role(CODER)
+    @commands.bot_has_permissions(move_members=True)
+    async def kickvoice(self, ctx, *, member: discord.Member):
+        if not member.bot:
+            raise commands.BadArgument("You can only kick bots.")
+
+        if not member.voice:
+            raise commands.BadArgument("That bot isn't in a voice channel.")
+
+        await member.move_to(None)
+
+        await ctx.send(ctx.tick(True, "Kicked bot."))
+
     async def unarchive_channel(self, ctx, channel):
         query = """DELETE FROM archived_channels
                    WHERE channel_id=$1
