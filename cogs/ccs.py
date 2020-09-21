@@ -117,7 +117,7 @@ class CCS(commands.Cog):
         if not member.voice:
             raise commands.BadArgument("That bot isn't in a voice channel.")
 
-        await member.move_to(None)
+        await member.move_to(None, reason=f"kickvoice command by {ctx.author} (ID: {ctx.author.id}) on {member} (ID: {member.id})")
 
         await ctx.send(ctx.tick(True, "Kicked bot."))
 
@@ -202,7 +202,7 @@ class CCS(commands.Cog):
         await ctx.send(f"{ctx.tick(True)} Archived channel `{channel}`")
 
     @commands.command(
-        description="Toggle a channel on or off (move to archived category)",
+        description="Toggle a channel on or off (move to archived category)", aliases=["archive", "unarchive"]
     )
     @commands.is_owner()
     @commands.bot_has_permissions(manage_channels=True)
