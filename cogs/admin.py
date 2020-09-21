@@ -430,7 +430,7 @@ class Admin(commands.Cog):
                     statuses.append((ctx.tick(True), module))
 
         await ctx.send(
-            "\n".join(f"{status}: `{module}`" for status, module in statuses)
+            "\n".join(f"{status} `{module}`" for status, module in statuses)
         )
 
     @commands.group(name="cog")
