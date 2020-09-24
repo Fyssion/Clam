@@ -97,7 +97,8 @@ class Clam(commands.Bot):
             command_prefix = dev_prefix
             self.debug = True
 
-        intents = discord.Intents(presences=False, members=True)
+        intents = discord.Intents()
+        intents.members = True
 
         super().__init__(
             command_prefix=command_prefix,
