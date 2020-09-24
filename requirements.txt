@@ -1,4 +1,4 @@
-discord.py>=1.4.1
+git+https://github.com/Rapptz/discord.py@master#egg=discord.py[voice]
 pyyaml
 matplotlib
 jishaku
