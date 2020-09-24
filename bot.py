@@ -97,11 +97,14 @@ class Clam(commands.Bot):
             command_prefix = dev_prefix
             self.debug = True
 
+        intents = discord.Intents(presences=False, members=True)
+
         super().__init__(
             command_prefix=command_prefix,
             description="A multi-purpose Discord bot. Likes to hide in it's shell.",
             owner_id=224513210471022592,
             case_insensitive=True,
+            intents=intents,
         )
         self.log = log
 
