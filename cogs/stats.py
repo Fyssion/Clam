@@ -2,6 +2,9 @@ from datetime import datetime, timezone, timedelta
 from collections import Counter
 import asyncio
 import functools
+import io
+import typing
+from collections import defaultdict
 
 import discord
 from discord.ext import commands, tasks
@@ -11,7 +14,7 @@ import git
 import psutil
 import itertools
 
-from .utils.utils import get_lines_of_code
+from .utils.utils import get_lines_of_code, TabularData
 from .utils import db, colors, human_time
 from .utils.emojis import TEXT_CHANNEL, VOICE_CHANNEL
 
@@ -560,9 +563,7 @@ class Stats(commands.Cog):
 
     def get_latest_commits(self, count=3):
         repo = git.Repo(".")
-        commits = list(
-            list(repo.iter_commits("main", max_count=count))
-        )
+        commits = list(list(repo.iter_commits("main", max_count=count)))
         return "\n".join(self.format_commit(c) for c in commits)
 
     @commands.command(
@@ -607,7 +608,8 @@ class Stats(commands.Cog):
         )
 
         em.add_field(
-            name="<:online:649270802088460299> Uptime", value=humanize.naturaldelta(up).capitalize(),
+            name="<:online:649270802088460299> Uptime",
+            value=humanize.naturaldelta(up).capitalize(),
         )
         cpu = psutil.cpu_percent()
 
@@ -622,7 +624,9 @@ class Stats(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @commands.command(description="Get the latest changes for the bot", aliases=["latest", "news"])
+    @commands.command(
+        description="Get the latest changes for the bot", aliases=["latest", "news"]
+    )
     async def changes(self, ctx):
         async with ctx.typing():
             revisions = self.get_latest_commits(10)
@@ -647,14 +651,236 @@ class Stats(commands.Cog):
     )
     async def uptime(self, ctx):
         up = datetime.now() - self.bot.startup_time
-        uptime = human_time.human_timedelta(self.bot.startup_time, source=datetime.now())
-        await ctx.send(
-            f"<:online:649270802088460299> I booted up **{uptime}**"
+        uptime = human_time.human_timedelta(
+            self.bot.startup_time, source=datetime.now()
         )
+        await ctx.send(f"<:online:649270802088460299> I booted up **{uptime}**")
 
     @commands.Cog.listener()
     async def on_command_completion(self, ctx):
         await self.register_command(ctx)
+
+    # https://github.com/Rapptz/RoboDanny/blob/7a7e75dfaee2057aefc3ff5f4cf23b1fc43afe70/cogs/stats.py#L838-L1047
+    async def tabulate_query(self, ctx, query, *args):
+        records = await ctx.db.fetch(query, *args)
+
+        if len(records) == 0:
+            return await ctx.send("No results found.")
+
+        headers = list(records[0].keys())
+        table = TabularData()
+        table.set_columns(headers)
+        table.add_rows(list(r.values()) for r in records)
+        render = table.render()
+
+        fmt = f"```\n{render}\n```"
+        if len(fmt) > 2000:
+            fp = io.BytesIO(fmt.encode("utf-8"))
+            await ctx.send("Too many results...", file=discord.File(fp, "results.txt"))
+        else:
+            await ctx.send(fmt)
+
+    @commands.group(hidden=True, invoke_without_command=True)
+    @commands.is_owner()
+    async def command_history(self, ctx):
+        """Command history."""
+        query = """SELECT
+                        CASE failed
+                            WHEN TRUE THEN name || ' [!]'
+                            ELSE name
+                        END AS "command",
+                        to_char(invoked_at, 'Mon DD HH12:MI:SS AM') AS "invoked",
+                        author_id,
+                        guild_id
+                   FROM commands
+                   ORDER BY invoked_at DESC
+                   LIMIT 15;
+                """
+        await self.tabulate_query(ctx, query)
+
+    @command_history.command(name="for")
+    @commands.is_owner()
+    async def command_history_for(
+        self, ctx, days: typing.Optional[int] = 7, *, command: str
+    ):
+        """Command history for a command."""
+
+        query = """SELECT *, t.success + t.failed AS "total"
+                   FROM (
+                       SELECT guild_id,
+                              SUM(CASE WHEN failed THEN 0 ELSE 1 END) AS "success",
+                              SUM(CASE WHEN failed THEN 1 ELSE 0 END) AS "failed"
+                       FROM commands
+                       WHERE name=$1
+                       AND invoked_at > (CURRENT_TIMESTAMP - $2::interval)
+                       GROUP BY guild_id
+                   ) AS t
+                   ORDER BY "total" DESC
+                   LIMIT 30;
+                """
+
+        await self.tabulate_query(ctx, query, command, timedelta(days=days))
+
+    @command_history.command(name="guild", aliases=["server"])
+    @commands.is_owner()
+    async def command_history_guild(self, ctx, guild_id: int):
+        """Command history for a guild."""
+
+        query = """SELECT
+                        CASE failed
+                            WHEN TRUE THEN name || ' [!]'
+                            ELSE name
+                        END AS "name",
+                        channel_id,
+                        author_id,
+                        invoked_at
+                   FROM commands
+                   WHERE guild_id=$1
+                   ORDER BY invoked_at DESC
+                   LIMIT 15;
+                """
+        await self.tabulate_query(ctx, query, guild_id)
+
+    @command_history.command(name="user", aliases=["member"])
+    @commands.is_owner()
+    async def command_history_user(self, ctx, user_id: int):
+        """Command history for a user."""
+
+        query = """SELECT
+                        CASE failed
+                            WHEN TRUE THEN name || ' [!]'
+                            ELSE name
+                        END AS "name",
+                        guild_id,
+                        invoked_at
+                   FROM commands
+                   WHERE author_id=$1
+                   ORDER BY invoked_at DESC
+                   LIMIT 20;
+                """
+        await self.tabulate_query(ctx, query, user_id)
+
+    @command_history.command(name="log")
+    @commands.is_owner()
+    async def command_history_log(self, ctx, days=7):
+        """Command history log for the last N days."""
+
+        query = """SELECT name, COUNT(*)
+                   FROM commands
+                   WHERE invoked_at > (CURRENT_TIMESTAMP - $1::interval)
+                   GROUP BY name
+                   ORDER BY 2 DESC
+                """
+
+        all_commands = {c.qualified_name: 0 for c in self.bot.walk_commands()}
+
+        records = await ctx.db.fetch(query, timedelta(days=days))
+        for name, uses in records:
+            if name in all_commands:
+                all_commands[name] = uses
+
+        as_data = sorted(all_commands.items(), key=lambda t: t[1], reverse=True)
+        table = TabularData()
+        table.set_columns(["Command", "Uses"])
+        table.add_rows(tup for tup in as_data)
+        render = table.render()
+
+        embed = discord.Embed(title="Summary", colour=discord.Colour.green())
+        embed.set_footer(
+            text="Since"
+        ).timestamp = datetime.utcnow() - timedelta(days=days)
+
+        top_ten = "\n".join(f"{command}: {uses}" for command, uses in records[:10])
+        bottom_ten = "\n".join(f"{command}: {uses}" for command, uses in records[-10:])
+        embed.add_field(name="Top 10", value=top_ten)
+        embed.add_field(name="Bottom 10", value=bottom_ten)
+
+        unused = ", ".join(name for name, uses in as_data if uses == 0)
+        if len(unused) > 1024:
+            unused = "Way too many..."
+
+        embed.add_field(name="Unused", value=unused, inline=False)
+
+        await ctx.send(
+            embed=embed,
+            file=discord.File(io.BytesIO(render.encode()), filename="full_results.txt"),
+        )
+
+    @command_history.command(name="cog")
+    @commands.is_owner()
+    async def command_history_cog(
+        self, ctx, days: typing.Optional[int] = 7, *, cog: str = None
+    ):
+        """Command history for a cog or grouped by a cog."""
+
+        interval = timedelta(days=days)
+        if cog is not None:
+            cog = self.bot.get_cog(cog)
+            if cog is None:
+                return await ctx.send(f"Unknown cog: {cog}")
+
+            query = """SELECT *, t.success + t.failed AS "total"
+                       FROM (
+                           SELECT name,
+                                  SUM(CASE WHEN failed THEN 0 ELSE 1 END) AS "success",
+                                  SUM(CASE WHEN failed THEN 1 ELSE 0 END) AS "failed"
+                           FROM commands
+                           WHERE name = any($1::text[])
+                           AND invoked_at > (CURRENT_TIMESTAMP - $2::interval)
+                           GROUP BY name
+                       ) AS t
+                       ORDER BY "total" DESC
+                       LIMIT 30;
+                    """
+            return await self.tabulate_query(
+                ctx, query, [c.qualified_name for c in cog.walk_commands()], interval
+            )
+
+        # A more manual query with a manual grouper.
+        query = """SELECT *, t.success + t.failed AS "total"
+                   FROM (
+                       SELECT name,
+                              SUM(CASE WHEN failed THEN 0 ELSE 1 END) AS "success",
+                              SUM(CASE WHEN failed THEN 1 ELSE 0 END) AS "failed"
+                       FROM commands
+                       WHERE invoked_a t> (CURRENT_TIMESTAMP - $1::interval)
+                       GROUP BY name
+                   ) AS t;
+                """
+
+        class Count:
+            __slots__ = ("success", "failed", "total")
+
+            def __init__(self):
+                self.success = 0
+                self.failed = 0
+                self.total = 0
+
+            def add(self, record):
+                self.success += record["success"]
+                self.failed += record["failed"]
+                self.total += record["total"]
+
+        data = defaultdict(Count)
+        records = await ctx.db.fetch(query, interval)
+        for record in records:
+            command = self.bot.get_command(record["name"])
+            if command is None or command.cog is None:
+                data["No Cog"].add(record)
+            else:
+                data[command.cog.qualified_name].add(record)
+
+        table = TabularData()
+        table.set_columns(["Cog", "Success", "Failed", "Total"])
+        data = sorted(
+            [(cog, e.success, e.failed, e.total) for cog, e in data.items()],
+            key=lambda t: t[-1],
+            reverse=True,
+        )
+
+        table.add_rows(data)
+        render = table.render()
+        await ctx.send(discord.utils.escape_mentions(f"```\n{render}\n```"))
 
 
 def setup(bot):
