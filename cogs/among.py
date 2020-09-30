@@ -77,10 +77,30 @@ class AmongUs(commands.Cog, name="Among Us"):
         name="set", description="Set the current code for Among Us", aliases=["create"]
     )
     async def among_code_set(self, ctx, code, *, region="North America"):
+        old_code = self.get_code(ctx.guild.id)
+
+        if (
+            old_code
+            and old_code.code.upper() == code.upper()
+            and old_code.region == region
+        ):
+            return await ctx.send(
+                ctx.tick(
+                    False,
+                    (
+                        "That code and region have already been set by "
+                        f"`{old_code.author}` {human_time.human_timedelta(old_code.set_at, accuracy=1)}.\n"
+                        f"You can clear the current code with `{ctx.guild_prefix}among code clear`"
+                    ),
+                )
+            )
+
         self.among_codes[ctx.guild.id] = AmongUsCode(code.upper(), region, ctx.author)
 
         await ctx.send(
-            ctx.tick(True, f"Among Us code set to **`{code.upper()}`** (region: `{region}`)")
+            ctx.tick(
+                True, f"Among Us code set to **`{code.upper()}`** (region: `{region}`)"
+            )
         )
 
     @among_code.command(
