@@ -882,6 +882,34 @@ class Stats(commands.Cog):
         render = table.render()
         await ctx.send(discord.utils.escape_mentions(f"```\n{render}\n```"))
 
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild):
+        em = discord.Embed(title="Joined Guild", color=discord.Color.green(), timestamp=guild.created_at)
+        em.set_thumbnail(url=guild.icon_url)
+        em.set_footer(text="Created")
+
+        em.add_field(name="Name", value=guild.name)
+        em.add_field(name="Owner", value=str(guild.owner))
+        em.add_field(name="Member Count", value=guild.member_count)
+
+        await self.bot.console.send(embed=em)
+
+    @commands.Cog.listener()
+    async def on_guild_remove(self, guild):
+        em = discord.Embed(title="Left Guild", color=discord.Color.red(), timestamp=guild.created_at)
+        em.set_thumbnail(url=guild.icon_url)
+        em.set_footer(text="Created")
+
+        em.add_field(name="Name", value=guild.name)
+        em.add_field(name="Owner", value=str(guild.owner))
+        em.add_field(name="Member Count", value=guild.member_count)
+
+        created_delta = humanize.naturaltime(guild.joined_at)
+        created_time = humanize.naturaldate(guild.joined_at).capitalize()
+        em.add_field(name="Originally Joined", value=f"{created_time} ({created_delta})")
+
+        await self.bot.console.send(embed=em)
+
 
 def setup(bot):
     if not hasattr(bot, "command_stats"):
