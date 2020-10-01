@@ -426,7 +426,7 @@ class Moderation(commands.Cog):
     async def on_guild_role_delete(self, role):
         settings = await self.get_guild_settings(role.guild.id)
 
-        if role.id != settings.muted_role_id:
+        if settings and role.id != settings.muted_role_id:
             return
 
         query = """UPDATE guild_settings
