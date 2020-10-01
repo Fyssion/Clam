@@ -56,7 +56,7 @@ class HelpPages(menus.ListPageSource):
         commands = [c for i, c in enumerate(entries, start=offset)]
         formatted = "\n".join(commands)
 
-        if max_pages > 1 and menu.current_page + 1 != max_pages: 
+        if max_pages > 1 and menu.current_page + 1 != max_pages:
             more_pages = "\n*More commands on the next page -->*"
 
         else:
@@ -101,7 +101,10 @@ class ClamHelpCommand(commands.HelpCommand):
     def get_base_embed(self):
         ctx = self.context
         bot = ctx.bot
-        em = discord.Embed(title=f"Help for {bot.user.name}", color=colors.PRIMARY,)
+        em = discord.Embed(
+            title=f"Help for {bot.user.name}",
+            color=colors.PRIMARY,
+        )
         em.set_thumbnail(url=ctx.bot.user.avatar_url)
         em.set_footer(text="Note that you can only view commands that you can use")
         return em
@@ -144,12 +147,7 @@ class ClamHelpCommand(commands.HelpCommand):
         dev = bot.get_user(224513210471022592)
         em.add_field(
             name="More Info",
-            value=(
-                "Need help? Join the [support server.](https://www.discord.gg/wfCGTrp)\n"
-                "\n"
-                f"Created by {dev}\n"
-                f"using discord.py v{discord.__version__}"
-            ),
+            value=(f"Created by {dev}\nusing discord.py v{discord.__version__}"),
             inline=True,
         )
 
@@ -223,7 +221,8 @@ class ClamHelpCommand(commands.HelpCommand):
         more_info = f"{self.arg_help}\n{self.i_cmd(ctx)}"
 
         pages = MenuPages(
-            source=HelpPages(commands, em, more_info), clear_reactions_after=True,
+            source=HelpPages(commands, em, more_info),
+            clear_reactions_after=True,
         )
         await pages.start(ctx)
 
@@ -243,7 +242,8 @@ class ClamHelpCommand(commands.HelpCommand):
         more_info = f"{self.arg_help}\n{self.i_cmd(ctx)}"
 
         pages = MenuPages(
-            source=HelpPages(commands, em, more_info), clear_reactions_after=True,
+            source=HelpPages(commands, em, more_info),
+            clear_reactions_after=True,
         )
         await pages.start(ctx)
 
@@ -392,7 +392,8 @@ class Meta(commands.Cog):
         self.bot.error_cache.append(error)
 
         em = discord.Embed(
-            title=":warning: Unexpected Error", color=discord.Color.gold(),
+            title=":warning: Unexpected Error",
+            color=discord.Color.gold(),
         )
 
         description = (
@@ -594,6 +595,7 @@ class Meta(commands.Cog):
         await ctx.send(f"Invite link: <{invite}>")
 
     @commands.command(description="Get a link to my support server")
+    @commands.is_owner()
     async def support(self, ctx):
         # If the bot isn't Clam or Clam DEV,
         # send a 'friendly' message with a link
