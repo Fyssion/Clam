@@ -634,6 +634,10 @@ class Admin(commands.Cog):
             icon_url=message.author.avatar_url,
         )
         em.set_footer(text="Incoming DM")
+
+        if message.attachments:
+            em.set_image(url=message.attachments[0].url)
+
         await channel.send(embed=em)
 
         dm_session = self.find_session_from_user(message.author)
