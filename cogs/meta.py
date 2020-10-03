@@ -124,7 +124,7 @@ class ClamHelpCommand(commands.HelpCommand):
 
         if bot.debug:
             em.description = (
-                "```css\n[WARNING: DEBUG mode is active]\n```\n" + em.description
+                f"```css\n[DEBUG mode {bot.debug} is active]\n```\n" + em.description
             )
 
         cog_names = []
@@ -366,8 +366,9 @@ class Meta(commands.Cog):
 
     @commands.Cog.listener("on_message")
     async def on_mention_msg(self, message):
-        if self.bot.debug:
+        if self.bot.debug.full:
             return
+
         content = message.content
         id = self.bot.user.id
         if content == f"<@{id}>" or content == f"<@!{id}>":

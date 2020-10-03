@@ -91,11 +91,10 @@ class Clam(commands.Bot):
         self.config = Config("config.yml")
 
         command_prefix = get_prefix
-        self.debug = False
+        self.debug = self.config.debug
 
-        if self.config.debug:
+        if self.debug.full:
             command_prefix = dev_prefix
-            self.debug = True
 
         intents = discord.Intents.all()
         intents.presences = False
@@ -308,7 +307,7 @@ class Clam(commands.Bot):
         await self.invoke(ctx)
 
     async def on_message(self, message):
-        if self.debug and message.guild.id not in [
+        if self.debug.full and message.guild.id not in [
             454469821376102410,
             621123303343652867,
         ]:

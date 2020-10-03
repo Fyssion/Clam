@@ -1,7 +1,8 @@
 import discord
-from discord.ext import commands, menus
+from discord.ext import commands, menus, tasks
 
 from datetime import datetime as d
+import pkg_resources
 import traceback
 import psutil
 import typing
@@ -18,7 +19,7 @@ from jishaku.codeblocks import codeblock_converter
 from .utils.utils import TabularData
 from .utils.menus import MenuPages
 from .utils.human_time import plural
-from .utils import colors, human_time
+from .utils import colors, human_time, aiopypi
 
 
 CLAM_DMS_CATEGORY = 714981398540451841
@@ -92,6 +93,62 @@ class Admin(commands.Cog):
 
         self.dm_sessions = self.bot.dm_sessions
 
+        if not self.bot.debug:
+            self.dependancy_check_task.start()
+
+    @tasks.loop(hours=48)
+    async def dependancy_check_task(self):
+        """A simple dependancy checker that checks for outdated dependencies.
+
+        The reason why this doesn't check requirements.txt is because I want to
+        specify exactly which deps to check.
+        """
+        self.bot.log.info("Checking dependancies...")
+        deps_to_check = ["youtube-dl", "gitpython", "jishaku", "asyncpg", "pytz", "beautifulsoup4"]
+        packages = []
+
+        for dep in deps_to_check:
+            try:
+                package = await aiopypi.fetch_package(dep)
+                packages.append(package)
+            except aiopypi.PackageNotFoundError:
+                pass
+
+            await asyncio.sleep(5)  # don't want to spam
+
+        outdated_list = []
+
+        for package in packages:
+            try:
+                install_version = pkg_resources.get_distribution(package.name).version
+                # this means the version is above
+                if install_version != package.version:
+                    outdated_list.append(
+                        (
+                            f"**`{package.name}`** (Latest: {package.version} | Me: {install_version}) - "
+                            f"`!jsk sh venv/bin/pip install -U {package.name}`"
+                        )
+                    )
+            except (pkg_resources.DistributionNotFound, AttributeError):
+                continue
+        console = self.bot.console
+
+        if outdated_list:
+            self.log.info(
+                f"Found {len(outdated_list)} {plural(len(packages)):package} that "
+                f"need to be updated. Sending to console"
+            )
+
+            owner_id = self.bot.owner_id
+            formatted = "\n".join(outdated_list)
+            await console.send(
+                f"<@{owner_id}>, I have found {len(outdated_list)} package(s) that are oudated:\n{formatted}"
+            )
+
+    @dependancy_check_task.before_loop
+    async def before_dependancy_check_task(self):
+        await self.bot.wait_until_ready()
+
     def get_dm_session(self, channel):
         if channel.id in self.dm_sessions.keys():
             dm_session = self.dm_sessions[channel.id]
@@ -112,6 +169,9 @@ class Admin(commands.Cog):
         if not await commands.is_owner().predicate(ctx):
             raise commands.NotOwner("You do not own this bot.")
         return True
+
+    def cog_unload(self):
+        self.dependancy_check_task.cancel()
 
     # https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/admin.py#L353-L419
     @commands.command()
@@ -222,9 +282,7 @@ class Admin(commands.Cog):
 
         await ctx.send(ctx.tick(True, human_friendly))
 
-    @commands.command(
-        description="Temporarily blacklist a user", aliases=["tempblock"]
-    )
+    @commands.command(description="Temporarily blacklist a user", aliases=["tempblock"])
     async def tempblacklist(
         self, ctx, user: discord.User, duration: human_time.FutureTime
     ):
@@ -415,7 +473,9 @@ class Admin(commands.Cog):
                         traceback_data = "".join(
                             traceback.format_exception(type(e), e, e.__traceback__, 1)
                         )
-                        statuses.append((ctx.tick(False), f"{module}\n```py\n{traceback_data}\n```"))
+                        statuses.append(
+                            (ctx.tick(False), f"{module}\n```py\n{traceback_data}\n```")
+                        )
                     else:
                         statuses.append((ctx.tick(True), module))
             else:
@@ -425,13 +485,13 @@ class Admin(commands.Cog):
                     traceback_data = "".join(
                         traceback.format_exception(type(e), e, e.__traceback__, 1)
                     )
-                    statuses.append((ctx.tick(False), f"{module}\n```py\n{traceback_data}\n```"))
+                    statuses.append(
+                        (ctx.tick(False), f"{module}\n```py\n{traceback_data}\n```")
+                    )
                 else:
                     statuses.append((ctx.tick(True), module))
 
-        await ctx.send(
-            "\n".join(f"{status} `{module}`" for status, module in statuses)
-        )
+        await ctx.send("\n".join(f"{status} `{module}`" for status, module in statuses))
 
     @commands.group(name="cog")
     @commands.is_owner()
@@ -453,12 +513,13 @@ class Admin(commands.Cog):
             return f"{megs}mb"
         return f"{gigs}gb"
 
-    @commands.group(
-        name="process", aliases=["computer", "comp", "cpu", "ram"]
-    )
+    @commands.group(name="process", aliases=["computer", "comp", "cpu", "ram"])
     @commands.is_owner()
     async def _process(self, ctx):
-        em = discord.Embed(title="Current Process Stats", color=discord.Color.teal(),)
+        em = discord.Embed(
+            title="Current Process Stats",
+            color=discord.Color.teal(),
+        )
         em.add_field(
             name="CPU",
             value=f"{psutil.cpu_percent()}% used with {psutil.cpu_count()} CPU(s)",
@@ -477,13 +538,18 @@ class Admin(commands.Cog):
         await ctx.send(embed=em)
 
     @commands.group(
-        name="error", aliases=["e"], invoke_without_command=True,
+        name="error",
+        aliases=["e"],
+        invoke_without_command=True,
     )
     @commands.is_owner()
     async def _error(self, ctx):
         first_step = list(self.bot.error_cache)
         errors = first_step[::-1]
-        pages = MenuPages(source=AllErrorsSource(errors), clear_reactions_after=True,)
+        pages = MenuPages(
+            source=AllErrorsSource(errors),
+            clear_reactions_after=True,
+        )
         await pages.start(ctx)
 
     @_error.command(aliases=["pre", "p", "prev"])
@@ -516,12 +582,13 @@ class Admin(commands.Cog):
         trace = e.__traceback__
         verbosity = 4
         lines = traceback.format_exception(etype, e, trace, verbosity)
-        pages = MenuPages(source=ErrorSource(lines, index), clear_reactions_after=True,)
+        pages = MenuPages(
+            source=ErrorSource(lines, index),
+            clear_reactions_after=True,
+        )
         await pages.start(ctx)
 
-    @commands.command(
-        name="logout", description="Logs out and shuts down bot"
-    )
+    @commands.command(name="logout", description="Logs out and shuts down bot")
     @commands.is_owner()
     async def logout_command(self, ctx):
         self.log.info("Logging out of Discord.")

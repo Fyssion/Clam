@@ -6,6 +6,32 @@ import yaml
 # config file
 
 
+class DebugMode:
+    def __init__(self, mode):
+        self.mode = mode
+
+    def __bool__(self):
+        return bool(self.mode)
+
+    def __int__(self):
+        return self.mode
+
+    def __str__(self):
+        return str(self.mode)
+
+    @property
+    def off(self):
+        return self.mode == 0
+
+    @property
+    def partial(self):
+        return self.mode == 1
+
+    @property
+    def full(self):
+        return self.mode == 2
+
+
 class Config:
     """config.yml helper class"""
 
@@ -25,6 +51,7 @@ class Config:
 
         # Optional config stuff
         # Run the bot in debug mode or not
-        self.debug = self._data["debug"] if "debug" in self._data else False
+        # 0: Off | 1: Test acc | 2: Same acc
+        self.debug = DebugMode(self._data["debug"] if "debug" in self._data else 0)
         # Webhook for status messages
         self.status_hook = self._data["status-hook"] if "status-hook" in self._data else None
