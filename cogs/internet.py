@@ -515,6 +515,7 @@ class Internet(commands.Cog):
         usage="<repo|user>",
         aliases=["gh"],
     )
+    @commands.cooldown(5, 30)
     async def github(self, ctx, item):
 
         # Basically, this command checks if a / was found in

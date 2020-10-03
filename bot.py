@@ -132,7 +132,7 @@ class Clam(commands.Bot):
         # user_id: spam_amount
         self.spammers = {}
         self._cd = commands.CooldownMapping.from_cooldown(
-            10.0, 15.0, commands.BucketType.user
+            10.0, 12.0, commands.BucketType.user
         )
 
         self.cogs_to_load = initial_extensions
@@ -285,7 +285,7 @@ class Clam(commands.Bot):
                 spammers[ctx.author.id] += 1
             else:
                 spammers[ctx.author.id] = 1
-            if spammers[ctx.author.id] > 5:
+            if spammers[ctx.author.id] >= 5:
                 await self.log_spammer(ctx, bucket, retry_after, blacklisted=True)
                 self.add_to_blacklist(ctx.author)
                 del spammers[ctx.author.id]
