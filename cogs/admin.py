@@ -117,12 +117,14 @@ class Admin(commands.Cog):
             await asyncio.sleep(5)  # don't want to spam
 
         outdated_list = []
+        raw_oudated_list = []
 
         for package in packages:
             try:
                 install_version = pkg_resources.get_distribution(package.name).version
                 # this means the version is above
                 if install_version != package.version:
+                    raw_oudated_list.append(package.name)
                     outdated_list.append(
                         (
                             f"**`{package.name}`** (Latest: {package.version} | Me: {install_version}) - "
@@ -140,7 +142,11 @@ class Admin(commands.Cog):
             )
 
             owner_id = self.bot.owner_id
+
             formatted = "\n".join(outdated_list)
+            if len(outdated_list) > 1:
+                formatted += f"\nUpdate all: `!jsk sh venv/bin/pip install -U {' '.join(raw_oudated_list)}`"
+
             await console.send(
                 f"<@{owner_id}>, I have found {len(outdated_list)} package(s) that are oudated:\n{formatted}"
             )
