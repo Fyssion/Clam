@@ -217,7 +217,7 @@ class CCS(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        if self.debug:
+        if self.bot.debug:
             return
 
         if member.guild.id != CCS_ID:

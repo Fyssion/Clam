@@ -8,6 +8,12 @@ import yaml
 
 class DebugMode:
     def __init__(self, mode):
+        if type(mode) is not int:
+            raise TypeError("Debug mode must be an int.")
+
+        if not 0 <= mode <= 2:
+            raise ValueError("Debug mode must be between 0 and 2.")
+
         self.mode = mode
 
     def __bool__(self):
@@ -17,7 +23,8 @@ class DebugMode:
         return self.mode
 
     def __str__(self):
-        return str(self.mode)
+        mode_map = {0: "off", 1: "partial", 2: "full"}
+        return mode_map[self.mode]
 
     @property
     def off(self):
