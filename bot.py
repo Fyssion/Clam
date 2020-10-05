@@ -78,6 +78,7 @@ initial_extensions = [
     "cogs.moderation",
     "cogs.music",
     # "cogs.reddit",
+    "cogs.stars",
     "cogs.stats",
     "cogs.tags",
     "cogs.timers",
