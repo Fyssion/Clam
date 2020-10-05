@@ -625,9 +625,9 @@ class Stats(commands.Cog):
         await ctx.send(embed=em)
 
     @commands.command(
-        description="Get the latest changes for the bot", aliases=["latest", "news"]
+        description="Get the latest changes for the bot", aliases=["changes", "latest", "news"]
     )
-    async def changes(self, ctx):
+    async def changelog(self, ctx):
         async with ctx.typing():
             revisions = self.get_latest_commits(10)
 
