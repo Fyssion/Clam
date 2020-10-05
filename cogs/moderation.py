@@ -11,8 +11,9 @@ import asyncio
 import re
 from urllib.parse import urlparse
 from async_timeout import timeout
+from collections import Counter
 
-from .utils import db, human_time
+from .utils import db, human_time, checks
 from .utils.emojis import GREEN_TICK, RED_TICK, LOADING
 from .utils.checks import has_manage_guild
 from .utils.utils import is_int
@@ -278,7 +279,7 @@ class Moderation(commands.Cog):
         return GuildSettings.from_record(record, self.bot)
 
     @commands.command()
-    @commands.has_permissions(ban_members=True)
+    @checks.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
     async def ban(
         self, ctx, user: typing.Union[discord.Member, discord.User, int], *, reason=None
@@ -308,7 +309,7 @@ class Moderation(commands.Cog):
         await ctx.send(f"{ctx.tick(True)} Banned user {human_friendly}")
 
     @commands.command(description="Temporarily ban a user")
-    @commands.has_permissions(ban_members=True)
+    @checks.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
     async def tempban(
         self,
@@ -385,7 +386,7 @@ class Moderation(commands.Cog):
         await guild.unban(discord.Object(id=user_id), reason=reason)
 
     @commands.command()
-    @commands.has_permissions(ban_members=True)
+    @checks.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
     async def unban(self, ctx, user: BannedUser, *, reason=None):
         to_be_unbanned = discord.Object(id=user.id)
@@ -399,7 +400,7 @@ class Moderation(commands.Cog):
         await ctx.send(f"{ctx.tick(True)} Unbanned user `{user}`")
 
     @commands.command()
-    @commands.has_permissions(kick_members=True)
+    @checks.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
     async def kick(self, ctx, user: discord.Member, *, reason=None):
         if not role_hierarchy_check(ctx, ctx.author, user):
@@ -689,7 +690,7 @@ class Moderation(commands.Cog):
         )
 
     @commands.command(description="View members with the muted role")
-    @commands.has_permissions(manage_roles=True)
+    @checks.has_permissions(manage_roles=True)
     async def muted(self, ctx):
         settings = await self.get_guild_settings(ctx.guild.id)
 
@@ -726,7 +727,7 @@ class Moderation(commands.Cog):
 
     @mute_role.command(name="set", description="Set an existing mute role")
     @commands.bot_has_permissions(manage_roles=True)
-    @commands.has_permissions(manage_roles=True)
+    @checks.has_permissions(manage_roles=True)
     async def mute_role_set(self, ctx, *, role: discord.Role):
         query = """UPDATE guild_settings
                    SET mute_role_id=$1, muted_members=$2
@@ -742,7 +743,7 @@ class Moderation(commands.Cog):
         description="Create a new mute role and change channel overwrites",
     )
     @commands.bot_has_permissions(manage_channels=True, manage_roles=True)
-    @commands.has_permissions(manage_channels=True, manage_roles=True)
+    @checks.has_permissions(manage_channels=True, manage_roles=True)
     async def mute_role_create(
         self, ctx, name="Muted", *, color: discord.Color = discord.Color.dark_grey()
     ):
@@ -1191,15 +1192,65 @@ class Moderation(commands.Cog):
         await bot_message.clear_reactions()
 
     @commands.command(
-        name="purge", description="Purge messages in a channel", aliases=["cleanup"],
+        name="purge",
+        description="Purge messages in a channel",
     )
-    @commands.has_permissions(manage_messages=True)
+    @checks.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
     async def purge_command(self, ctx, amount: int = 100):
         deleted = await ctx.channel.purge(limit=amount + 1)
         return await ctx.channel.send(
             f"{ctx.tick(True)} Deleted {len(deleted)} message(s)", delete_after=5
         )
+
+    # sourced from Rapptz/RoboDanny
+    # https://github.com/Rapptz/RoboDanny/blob/7cd472ca021e9e166959e91a7ff64036474ea46c/cogs/mod.py#L659-L704
+    async def _basic_cleanup_strategy(self, ctx, search):
+        count = 0
+        async for msg in ctx.history(limit=search, before=ctx.message):
+            if msg.author == ctx.me:
+                await msg.delete()
+                count += 1
+        return {"Bot": count}
+
+    async def _complex_cleanup_strategy(self, ctx, search):
+        prefixes = tuple(self.bot.get_guild_prefixes(ctx.guild))  # thanks startswith
+
+        def check(m):
+            return m.author == ctx.me or m.content.startswith(prefixes)
+
+        deleted = await ctx.channel.purge(limit=search, check=check, before=ctx.message)
+        return Counter(m.author.display_name for m in deleted)
+
+    @commands.command()
+    @checks.has_permissions(manage_messages=True)
+    async def cleanup(self, ctx, search=100):
+        """Cleans up the bot's messages from the channel.
+
+        If a search number is specified, it searches that many messages to delete.
+        If the bot has Manage Messages permissions then it will try to delete
+        messages that look like they invoked the bot as well.
+
+        After the cleanup is completed, the bot will send you a message with
+        which people got their messages deleted and their count. This is useful
+        to see which users are spammers.
+
+        You must have Manage Messages permission to use this.
+        """
+
+        strategy = self._basic_cleanup_strategy
+        if ctx.me.permissions_in(ctx.channel).manage_messages:
+            strategy = self._complex_cleanup_strategy
+
+        spammers = await strategy(ctx, search)
+        deleted = sum(spammers.values())
+        messages = [f'{deleted} message{" was" if deleted == 1 else "s were"} removed.']
+        if deleted:
+            messages.append("")
+            spammers = sorted(spammers.items(), key=lambda t: t[1], reverse=True)
+            messages.extend(f"- **{author}**: {count}" for author, count in spammers)
+
+        await ctx.send("\n".join(messages), delete_after=10)
 
     @commands.group(
         name="log",

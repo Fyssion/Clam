@@ -215,6 +215,14 @@ class Clam(commands.Bot):
             return self.guild_prefixes[str(guild)][0]
         return "c."
 
+    def get_guild_prefixes(self, guild):
+        prefixes = ["c."]
+
+        if str(guild.id) in bot.guild_prefixes.keys():
+            prefixes = bot.guild_prefixes[str(guild.id)]
+
+        return prefixes
+
     def private_cog_check(self, ctx):
         if (
             hasattr(ctx.command.cog, "private")
