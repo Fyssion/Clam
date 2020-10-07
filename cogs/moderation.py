@@ -1227,13 +1227,15 @@ class Moderation(commands.Cog):
     async def cleanup(self, ctx, search=100):
         """Cleans up the bot's messages from the channel.
 
-        If a search number is specified, it searches that many messages to delete.
-        If the bot has Manage Messages permissions then it will try to delete
-        messages that look like they invoked the bot as well.
+        If a search number is specified, it searches that many
+        messages to delete. If the bot has Manage Messages
+        permissions then it will try to delete messages that
+        look like they invoked the bot as well.
 
-        After the cleanup is completed, the bot will send you a message with
-        which people got their messages deleted and their count. This is useful
-        to see which users are spammers.
+        After the cleanup is completed, the bot will send
+        you a message with which people got their messages
+        deleted and their count. This is useful to see which
+        users are spammers.
 
         You must have Manage Messages permission to use this.
         """
