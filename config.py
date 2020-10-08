@@ -59,6 +59,6 @@ class Config:
         # Optional config stuff
         # Run the bot in debug mode or not
         # 0: Off | 1: Test acc | 2: Same acc
-        self.debug = DebugMode(self._data["debug"] if "debug" in self._data else 0)
+        self.debug = DebugMode(self._data.get("debug", 0))
         # Webhook for status messages
-        self.status_hook = self._data["status-hook"] if "status-hook" in self._data else None
+        self.status_hook = self._data.get("status-hook")
