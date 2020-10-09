@@ -593,7 +593,23 @@ class Meta(commands.Cog):
             add_reactions=True,
         )
         invite = discord.utils.oauth_url(self.bot.user.id, permissions=permissions)
-        await ctx.send(f"Invite link: <{invite}>")
+
+        message = (
+            "Hey you!\n\n"
+            "This bot is currently private because the owner has chosen not to verfiy. "
+            "Why? Because verifiying means giving Discord your personal ID (e.g. a passport). "
+            "However, opting out of verification comes with some major drawbacks:\n"
+            "If not verified, the bot cannot exceed 99 guilds or it will become unusable.\n\n"
+            "Want an exception? Contact the owner in their [support server.](https://www.discord.gg/wfCGTrp)\n\n"
+        )
+
+        em = discord.Embed(description=message, color=colors.PRIMARY)
+
+        if ctx.author.id == self.bot.owner_id:
+            await ctx.send(f"Invite link: <{invite}>")
+
+        else:
+            await ctx.send(embed=em)
 
     @commands.command(description="Get a link to my support server")
     @commands.is_owner()
