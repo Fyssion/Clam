@@ -600,7 +600,7 @@ class Meta(commands.Cog):
             "Why? Because verifiying means giving Discord your personal ID (e.g. a passport). "
             "However, opting out of verification comes with some major drawbacks:\n"
             "If not verified, the bot cannot exceed 99 guilds or it will become unusable.\n\n"
-            "Want an exception? Contact the owner in their [support server.](https://www.discord.gg/wfCGTrp)\n\n"
+            "Want an exception? Contact the owner in their [support server.](https://discord.gg/wfCGTrp)\n\n"
         )
 
         em = discord.Embed(description=message, color=colors.PRIMARY)
@@ -618,7 +618,7 @@ class Meta(commands.Cog):
         # send a 'friendly' message with a link
         # to my site
         if self.bot.user.id in [639234650782564362, 683129055092015107]:
-            await ctx.send("Support Server Invite: https://www.discord.gg/wfCGTrp")
+            await ctx.send("Support Server Invite: https://discord.gg/wfCGTrp")
         else:
             return await ctx.send(
                 "The person who made this bot copy/pasted my code :(\nHere's the original: <https://clambot.xyz/>"
