@@ -49,7 +49,12 @@ class Music(commands.Cog):
         self.emoji = ":notes:"
         self.private = True
         self.private_user_overrides = [612816777994305566]
-        self.private_guild_overrides = [722184677984698398, 592510013222682669, 704692704113721426]
+        self.private_guild_overrides = [
+            722184677984698398,
+            592510013222682669,
+            704692704113721426,
+            764327674649903104,
+        ]
 
         # Check if the cache folder is created
         if not os.path.exists("cache"):
@@ -82,7 +87,9 @@ class Music(commands.Cog):
         ctx.player = self.get_player(ctx)
 
     async def cog_command_error(self, ctx, error: commands.CommandError):
-        if isinstance(error, music_player.VoiceError) or isinstance(error, ytdl.YTDLError):
+        if isinstance(error, music_player.VoiceError) or isinstance(
+            error, ytdl.YTDLError
+        ):
             await ctx.send(str(error))
             ctx.handled = True
 
@@ -132,9 +139,13 @@ class Music(commands.Cog):
     async def deletesongs(self, ctx):
         """Delete all songs"""
         if self.players:
-            return await ctx.send("There are active players. Please use `stopall` first.")
+            return await ctx.send(
+                "There are active players. Please use `stopall` first."
+            )
 
-        confirm = await ctx.confirm("Are you sure you want to delete all songs in cache?")
+        confirm = await ctx.confirm(
+            "Are you sure you want to delete all songs in cache?"
+        )
         if confirm:
             self.delete_all_songs()
 
@@ -310,7 +321,9 @@ class Music(commands.Cog):
 
     async def post(self, content, url="https://mystb.in"):
         async with self.bot.session.post(
-            f"{url}/documents", data=content.encode("utf-8"), headers={"User-Agent": "Clam Music Cog"}
+            f"{url}/documents",
+            data=content.encode("utf-8"),
+            headers={"User-Agent": "Clam Music Cog"},
         ) as post:
             return url + "/" + (await post.json())["key"]
 
@@ -400,9 +413,7 @@ class Music(commands.Cog):
             )
 
         else:
-            em = ctx.player.now_playing_embed(
-                duration=ctx.player.duration.get_time()
-            )
+            em = ctx.player.now_playing_embed(duration=ctx.player.duration.get_time())
 
         await ctx.send(embed=em)
 
@@ -433,9 +444,7 @@ class Music(commands.Cog):
             song = ctx.player.current.title
             await ctx.send(f"**:arrow_forward: Resuming** `{song}`")
 
-    @commands.command(
-        name="stop"
-    )
+    @commands.command(name="stop")
     @is_dj()
     async def _stop(self, ctx):
         """Stops playing song and clears the queue."""
@@ -523,7 +532,8 @@ class Music(commands.Cog):
         total_duration = ytdl.Song.parse_duration(total_duration)
 
         pages = menus.MenuPages(
-            source=music_player.SearchPages(ctx.player.songs, total_duration), clear_reactions_after=True
+            source=music_player.SearchPages(ctx.player.songs, total_duration),
+            clear_reactions_after=True,
         )
         return await pages.start(ctx)
 
@@ -658,9 +668,13 @@ class Music(commands.Cog):
 
         try:
             async with timeout(10):
-                async with self.bot.session.get(url, headers={"User-Agent": "Clam Music Cog"}) as resp:
+                async with self.bot.session.get(
+                    url, headers={"User-Agent": "Clam Music Cog"}
+                ) as resp:
                     if resp.status != 200:
-                        raise BinFetchingError("There was an error while fetching that bin.")
+                        raise BinFetchingError(
+                            "There was an error while fetching that bin."
+                        )
                     f = await resp.read()
         except asyncio.TimeoutError:
             raise TimeoutError(
@@ -668,7 +682,9 @@ class Music(commands.Cog):
             Is the site down? Try https://www.pastebin.com"
             )
             return None
-        async with self.bot.session.get(url, headers={"User-Agent": "Clam Music Cog"}) as resp:
+        async with self.bot.session.get(
+            url, headers={"User-Agent": "Clam Music Cog"}
+        ) as resp:
             f = await resp.read()
             f = f.decode("utf-8")
             return f
@@ -683,7 +699,11 @@ class Music(commands.Cog):
 
         current = ctx.player.current
 
-        song = ytdl.Song(ctx, data=current.data, filename=current.filename,)
+        song = ytdl.Song(
+            ctx,
+            data=current.data,
+            filename=current.filename,
+        )
 
         ctx.player.startover = True
 
@@ -711,7 +731,9 @@ class Music(commands.Cog):
             )
         videos = output.splitlines()
         if len(videos) > 50:
-            confirm = await ctx.confirm("I found more than 50 lines in this hastebin. Continue?")
+            confirm = await ctx.confirm(
+                "I found more than 50 lines in this hastebin. Continue?"
+            )
             if not confirm:
                 bin_log.info("User denied bin. Cancelling...")
                 return await ctx.send("Cancelled.")
@@ -738,7 +760,8 @@ class Music(commands.Cog):
                     failed_songs += 1
 
         em = discord.Embed(
-            title="**:page_facing_up: Enqueued:**", color=discord.Color.green(),
+            title="**:page_facing_up: Enqueued:**",
+            color=discord.Color.green(),
         )
         description = ""
         total_duration = 0
@@ -760,7 +783,9 @@ class Music(commands.Cog):
             )
 
         em.description = description
-        await ctx.send(":white_check_mark: **Finished downloading songs from bin**", embed=em)
+        await ctx.send(
+            ":white_check_mark: **Finished downloading songs from bin**", embed=em
+        )
 
     async def fetch_yt_playlist(self, ctx, url):
         try:
@@ -773,7 +798,10 @@ class Music(commands.Cog):
                 f"An error occurred while processing this request: ```py {str(e)}```"
             )
         else:
-            em = discord.Embed(title="**:page_facing_up: Enqueued:**", color=0xFF0000,)
+            em = discord.Embed(
+                title="**:page_facing_up: Enqueued:**",
+                color=0xFF0000,
+            )
             description = ""
             total_duration = 0
             for i, song in enumerate(playlist):
@@ -784,9 +812,7 @@ class Music(commands.Cog):
                 await ctx.player.songs.put(song)
                 total_duration += int(song.data.get("duration"))
                 if i < 9:
-                    description += (
-                        f"\n• [{song.title}]({song.url}) `{song.duration}`"
-                    )
+                    description += f"\n• [{song.title}]({song.url}) `{song.duration}`"
                 elif i == 9 and len(playlist) > 10:
                     songs_left = len(playlist) - (i + 1)
                     description += f"\n• [{song.title}]({song.url}) \
@@ -850,7 +876,9 @@ class Music(commands.Cog):
         if search.startswith("<") and search.endswith(">"):
             search = search.strip("<>")
 
-        urls = re.compile("http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+")
+        urls = re.compile(
+            "http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
+        )
         if urls.match(search):
             youtube_urls = re.compile(
                 "(?:https?://)?(?:www.)?(?:youtube.com|youtu.be)/(?:watch\?v=)?([^\s]+)"
