@@ -591,6 +591,11 @@ class Games(commands.Cog):
         if status:
             del self.hangman_games[ctx.channel.id]
 
+    @commands.command()
+    async def guess(self, ctx, letter):
+        """Alias for hangman guess. Guess a letter in hangman"""
+        await ctx.invoke(self.hangman_guess, letter)
+
     @hangman.command(
         name="stop", description="Stop the current hangman game", aliases=["quit"]
     )
