@@ -387,6 +387,9 @@ class Tools(commands.Cog):
             if user.roles[1:]:
                 roles = ""
                 for role in user.roles[1:]:
+                    if len(roles + f"{role.mention} ") > 1989:
+                        roles += "...and more"
+                        break
                     roles += f"{role.mention} "
                 em.add_field(name="Roles", value=roles, inline=False)
 
