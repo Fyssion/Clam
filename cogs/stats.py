@@ -34,7 +34,7 @@ class GuildConverter(commands.Converter):
     async def convert(self, ctx, argument):
         try:
             int_argument = int(argument)
-            guild = ctx.bot.get_guild(argument)
+            guild = ctx.bot.get_guild(int_argument)
             if guild:
                 return guild
 
