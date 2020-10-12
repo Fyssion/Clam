@@ -136,6 +136,12 @@ class Context(commands.Context):
     def db(self):
         return self.bot.pool
 
+    async def delete_send(self, *args, **kwargs):
+        if "delete_after" not in kwargs:
+            kwargs["delete_after"] = 5.0
+
+        await self.send(*args, **kwargs)
+
     async def reply(self, content, **kwargs):
         await reply_to(self.message, content, **kwargs)
 

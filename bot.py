@@ -73,6 +73,7 @@ initial_extensions = [
     "cogs.events",
     "cogs.fun",
     "cogs.games",
+    "cogs.highlight",
     "cogs.internet",
     "cogs.mathematics",
     "cogs.meta",
@@ -134,6 +135,7 @@ class Clam(commands.Bot):
         self.console = None
         self.startup_time = None
         self.session = None
+        self.highlight_words = []
         self.loop.create_task(self.prepare_bot())
 
         # user_id: spam_amount
@@ -184,6 +186,13 @@ class Clam(commands.Bot):
         self.google_client = async_cse.Search(self.config.google_api_key)
         self.session = aiohttp.ClientSession(loop=self.loop)
         self._adapter = discord.AsyncWebhookAdapter(self.session)
+
+        # Cache a list of highlight words for lookup
+        query = "SELECT word FROM highlight_words;"
+        records = await self.pool.fetch(query)
+        self.highlight_words = [r[0] for r in records]
+        # Remove duplicates
+        self.highlight_words = list(dict.fromkeys(self.highlight_words))
 
         if self.config.status_hook:
             self.status_hook = discord.Webhook.from_url(
