@@ -12,6 +12,7 @@ import re
 from urllib.parse import urlparse
 from async_timeout import timeout
 from collections import Counter
+import os.path
 
 from .utils import db, human_time, checks
 from .utils.emojis import GREEN_TICK, RED_TICK, LOADING
@@ -235,8 +236,18 @@ class Moderation(commands.Cog):
         self.emoji = ":police_car:"
         self.log = self.bot.log
 
+        if not os.path.isfile("log_channels.json"):
+            self.log.info("log_channels.json not found, creating...")
+            with open("log_channels.json", "w") as f:
+                json.dump({}, f)
+
         with open("log_channels.json", "r") as f:
             self.log_channels = json.load(f)
+
+        if not os.path.isfile("verifications.json"):
+            self.log.info("verifications.json not found, creating...")
+            with open("verifications.json", "w") as f:
+                json.dump({}, f)
 
         with open("verifications.json", "r") as f:
             self.verifications = json.load(f)

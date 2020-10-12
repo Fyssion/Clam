@@ -10,6 +10,7 @@ import json
 import async_cse
 import collections
 import os
+import os.path
 
 from config import Config
 from cogs.utils import db
@@ -94,7 +95,7 @@ class Clam(commands.Bot):
         command_prefix = get_prefix
         self.debug = self.config.debug
 
-        if self.debug.full:
+        if self.debug:
             command_prefix = dev_prefix
 
         intents = discord.Intents.all()
@@ -108,6 +109,11 @@ class Clam(commands.Bot):
             intents=intents,
         )
         self.log = log
+
+        if not os.path.isfile("prefixes.json"):
+            log.info("prefixes.json not found, creating...")
+            with open("prefixes.json", "w") as f:
+                json.dump({}, f)
 
         with open("prefixes.json", "r") as f:
             self.guild_prefixes = json.load(f)

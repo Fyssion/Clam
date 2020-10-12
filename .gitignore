@@ -12,3 +12,4 @@ ffmpeg.exe
 env/*
 clam.log
 cache/
+venv/*
