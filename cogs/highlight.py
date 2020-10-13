@@ -427,7 +427,7 @@ class Highlight(commands.Cog):
         description="Remove a word from your highlight words",
         usage="[word]",
     )
-    async def _remove(self, ctx, word):
+    async def highlight_remove(self, ctx, word):
         self.delete_timer(ctx.message)
 
         query = """DELETE FROM highlight_words
@@ -452,7 +452,7 @@ class Highlight(commands.Cog):
         description="View all your highlight words for this server",
         aliases=["list", "show"],
     )
-    async def _all(self, ctx):
+    async def highlight_all(self, ctx):
         self.delete_timer(ctx.message, 5)
 
         query = """SELECT word FROM highlight_words
@@ -475,6 +475,58 @@ class Highlight(commands.Cog):
         em.set_footer(text=f"Total highlight words: {len(records)}")
 
         await ctx.delete_send(embed=em, delete_after=10.0)
+
+    @highlight.command(
+        name="transfer",
+        description="Transfer your words from another server",
+    )
+    async def highlight_transfer(self, ctx, guild_id: int):
+        # self.delete_timer(ctx.message)
+
+        # query = """INSERT INTO highlight_words (word, user_id, guild_id)
+        #            SELECT word, user_id, $3 FROM highlight_words
+        #            WHERE guild_id=$1 AND user_id=$2
+        #         """
+
+        # await ctx.db.execute(query, guild_id, ctx.author.id, ctx.guild.id)
+
+        # await ctx.delete_send(ctx.tick(True, "Transferred words"))
+
+        self.delete_timer(ctx.message)
+
+        query = """SELECT word, user_id, guild_id
+                   FROM highlight_words
+                   WHERE (guild_id=$1 OR guild_id=$3) AND user_id=$2;
+                """
+
+        records = await ctx.db.fetch(query, guild_id, ctx.author.id, ctx.guild.id)
+
+        current_words = [r["word"] for r in records if r["guild_id"] == ctx.guild.id]
+        words = []
+
+        for record in records:
+            gid = record["guild_id"]
+            if gid == ctx.guild.id or (gid == guild_id and record["word"] in current_words):
+                continue
+
+            words.append({
+                "word": record["word"],
+                "user_id": record["user_id"],
+                "guild_id": ctx.guild.id
+                })
+
+        if not words:
+            return await ctx.delete_send("No words to transfer.")
+
+        query = """INSERT INTO highlight_words (word, user_id, guild_id)
+                   SELECT x.word, x.user_id, x.guild_id
+                   FROM jsonb_to_recordset($1::jsonb) AS
+                   x(word TEXT, user_id BIGINT, guild_id BIGINT)
+                """
+
+        await ctx.db.execute(query, words)
+
+        await ctx.delete_send(ctx.tick(True, "Transferred words"))
 
     # CONFIG SECTION
 
