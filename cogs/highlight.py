@@ -327,7 +327,7 @@ class Highlight(commands.Cog):
                 f"Word: {word} | Found record for user {record['user_id']} for message {message.id}"
             )
 
-            if record["user_id"] not in already_seen.extend(seen):
+            if record["user_id"] not in already_seen and record["user_id"] not in seen:
                 self.bot.loop.create_task(self.send_notification(message, word, record))
                 seen.append(record["user_id"])
 
