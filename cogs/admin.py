@@ -317,6 +317,9 @@ class Admin(commands.Cog):
     async def on_tempblacklist_timer_complete(self, timer):
         user_id = timer.args[0]
 
+        if str(user_id) not in self.bot.blacklist:
+            return
+
         self.bot.remove_from_blacklist(user_id)
 
         user = self.bot.get_user(user_id)
