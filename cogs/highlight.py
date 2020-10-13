@@ -320,23 +320,23 @@ class Highlight(commands.Cog):
 
         records = await self.bot.pool.fetch(query, word, message.guild.id)
 
-        already_seen = []
+        seen = []
 
         for record in records:
             log.info(
                 f"Word: {word} | Found record for user {record['user_id']} for message {message.id}"
             )
 
-            if record["user_id"] not in already_seen:
+            if record["user_id"] not in already_seen.extend(seen):
                 self.bot.loop.create_task(self.send_notification(message, word, record))
-                already_seen.append(record["user_id"])
+                seen.append(record["user_id"])
 
             else:
                 log.info(
                     f"Word: {word} | User {record['user_id']} has already seen message {message.id}, aborting"
                 )
 
-        return already_seen
+        return seen
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -364,8 +364,7 @@ class Highlight(commands.Cog):
                     continue
 
                 seen = await self.highlight_words(message, highlight, already_seen)
-                if seen:
-                    already_seen.extend(seen)
+                already_seen.extend(seen)
 
     @commands.group(aliases=["hl"], invoke_without_command=True)
     async def highlight(self, ctx):
