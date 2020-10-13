@@ -6,7 +6,7 @@ import asyncio
 import logging
 import re
 
-from .utils import db, human_time
+from .utils import db, human_time, colors
 
 
 log = logging.getLogger("clam.highlight")
@@ -854,7 +854,7 @@ class Highlight(commands.Cog):
 
     @highlight.command()
     async def stats(self, ctx):
-        em = discord.Embed(title="Higlight Stats", color=discord.Color.blurple())
+        em = discord.Embed(title="Highlight Stats", color=colors.PRIMARY)
 
         query = "SELECT COUNT(*) FROM highlights"
         count = await ctx.db.fetchrow(query)
