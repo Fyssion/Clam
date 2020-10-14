@@ -409,8 +409,11 @@ class Meta(commands.Cog):
 
         await ctx.send(embed=em)
 
-        extra_info = f"Command name: `{ctx.command.name}`"
-        extra_info += f"\nError cache position: `{len(self.bot.error_cache) - 1}`"
+        extra_info = f"Command: `{ctx.command.qualified_name}`"
+        extra_info += f"\nGuild: `{ctx.guild}`"
+        extra_info += f"\nChannel: `{ctx.channel}`"
+        extra_info += f"\nInvoker: `{ctx.author}`"
+        extra_info += f"\n\nError cache position: `{len(self.bot.error_cache) - 1}`"
 
         if ctx.args:
             args = [str(a) for a in ctx.args]
