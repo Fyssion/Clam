@@ -286,6 +286,7 @@ class Music(commands.Cog):
             await ctx.player.voice.move_to(destination)
         else:
             ctx.player.voice = await destination.connect()
+            await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
         v_emote = "<:voice_channel:665577300552843294>"
         t_emote = "<:text_channel:661798072384225307>"
         await ctx.send(
@@ -313,6 +314,7 @@ class Music(commands.Cog):
             await ctx.player.voice.move_to(destination)
         else:
             ctx.player.voice = await destination.connect()
+            await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
         v_emote = "<:voice_channel:665577300552843294>"
         t_emote = "<:text_channel:661798072384225307>"
         await ctx.send(
