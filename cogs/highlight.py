@@ -180,6 +180,7 @@ class Highlight(commands.Cog):
 
         if user.id not in [m.id for m in channel.members]:
             log.info(f"User {user} can't see #{channel}, aborting")
+            return
 
         # Fetch user config to see if the author is blocked
         config = self.bot.get_cog("Config")
