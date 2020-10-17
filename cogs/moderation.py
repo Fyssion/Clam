@@ -735,6 +735,9 @@ class Moderation(commands.Cog):
     @mute.group(name="role", invoke_without_command=True)
     async def mute_role(self, ctx):
         settings = await self.get_guild_settings(ctx.guild.id)
+        if not settings:
+            return await ctx.send("No mute role has been set for this server.")
+
         if not settings.mute_role:
             return await ctx.send("No mute role has been set for this server.")
 
