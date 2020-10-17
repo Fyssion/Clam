@@ -22,9 +22,13 @@ from .utils.utils import is_int
 
 class GuildSettingsTable(db.Table, table_name="guild_settings"):
     id = db.PrimaryKeyColumn()
-    guild_id = db.Column(db.Integer(big=True))
+    guild_id = db.Column(db.Integer(big=True), unique=True)
     mute_role_id = db.Column(db.Integer(big=True))
     muted_members = db.Column(db.Array(db.Integer(big=True)))
+    raid_mode = db.Column(db.Integer(small=True))
+    broadcast_channel = db.Column(db.Integer(big=True))
+    mention_count = db.Column(db.Integer(small=True))
+    safe_mention_channel_ids = db.Column(db.Array(db.Integer(big=True)))
 
 
 class GuildSettings:

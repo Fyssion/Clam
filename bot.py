@@ -79,6 +79,7 @@ initial_extensions = [
     "cogs.meta",
     "cogs.moderation",
     "cogs.music",
+    "cogs.raidshield",
     # "cogs.reddit",
     "cogs.stars",
     "cogs.stats",
