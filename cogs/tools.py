@@ -357,7 +357,10 @@ class Tools(commands.Cog):
         author += f" - {str(user.id)}"
 
         icon = user.avatar_url
-        color = await self.get_average_color(icon) if icon else None
+        try:
+            color = await self.get_average_color(icon) if icon else None
+        except discord.HTTPException:
+            color = None
         color = color or (user.color if is_member and user.color else colors.PRIMARY)
 
         em = discord.Embed(description=desc, color=color)
