@@ -24,7 +24,7 @@ class GuildSettingsTable(db.Table, table_name="guild_settings"):
     id = db.PrimaryKeyColumn()
     guild_id = db.Column(db.Integer(big=True), unique=True)
     mute_role_id = db.Column(db.Integer(big=True))
-    muted_members = db.Column(db.Array(db.Integer(big=True)))
+    muted_members = db.Column(db.Array(db.Integer(big=True)), default=[])
     raid_mode = db.Column(db.Integer(small=True))
     broadcast_channel = db.Column(db.Integer(big=True))
     mention_count = db.Column(db.Integer(small=True))
