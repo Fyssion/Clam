@@ -310,6 +310,26 @@ class Timers(commands.Cog):
         pages = MenuPages(source=TimerPageSource(records), clear_reactions_after=True,)
         await pages.start(ctx)
 
+    @timer.command(name="here", ignore_extra=False)
+    async def timer_here(self, ctx):
+        """Shows your currently running timers in the current channel."""
+        query = """SELECT id, expires, extra #>> '{args,2}'
+                   FROM timers
+                   WHERE event = 'timer'
+                   AND extra #>> '{args,0}' = $1
+                   AND extra #>> '{args,1}' = $2
+                   ORDER BY expires
+                   LIMIT 10;
+                """
+
+        records = await ctx.db.fetch(query, str(ctx.author.id), str(ctx.channel.id))
+
+        if len(records) == 0:
+            return await ctx.send("No currently running timers in this channel.")
+
+        pages = MenuPages(source=TimerPageSource(records), clear_reactions_after=True,)
+        await pages.start(ctx)
+
     @timer.command(name="delete", aliases=["remove", "cancel"], ignore_extra=False)
     async def timer_delete(self, ctx, *, id: int):
         """Deletes a timer by its ID.
