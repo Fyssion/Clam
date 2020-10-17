@@ -24,7 +24,7 @@ class GuildSettingsTable(db.Table, table_name="guild_settings"):
     id = db.PrimaryKeyColumn()
     guild_id = db.Column(db.Integer(big=True), unique=True)
     mute_role_id = db.Column(db.Integer(big=True))
-    muted_members = db.Column(db.Array(db.Integer(big=True)), default=[])
+    muted_members = db.Column(db.Array(db.Integer(big=True)))
     raid_mode = db.Column(db.Integer(small=True))
     broadcast_channel = db.Column(db.Integer(big=True))
     mention_count = db.Column(db.Integer(small=True))
@@ -41,7 +41,7 @@ class GuildSettings:
         self.id = record["id"]
         self.guild_id = record["guild_id"]
         self.mute_role_id = record["mute_role_id"]
-        self.muted_members = record["muted_members"]
+        self.muted_members = record["muted_members"] or []
 
         return self
 
@@ -442,11 +442,11 @@ class Moderation(commands.Cog):
     async def on_guild_role_delete(self, role):
         settings = await self.get_guild_settings(role.guild.id)
 
-        if settings and role.id != settings.muted_role_id:
+        if settings and role.id != settings.mute_role_id:
             return
 
         query = """UPDATE guild_settings
-                   SET muted_role_id=$1, muted_members=$2
+                   SET mute_role_id=$1, muted_members=$2
                    WHERE guild_id=$3;
                 """
 
