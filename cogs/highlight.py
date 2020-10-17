@@ -824,7 +824,7 @@ class Highlight(commands.Cog):
             await self.bot.pool.execute(query, self._highlight_data_batch)
             total = len(self._highlight_data_batch)
             if total > 1:
-                self.log.info("Registered %s highlights to the database.", total)
+                log.info("Registered %s highlights to the database.", total)
             self._highlight_data_batch.clear()
 
     def cog_unload(self):
