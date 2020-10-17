@@ -277,7 +277,7 @@ def can_mute():
 # The actual cog
 
 
-class RaidShield(commands.Cog, name="Raid Sheild"):
+class RaidShield(commands.Cog, name="Raid Shield"):
     """Raid detection and prevention system from RoboDanny"""
 
     def __init__(self, bot):
