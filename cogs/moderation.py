@@ -14,15 +14,15 @@ from async_timeout import timeout
 from collections import Counter
 import os.path
 
-from .utils import db, human_time, checks
+from .utils import db, human_time, checks, cache
 from .utils.emojis import GREEN_TICK, RED_TICK, LOADING
 from .utils.checks import has_manage_guild
 from .utils.utils import is_int
 
 
 class GuildSettingsTable(db.Table, table_name="guild_settings"):
-    id = db.PrimaryKeyColumn()
-    guild_id = db.Column(db.Integer(big=True), unique=True)
+    id = db.Column(db.Integer(big=True), primary_key=True)
+
     mute_role_id = db.Column(db.Integer(big=True))
     muted_members = db.Column(db.Array(db.Integer(big=True)))
     raid_mode = db.Column(db.Integer(small=True))
@@ -39,7 +39,6 @@ class GuildSettings:
         self.bot = bot
 
         self.id = record["id"]
-        self.guild_id = record["guild_id"]
         self.mute_role_id = record["mute_role_id"]
         self.muted_members = record["muted_members"] or []
 
@@ -47,7 +46,7 @@ class GuildSettings:
 
     @property
     def mute_role(self):
-        guild = self.bot.get_guild(self.guild_id)
+        guild = self.bot.get_guild(self.id)
         if not guild:
             return None
 
@@ -57,7 +56,7 @@ class GuildSettings:
         if execute_db:
             query = """UPDATE guild_settings
                        SET muted_members=$1
-                       WHERE guild_id=$2;
+                       WHERE id=$2;
                     """
 
             self.muted_members.append(member.id)
@@ -71,7 +70,7 @@ class GuildSettings:
         if execute_db:
             query = """UPDATE guild_settings
                        SET muted_members=$1
-                       WHERE guild_id=$2;
+                       WHERE id=$2;
                     """
 
             self.muted_members.pop(self.muted_members.index(member.id))
@@ -207,8 +206,11 @@ def can_mute():
         await commands.bot_has_permissions(manage_roles=True).predicate(ctx)
 
         settings = await ctx.cog.get_guild_settings(
-            ctx.guild.id, create_if_not_found=True
+            ctx.guild.id
         )
+
+        if not settings:
+            raise NoMuteRole()
 
         role = settings.mute_role
         if not role:
@@ -263,35 +265,13 @@ class Moderation(commands.Cog):
             await ctx.send(f"{ctx.tick(False)} {error}")
             ctx.handled = True
 
-    async def create_guild_settings(self, guild_id):
-        query = """INSERT INTO guild_settings (guild_id, mute_role_id, muted_members)
-                   VALUES ($1, $2, $3)
-                   RETURNING id;
-                """
-
-        record = await self.bot.pool.fetchrow(query, guild_id, None, [])
-        record = {
-            "id": record[0],
-            "guild_id": guild_id,
-            "mute_role_id": None,
-            "muted_members": [],
-        }
-        return GuildSettings.from_record(record, self.bot)
-
-    async def get_guild_settings(self, guild_id, *, create_if_not_found=False):
-        query = """SELECT *
-                   FROM guild_settings
-                   WHERE guild_id=$1;
-                """
-
+    @cache.cache()
+    async def get_guild_settings(self, guild_id):
+        query = """SELECT * FROM guild_settings WHERE id=$1;"""
         record = await self.bot.pool.fetchrow(query, guild_id)
-
-        if not record:
-            if create_if_not_found:
-                return await self.create_guild_settings(guild_id)
-            return None
-
-        return GuildSettings.from_record(record, self.bot)
+        if record is not None:
+            return GuildSettings.from_record(record, self.bot)
+        return None
 
     @commands.command()
     @checks.has_permissions(ban_members=True)
@@ -447,10 +427,11 @@ class Moderation(commands.Cog):
 
         query = """UPDATE guild_settings
                    SET mute_role_id=$1, muted_members=$2
-                   WHERE guild_id=$3;
+                   WHERE id=$3;
                 """
 
         await self.bot.pool.execute(query, None, [], role.guild.id)
+        self.get_guild_config.invalidate(self, role.guild.id)
 
     @commands.Cog.listener("on_member_update")
     async def mute_role_check(self, before, after):
@@ -483,10 +464,11 @@ class Moderation(commands.Cog):
 
         query = """UPDATE guild_settings
                    SET muted_members=$1
-                   WHERE guild_id=$2;
+                   WHERE id=$2;
 
                 """
         await self.bot.pool.execute(query, settings.muted_members, before.guild.id)
+        self.get_guild_config.invalidate(self, before.guild.id)
 
     @commands.Cog.listener("on_member_join")
     async def mute_role_retain(self, member):
@@ -524,6 +506,7 @@ class Moderation(commands.Cog):
 
         reason = f"Mute by {ctx.author} (ID: {ctx.author.id}) with reason: {reason}"
         await settings.mute_member(member, reason)
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
 
         await ctx.send(f"{ctx.tick(True)} Muted `{member}`")
 
@@ -548,9 +531,10 @@ class Moderation(commands.Cog):
             settings.muted_members.pop(settings.muted_members.index(member))
             query = """UPDATE guild_settings
                        SET muted_members=$1
-                       WHERE guild_id=$2;
+                       WHERE id=$2;
                     """
             await ctx.db.execute(query, settings.muted_members, ctx.guild.id)
+            self.get_guild_config.invalidate(self, ctx.guild.id)
             return await ctx.send(f"{ctx.tick(True)} Unmuted user with ID `{member}`")
 
         if member.id not in settings.muted_members:
@@ -558,6 +542,7 @@ class Moderation(commands.Cog):
 
         reason = f"Unmute by {ctx.author} (ID: {ctx.author.id}) with reason: {reason}"
         await settings.unmute_member(member, reason)
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
 
         await ctx.send(f"{ctx.tick(True)} Unmuted `{member}`")
 
@@ -604,6 +589,8 @@ class Moderation(commands.Cog):
             )
             raise
 
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
+
         await ctx.send(f"{ctx.tick(True)} Muted `{member}` for `{friendly_time}`.")
 
     @commands.Cog.listener()
@@ -614,11 +601,12 @@ class Moderation(commands.Cog):
 
         query = """UPDATE guild_settings
                    SET muted_members=$1
-                   WHERE guild_id=$2;
+                   WHERE id=$2;
                 """
         if member_id in settings.muted_members:
             settings.muted_members.pop(settings.muted_members.index(member_id))
             await self.bot.pool.execute(query, settings.muted_members, guild_id)
+            self.get_guild_settings.invalidate(self, guild_id)
 
         guild = self.bot.get_guild(guild_id)
 
@@ -699,6 +687,8 @@ class Moderation(commands.Cog):
             )
             raise
 
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
+
         await ctx.send(
             f"{ctx.tick(True)} You have been muted for `{human_friendly}`.\n"
             "Don't bug anyone about it!"
@@ -747,12 +737,14 @@ class Moderation(commands.Cog):
     @commands.bot_has_permissions(manage_roles=True)
     @checks.has_permissions(manage_roles=True)
     async def mute_role_set(self, ctx, *, role: discord.Role):
-        query = """UPDATE guild_settings
-                   SET mute_role_id=$1, muted_members=$2
-                   WHERE guild_id=$3;
+        query = """INSERT INTO guild_settings (id, mute_role_id, muted_members)
+                   VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET
+                        mute_role_id=EXCLUDED.mute_role_id,
+                        muted_members=EXCLUDED.muted_members;
                 """
 
-        await ctx.db.execute(query, role.id, [], ctx.guild.id)
+        await ctx.db.execute(query, ctx.guild.id, role.id, [])
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
 
         await ctx.send(f"{ctx.tick(True)} Set mute role to **`{role}`**")
 
@@ -765,9 +757,9 @@ class Moderation(commands.Cog):
     async def mute_role_create(
         self, ctx, name="Muted", *, color: discord.Color = discord.Color.dark_grey()
     ):
-        settings = await self.get_guild_settings(ctx.guild.id, create_if_not_found=True)
+        settings = await self.get_guild_settings(ctx.guild.id)
 
-        if settings.mute_role:
+        if settings and settings.mute_role:
             result = await ctx.confirm(
                 "A mute role is already set for this server. "
                 "Are you sure you want to create a new one?"
@@ -807,12 +799,13 @@ class Moderation(commands.Cog):
 
                 failed.append(formatted)
 
-        query = """UPDATE guild_settings
-                   SET mute_role_id=$1
-                   WHERE guild_id=$2;
+        query = """INSERT INTO guild_settings (id, mute_role_id)
+                   VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET
+                        mute_role_id=EXCLUDED.mute_role_id;
                 """
 
-        await ctx.db.execute(query, role.id, ctx.guild.id)
+        await ctx.db.execute(query, ctx.guild.id, role.id)
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
 
         message = (
             "Created mute role and changed channel overwrites.\n"
@@ -833,12 +826,16 @@ class Moderation(commands.Cog):
     async def mute_role_unbind(self, ctx):
         settings = await self.get_guild_settings(ctx.guild.id)
 
+        if not settings or not settings.mute_role_id:
+            raise NoMuteRole()
+
         query = """UPDATE guild_settings
                    SET mute_role_id=$1, muted_members=$2
-                   WHERE guild_id=$3;
+                   WHERE id=$3;
                 """
 
         await ctx.db.execute(query, None, [], ctx.guild.id)
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
 
         await ctx.send(f"{ctx.tick(True)} Unbound mute role")
 

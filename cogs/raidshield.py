@@ -326,7 +326,7 @@ class RaidShield(commands.Cog, name="Raid Shield"):
         query = """UPDATE guild_settings
                    SET muted_members = x.result_array
                    FROM jsonb_to_recordset($1::jsonb) AS
-                   x(guild_id BIGINT, result_array BIGINT[])
+                   x(id BIGINT, result_array BIGINT[])
                    WHERE guild_settings.id = x.guild_id;
                 """
 
@@ -377,7 +377,7 @@ class RaidShield(commands.Cog, name="Raid Shield"):
 
     @cache.cache()
     async def get_guild_config(self, guild_id):
-        query = """SELECT * FROM guild_settings WHERE guild_id=$1;"""
+        query = """SELECT * FROM guild_settings WHERE id=$1;"""
         async with self.bot.pool.acquire(timeout=300.0) as con:
             record = await con.fetchrow(query, guild_id)
             if record is not None:
@@ -545,7 +545,7 @@ class RaidShield(commands.Cog, name="Raid Shield"):
         its subcommands.
         """
 
-        query = "SELECT raid_mode, broadcast_channel FROM guild_settings WHERE guild_id=$1;"
+        query = "SELECT raid_mode, broadcast_channel FROM guild_settings WHERE id=$1;"
 
         row = await ctx.db.fetchrow(query, ctx.guild.id)
         if row is None:
@@ -577,8 +577,8 @@ class RaidShield(commands.Cog, name="Raid Shield"):
         except discord.HTTPException:
             await ctx.send("\N{WARNING SIGN} Could not set verification level.")
 
-        query = """INSERT INTO guild_settings (guild_id, raid_mode, broadcast_channel)
-                   VALUES ($1, $2, $3) ON CONFLICT (guild_id)
+        query = """INSERT INTO guild_settings (id, raid_mode, broadcast_channel)
+                   VALUES ($1, $2, $3) ON CONFLICT (id)
                    DO UPDATE SET
                         raid_mode = EXCLUDED.raid_mode,
                         broadcast_channel = EXCLUDED.broadcast_channel;
@@ -591,8 +591,8 @@ class RaidShield(commands.Cog, name="Raid Shield"):
         )
 
     async def disable_raid_mode(self, guild_id):
-        query = """INSERT INTO guild_settings (guild_id, raid_mode, broadcast_channel)
-                   VALUES ($1, $2, NULL) ON CONFLICT (guild_id)
+        query = """INSERT INTO guild_settings (id, raid_mode, broadcast_channel)
+                   VALUES ($1, $2, NULL) ON CONFLICT (id)
                    DO UPDATE SET
                         raid_mode = EXCLUDED.raid_mode,
                         broadcast_channel = NULL;
@@ -646,8 +646,8 @@ class RaidShield(commands.Cog, name="Raid Shield"):
         except discord.HTTPException:
             await ctx.send("\N{WARNING SIGN} Could not set verification level.")
 
-        query = """INSERT INTO guild_settings (guild_id, raid_mode, broadcast_channel)
-                   VALUES ($1, $2, $3) ON CONFLICT (guild_id)
+        query = """INSERT INTO guild_settings (id, raid_mode, broadcast_channel)
+                   VALUES ($1, $2, $3) ON CONFLICT (id)
                    DO UPDATE SET
                         raid_mode = EXCLUDED.raid_mode,
                         broadcast_channel = EXCLUDED.broadcast_channel;
@@ -679,7 +679,7 @@ class RaidShield(commands.Cog, name="Raid Shield"):
         if count is None:
             query = """SELECT mention_count, COALESCE(safe_mention_channel_ids, '{}') AS channel_ids
                        FROM guild_settings
-                       WHERE guild_id=$1;
+                       WHERE id=$1;
                     """
 
             row = await ctx.db.fetchrow(query, ctx.guild.id)
@@ -694,7 +694,7 @@ class RaidShield(commands.Cog, name="Raid Shield"):
             )
 
         if count == 0:
-            query = """UPDATE guild_settings SET mention_count = NULL WHERE guild_id=$1;"""
+            query = """UPDATE guild_settings SET mention_count = NULL WHERE id=$1;"""
             await ctx.db.execute(query, ctx.guild.id)
             self.get_guild_config.invalidate(self, ctx.guild.id)
             return await ctx.send("Auto-banning members has been disabled.")
@@ -705,9 +705,9 @@ class RaidShield(commands.Cog, name="Raid Shield"):
             )
             return
 
-        query = """INSERT INTO guild_settings (guild_id, mention_count, safe_mention_channel_ids)
+        query = """INSERT INTO guild_settings (id, mention_count, safe_mention_channel_ids)
                    VALUES ($1, $2, '{}')
-                   ON CONFLICT (guild_id) DO UPDATE SET
+                   ON CONFLICT (id) DO UPDATE SET
                        mention_count = $2;
                 """
         await ctx.db.execute(query, ctx.guild.id, count)
@@ -731,7 +731,7 @@ class RaidShield(commands.Cog, name="Raid Shield"):
         query = """UPDATE guild_settings
                    SET safe_mention_channel_ids =
                        ARRAY(SELECT DISTINCT * FROM unnest(COALESCE(safe_mention_channel_ids, '{}') || $2::bigint[]))
-                   WHERE guild_id = $1;
+                   WHERE id = $1;
                 """
 
         if len(channels) == 0:
@@ -760,7 +760,7 @@ class RaidShield(commands.Cog, name="Raid Shield"):
                    SET safe_mention_channel_ids =
                        ARRAY(SELECT element FROM unnest(safe_mention_channel_ids) AS element
                              WHERE NOT(element = ANY($2::bigint[])))
-                   WHERE guild_id = $1;
+                   WHERE id = $1;
                 """
 
         await ctx.db.execute(query, ctx.guild.id, [c.id for c in channels])
