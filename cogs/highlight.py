@@ -4,6 +4,7 @@ import discord
 import asyncpg
 import asyncio
 import logging
+import datetime
 import re
 
 from .utils import db, human_time, colors
@@ -110,6 +111,9 @@ class Highlight(commands.Cog):
         self.bulk_insert_loop.add_exception_type(asyncpg.PostgresConnectionError)
         self.bulk_insert_loop.start()
 
+        # channel: {member: task}
+        self.typing_users = {}
+
     async def delete_message_in(self, message, seconds=0.0):
         await asyncio.sleep(seconds)
         await message.delete()
@@ -165,46 +169,46 @@ class Highlight(commands.Cog):
         highlight = HighlightWord.from_record(record)
         user = self.bot.get_user(highlight.user_id)
 
-        log.info(f"Recieved highlight with word {word} for user {highlight.user_id}")
+        log.debug(f"Recieved highlight with word {word} for user {highlight.user_id}")
 
         if not user:
-            log.info(f"User {highlight.user_id} not found in cache, aborting")
+            log.debug(f"User {highlight.user_id} not found in cache, aborting")
             return
 
         if user == message.author:
-            log.info(f"User {user} is the message author, aborting")
+            log.debug(f"User {user} is the message author, aborting")
             return
 
         guild = message.guild
         channel = message.channel
 
         if user.id not in [m.id for m in channel.members]:
-            log.info(f"User {user} can't see #{channel}, aborting")
+            log.debug(f"User {user} can't see #{channel}, aborting")
             return
 
         # Fetch user config to see if the author is blocked
         config = self.bot.get_cog("Config")
 
         if config:
-            log.info(f"Fetching user config for {user}")
+            log.debug(f"Fetching user config for {user}")
             user_config = await config.get_config(user.id)
 
             if user_config:
-                log.info(f"User config found for {user}")
+                log.debug(f"User config found for {user}")
 
                 if message.author.id in user_config.blocked_users:
-                    log.info(f"{message.author} is in {user}'s blocked list, aborting")
+                    log.debug(f"{message.author} is in {user}'s blocked list, aborting")
                     return
 
                 if message.channel.id in user_config.blocked_channels:
-                    log.info(f"{message.channel} is in {user}'s blocked list, aborting")
+                    log.debug(f"{message.channel} is in {user}'s blocked list, aborting")
                     return
 
         self.bot.dispatch("highlight", message, highlight)
 
-        log.info(f"Building notification for message {message.id}")
+        log.debug(f"Building notification for message {message.id}")
 
-        log.info(f"Getting list of previous messages for message {message.id}")
+        log.debug(f"Getting list of previous messages for message {message.id}")
         # Get a list of messages that meet certain requirements
         matching_messages = [
             m
@@ -222,13 +226,16 @@ class Highlight(commands.Cog):
         for msg in reversed(previous_messages):
             messages.append(self.format_message(msg))
 
-        log.info(f"Adding highlight message for message {message.id}")
+        log.debug(f"Adding highlight message for message {message.id}")
 
         messages.append(self.format_message(message, highlight=word))
 
         # See if there are any messages after
 
-        log.info(f"Getting list of next messages for message {message.id}")
+        if self.is_typing(message.channel, user):
+            return
+
+        log.debug(f"Getting list of next messages for message {message.id}")
         # First, see if there are any messages after that have already been sent
         next_messages = []
 
@@ -242,14 +249,14 @@ class Highlight(commands.Cog):
 
         # If there are messages already sent, append those and continue
         if len(matching_messages) > 2:
-            log.info(f"Found 2+ cached messages for message {message.id}")
+            log.debug(f"Found 2+ cached messages for message {message.id}")
             next_messages.append(matching_messages[0])
             next_messages.append(matching_messages[1])
 
         # Otherwise, add the cached message(s)
         # and/or wait for the remaining message(s)
         else:
-            log.info(
+            log.debug(
                 f"Found {len(matching_messages)} cached messages for message {message.id}"
             )
             for msg in matching_messages:
@@ -264,24 +271,30 @@ class Highlight(commands.Cog):
 
             # Waiting for next messages
             for i in range(2 - len(matching_messages)):
-                log.info(
+                log.debug(
                     f"Waiting for message {i+1}/{2-len(matching_messages)} for message {message.id}"
                 )
                 try:
                     msg = await self.bot.wait_for("message", timeout=5.0, check=check)
-                    log.info(
+                    log.debug(
                         f"Found message {i+1}/{2-len(matching_messages)} (ID: {msg.id}) for message {message.id}"
                     )
                     next_messages.append(msg)
 
                 except asyncio.TimeoutError:
-                    log.info(
+                    log.debug(
                         f"Timed out while waiting for message {i+1}/{2-len(matching_messages)} for message {message.id}"
                     )
 
         # Add the next messages to the formatted list
         for msg in next_messages:
+            if msg.author == user:
+                return
+
             messages.append(self.format_message(msg))
+
+        if self.is_typing(message.channel, user):
+            return
 
         em = discord.Embed(
             title=f"Highlight word: {word}",
@@ -301,18 +314,14 @@ class Highlight(commands.Cog):
             f"Server: {guild}"
         )
 
-        log.info(f"Sending notification to user {user} for message {message.id}")
-
         try:
             await user.send(msg, embed=em)
             log.info(
-                f"Successfully sent notification to user {user} for message {message.id}"
+                f"{user} was highlighted by {message.author} for word {word}: {message.content}"
             )
 
         except (discord.HTTPException, discord.Forbidden):
-            log.info(
-                f"Could not send notification to user {user} for message {message.id}"
-            )
+            pass
 
     async def highlight_words(self, message, word, already_seen):
         query = """SELECT * FROM highlight_words
@@ -324,7 +333,7 @@ class Highlight(commands.Cog):
         seen = []
 
         for record in records:
-            log.info(
+            log.debug(
                 f"Word: {word} | Found record for user {record['user_id']} for message {message.id}"
             )
 
@@ -333,7 +342,7 @@ class Highlight(commands.Cog):
                 seen.append(record["user_id"])
 
             else:
-                log.info(
+                log.debug(
                     f"Word: {word} | User {record['user_id']} has already seen message {message.id}, aborting"
                 )
 
@@ -420,7 +429,7 @@ class Highlight(commands.Cog):
                 if word not in self.bot.highlight_words:
                     self.bot.highlight_words.append(word)
 
-                await ctx.delete_send(f"Successfully updated your highlight words.")
+                await ctx.delete_send(ctx.tick(True, "Successfully updated your highlight words."))
 
     @highlight.command(
         name="remove",
@@ -439,13 +448,13 @@ class Highlight(commands.Cog):
         )
 
         if deleted is None:
-            await ctx.delete_send(f"That word isn't in your highlight words.")
+            await ctx.delete_send("That word isn't in your highlight words.")
 
         else:
             if word in self.bot.highlight_words:
                 self.bot.highlight_words.pop(self.bot.highlight_words.index(word))
 
-            await ctx.delete_send("Successfully updated your highlight words.")
+            await ctx.delete_send(ctx.tick(True, "Successfully updated your highlight words."))
 
     @highlight.command(
         name="all",
@@ -867,6 +876,48 @@ class Highlight(commands.Cog):
         em.add_field(name="Total highlights here", value=count[0])
 
         await ctx.send(embed=em)
+
+    async def typing_wait(self, channel, user, stop_time):
+        await discord.utils.sleep_until(stop_time)
+        self.typing_users[channel].pop(user)
+        if not self.typing_users[channel]:
+            self.typing_users.pop(channel)
+
+    # Typing tracking
+    @commands.Cog.listener()
+    async def on_typing(self, channel, user, when):
+        typing_channel = self.typing_users.get(channel.id)
+
+        if not typing_channel:
+            typing_channel = self.typing_users[channel.id] = {}
+
+        wait_task = typing_channel.get(user.id)
+
+        if wait_task and not wait_task.cancelled():
+            wait_task.cancel()
+
+        stop_time = when + datetime.timedelta(seconds=10)
+        task = self.bot.loop.create_task(self.typing_wait(channel.id, user.id, stop_time))
+        typing_channel[user.id] = task
+
+    @commands.Cog.listener("on_message")
+    async def typing_message_canceller(self, message):
+        if self.is_typing(message.channel, message.author):
+            self.typing_users[message.channel.id][message.author.id].cancel()
+            self.typing_users[message.channel.id].pop(message.author.id)
+            if not self.typing_users[message.channel.id]:
+                self.typing_users.pop(message.channel.id)
+
+    def is_typing(self, channel, user):
+        typing_channel = self.typing_users.get(channel.id)
+
+        if not typing_channel:
+            return False
+
+        if not typing_channel.get(user.id):
+            return False
+
+        return True
 
 
 def setup(bot):
