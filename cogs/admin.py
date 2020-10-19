@@ -660,6 +660,29 @@ class Admin(commands.Cog):
         self.bot.dm_sessions = {}
         await ctx.send(f"{ctx.tick(True)} Closed {num_sessions} DM session(s)")
 
+    @dm.command(name="reply", description="Reply to a DM", aliases=["send"])
+    async def dm_reply(self, ctx, user: discord.User, *, message):
+        try:
+            await user.send(message)
+        except discord.Forbidden:
+            return await ctx.send("Could not send message.")
+
+        channel = self.bot.get_channel(679841169248747696)
+        em = discord.Embed(
+            description=message,
+            color=discord.Color.red(),
+            timestamp=d.utcnow(),
+        )
+        em.set_author(
+            name=f"To: {user} ({user.id})",
+            icon_url=user.avatar_url,
+        )
+        em.set_footer(text="Outgoing DM")
+        await channel.send(embed=em)
+
+        if ctx.channel != channel:
+            await ctx.send(ctx.tick(True, "Sent DM"))
+
     @commands.Cog.listener("on_message")
     async def dm_sender(self, message):
         dm_session = self.get_dm_session(message.channel)
