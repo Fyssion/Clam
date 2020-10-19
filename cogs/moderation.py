@@ -431,7 +431,7 @@ class Moderation(commands.Cog):
                 """
 
         await self.bot.pool.execute(query, None, [], role.guild.id)
-        self.get_guild_config.invalidate(self, role.guild.id)
+        self.get_guild_settings.invalidate(self, role.guild.id)
 
     @commands.Cog.listener("on_member_update")
     async def mute_role_check(self, before, after):
@@ -468,7 +468,7 @@ class Moderation(commands.Cog):
 
                 """
         await self.bot.pool.execute(query, settings.muted_members, before.guild.id)
-        self.get_guild_config.invalidate(self, before.guild.id)
+        self.get_guild_settings.invalidate(self, before.guild.id)
 
     @commands.Cog.listener("on_member_join")
     async def mute_role_retain(self, member):
@@ -534,7 +534,7 @@ class Moderation(commands.Cog):
                        WHERE id=$2;
                     """
             await ctx.db.execute(query, settings.muted_members, ctx.guild.id)
-            self.get_guild_config.invalidate(self, ctx.guild.id)
+            self.get_guild_settings.invalidate(self, ctx.guild.id)
             return await ctx.send(f"{ctx.tick(True)} Unmuted user with ID `{member}`")
 
         if member.id not in settings.muted_members:
