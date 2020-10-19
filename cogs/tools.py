@@ -110,8 +110,6 @@ class Tools(commands.Cog):
         if not hasattr(bot, "sniped_messages"):
             self.bot.sniped_messages = []
 
-        self.sniped_messages = self.bot.sniped_messages
-
     async def prompt(self, ctx, msg, *, timeout=180.0, check=None):
         def default_check(ms):
             return ms.author == ctx.author and not ms.guild
@@ -225,7 +223,7 @@ class Tools(commands.Cog):
         description="Get the previous or a specific deleted message in this channel",
     )
     async def snipe(self, ctx, message_id: int = None):
-        sniped = [m for m in self.sniped_messages if m.channel == ctx.channel]
+        sniped = [m for m in self.bot.sniped_messages if m.channel == ctx.channel]
 
         if not sniped:
             return await ctx.send("I haven't sniped any messages in this channel.")
@@ -243,9 +241,9 @@ class Tools(commands.Cog):
 
         await self.send_sniped_message(ctx, message)
 
-    @commands.command(description="Get all sniped messages in this channel",)
+    @commands.group(description="Get all sniped messages in this channel", invoke_without_command=True)
     async def sniped(self, ctx):
-        sniped = [m for m in self.sniped_messages if m.channel == ctx.channel]
+        sniped = [m for m in self.bot.sniped_messages if m.channel == ctx.channel]
 
         if not sniped:
             return await ctx.send("I haven't sniped any messages in this channel.")
@@ -257,12 +255,30 @@ class Tools(commands.Cog):
         pages = ctx.embed_pages(entries, em)
         await pages.start(ctx)
 
+    @sniped.command(name="clear", aliases=["delete"])
+    @commands.is_owner()
+    async def sniped_clear(self, ctx, *args):
+        """Clear sniped messages for the current channel.
+
+        Use the --all flag to clear sniped messages for all channels
+        """
+        if "--all" in args:
+            cleared = len(self.bot.sniped_messages)
+            self.bot.sniped_messages.clear()
+
+        else:
+            before_amount = len(self.bot.sniped_messages)
+            self.bot.sniped_messages = [m for m in self.bot.sniped_messages if m.channel != ctx.channel]
+            cleared = before_amount - len(self.bot.sniped_messages)
+
+        await ctx.send(ctx.tick(True, f"Cleared **`{cleared}`** sniped messages."))
+
     @commands.Cog.listener()
     async def on_message_delete(self, message):
-        self.sniped_messages.insert(0, message)
+        self.bot.sniped_messages.insert(0, message)
 
-        if len(self.sniped_messages) > 1000:
-            self.sniped_messages.pop(len(self.sniped_messages) - 1)
+        if len(self.bot.sniped_messages) > 1000:
+            self.bot.sniped_messages.pop(len(self.bot.sniped_messages) - 1)
 
     async def get_average_color(self, icon):
         bytes = io.BytesIO(await icon.read())
