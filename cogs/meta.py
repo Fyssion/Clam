@@ -142,7 +142,17 @@ class ClamHelpCommand(commands.HelpCommand):
                 cog_names.append(f"{cog.emoji} {cog.qualified_name}")
             else:
                 cog_names.append(f":grey_question: {cog.qualified_name}")
-        em.add_field(name="Categories", value="\n".join(cog_names), inline=True)
+
+        if len(cog_names) >= 8:
+            middle = len(cog_names) // 2
+            first_half = cog_names[:middle]
+            second_half = cog_names[middle:]
+
+            em.add_field(name="Categories", value="\n".join(first_half), inline=True)
+            em.add_field(name="\u200b", value="\n".join(second_half), inline=True)
+
+        else:
+            em.add_field(name="Categories", value="\n".join(cog_names), inline=True)
 
         dev = bot.get_user(224513210471022592)
         em.add_field(
