@@ -14,6 +14,12 @@ import codecs
 import pathlib
 import os
 
+async def quote(message, content, *, quote=None, **kwargs):
+    quote = quote or message.content
+    quote = discord.utils.escape_mentions(quote)
+    quote = quote.replace("\n", "\n> ")
+    formatted = f"> {quote}\n{message.author.mention} {content}"
+    await message.channel.send(formatted, **kwargs)
 
 async def reply_to(message, content, **kwargs):
     formatted = f"Replying to {message.author.mention} from {message.jump_url}\n{content}"

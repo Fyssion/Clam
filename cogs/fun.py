@@ -10,10 +10,9 @@ import importlib
 import asyncio
 import collections
 import humanize
-from random import choice
 
 from .utils import colors, human_time
-from .utils.utils import is_int
+from .utils.utils import is_int, quote
 
 # from .utils.utils import thesaurize
 
@@ -70,6 +69,24 @@ class Fun(commands.Cog):
             return num2words2[tens - 2] + "-" + num2words1[below_ten]
         else:
             return str(num)
+
+    @commands.command(name="8ball", aliases=["eightball"])
+    async def eightball(self, ctx, *, question):
+        result = random.choice([
+            "Yes",
+            "Certainly",
+            "Of course",
+            "Without a doubt",
+            "No",
+            "Not a chance",
+            "Nope",
+            "No way"
+            "Maybe",
+            "Quite possibly",
+            "There is a chance",
+            "It could go either way",
+            ])
+        await quote(ctx.message, result, quote=question)
 
     @commands.command(
         description="Search for an emoji I have access to.",
