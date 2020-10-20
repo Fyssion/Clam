@@ -110,7 +110,7 @@ class Tools(commands.Cog):
         if not hasattr(bot, "sniped_messages"):
             self.bot.sniped_messages = []
 
-    @commands.command(aliases=["newusers", "newmembers"])
+    @commands.command(aliases=["newmembers"])
     @commands.guild_only()
     async def newjoins(self, ctx, *, count=5):
         """Tells you the newest members of the server.
@@ -137,7 +137,7 @@ class Tools(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @commands.command(aliases=["oldusers", "oldmembers"])
+    @commands.command(aliases=["oldmembers"])
     @commands.guild_only()
     async def oldjoins(self, ctx, *, count=5):
         """Tells you the oldest members of the server.
@@ -161,7 +161,7 @@ class Tools(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @commands.command()
+    @commands.command(aliases=["oldusers"])
     @commands.guild_only()
     async def boomers(self, ctx, *, count=5):
         """Tells you the oldest users in the server.
@@ -185,7 +185,7 @@ class Tools(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @commands.command()
+    @commands.command(aliases=["newusers"])
     @commands.guild_only()
     async def babies(self, ctx, *, count=5):
         """Tells you the newest users in the server.
