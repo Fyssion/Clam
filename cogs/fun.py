@@ -80,7 +80,7 @@ class Fun(commands.Cog):
             "No",
             "Not a chance",
             "Nope",
-            "No way"
+            "No way",
             "Maybe",
             "Quite possibly",
             "There is a chance",
