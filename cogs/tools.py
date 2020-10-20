@@ -149,7 +149,7 @@ class Tools(commands.Cog):
         if not ctx.guild.chunked:
             await self.bot.request_offline_members(ctx.guild)
 
-        members = sorted(ctx.guild.members, key=lambda m: m.joined_at)[
+        members = sorted(ctx.guild.members, key=lambda m: m.created_at)[
             :count
         ]
 
@@ -173,7 +173,7 @@ class Tools(commands.Cog):
         if not ctx.guild.chunked:
             await self.bot.request_offline_members(ctx.guild)
 
-        members = sorted(ctx.guild.members, key=lambda m: m.joined_at, reverse=True)[
+        members = sorted(ctx.guild.members, key=lambda m: m.created_at, reverse=True)[
             :count
         ]
 
