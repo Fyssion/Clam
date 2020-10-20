@@ -15,7 +15,7 @@ import typing
 import dateparser
 import asyncio
 
-from .utils import colors, emojis
+from .utils import colors, emojis, human_time
 from .utils.human_time import plural
 
 
@@ -109,6 +109,105 @@ class Tools(commands.Cog):
 
         if not hasattr(bot, "sniped_messages"):
             self.bot.sniped_messages = []
+
+    @commands.command(aliases=["newusers", "newmembers"])
+    @commands.guild_only()
+    async def newjoins(self, ctx, *, count=5):
+        """Tells you the newest members of the server.
+
+        This is useful to check if any suspicious members have
+        joined.
+
+        The count parameter can only be up to 25.
+        """
+        count = max(min(count, 25), 5)
+
+        if not ctx.guild.chunked:
+            await self.bot.request_offline_members(ctx.guild)
+
+        members = sorted(ctx.guild.members, key=lambda m: m.joined_at, reverse=True)[
+            :count
+        ]
+
+        em = discord.Embed(title="New Joins", colour=colors.PRIMARY)
+
+        for member in members:
+            body = f"Joined {human_time.human_timedelta(member.joined_at)}\nCreated {human_time.human_timedelta(member.created_at)}"
+            em.add_field(name=f"{member} (ID: {member.id})", value=body, inline=False)
+
+        await ctx.send(embed=em)
+
+    @commands.command(aliases=["oldusers", "oldmembers"])
+    @commands.guild_only()
+    async def oldjoins(self, ctx, *, count=5):
+        """Tells you the oldest members of the server.
+
+        The count parameter can only be up to 25.
+        """
+        count = max(min(count, 25), 5)
+
+        if not ctx.guild.chunked:
+            await self.bot.request_offline_members(ctx.guild)
+
+        members = sorted(ctx.guild.members, key=lambda m: m.joined_at)[
+            :count
+        ]
+
+        em = discord.Embed(title="Oldest Joins", colour=colors.PRIMARY)
+
+        for member in members:
+            body = f"Joined {human_time.human_timedelta(member.joined_at)}\nCreated {human_time.human_timedelta(member.created_at)}"
+            em.add_field(name=f"{member} (ID: {member.id})", value=body, inline=False)
+
+        await ctx.send(embed=em)
+
+    @commands.command()
+    @commands.guild_only()
+    async def boomers(self, ctx, *, count=5):
+        """Tells you the oldest users in the server.
+
+        The count parameter can only be up to 25.
+        """
+        count = max(min(count, 25), 5)
+
+        if not ctx.guild.chunked:
+            await self.bot.request_offline_members(ctx.guild)
+
+        members = sorted(ctx.guild.members, key=lambda m: m.joined_at, reverse=True)[
+            :count
+        ]
+
+        em = discord.Embed(title="Boomers (oldest accounts)", colour=colors.PRIMARY)
+
+        for member in members:
+            body = f"Created {human_time.human_timedelta(member.created_at)}\nJoined {human_time.human_timedelta(member.joined_at)}"
+            em.add_field(name=f"{member} (ID: {member.id})", value=body, inline=False)
+
+        await ctx.send(embed=em)
+
+    @commands.command()
+    @commands.guild_only()
+    async def babies(self, ctx, *, count=5):
+        """Tells you the newest users in the server.
+
+        The count parameter can only be up to 25.
+        """
+        count = max(min(count, 25), 5)
+
+        if not ctx.guild.chunked:
+            await self.bot.request_offline_members(ctx.guild)
+
+        members = sorted(ctx.guild.members, key=lambda m: m.joined_at)[
+            :count
+        ]
+
+        em = discord.Embed(title="Babies (newest accounts)", colour=colors.PRIMARY)
+
+        for member in members:
+            body = f"Created {human_time.human_timedelta(member.created_at)}\nJoined {human_time.human_timedelta(member.joined_at)}"
+            em.add_field(name=f"{member} (ID: {member.id})", value=body, inline=False)
+
+        await ctx.send(embed=em)
 
     async def prompt(self, ctx, msg, *, timeout=180.0, check=None):
         def default_check(ms):
