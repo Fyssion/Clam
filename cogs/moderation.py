@@ -229,12 +229,8 @@ def can_mute():
 
 class Moderation(commands.Cog):
     """
-    This cog has not been fully developed.
-    It will include many moderation features.
-
-    If you can't see any commands, that means you
-    do not have the required permissions to use
-    those commands.
+    Moderation commands that help you moderate your server.
+    If you are looking for raid protection, see the `Raid Shield` category.
     """
 
     def __init__(self, bot):
