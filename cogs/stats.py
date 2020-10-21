@@ -904,8 +904,8 @@ class Stats(commands.Cog):
         em.add_field(name="Owner", value=str(guild.owner))
         em.add_field(name="Member Count", value=guild.member_count)
 
-        created_delta = humanize.naturaltime(guild.joined_at)
-        created_time = humanize.naturaldate(guild.joined_at).capitalize()
+        created_delta = humanize.naturaltime(guild.me.joined_at)
+        created_time = humanize.naturaldate(guild.me.joined_at).capitalize()
         em.add_field(name="Originally Joined", value=f"{created_time} ({created_delta})")
 
         await self.bot.console.send(embed=em)
