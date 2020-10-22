@@ -889,6 +889,7 @@ class Stats(commands.Cog):
         em.set_footer(text="Created")
 
         em.add_field(name="Name", value=guild.name)
+        em.add_field(name="ID", value=guild.id)
         em.add_field(name="Owner", value=str(guild.owner))
         em.add_field(name="Member Count", value=guild.member_count)
 
@@ -901,6 +902,7 @@ class Stats(commands.Cog):
         em.set_footer(text="Created")
 
         em.add_field(name="Name", value=guild.name)
+        em.add_field(name="ID", value=guild.id)
         em.add_field(name="Owner", value=str(guild.owner))
         em.add_field(name="Member Count", value=guild.member_count)
 
