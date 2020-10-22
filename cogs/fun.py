@@ -97,6 +97,8 @@ class Fun(commands.Cog):
             reply = await self.bot.cleverbot.say(anything)
             await quote(ctx.message, reply, quote=anything)
 
+        self.bot.cleverbot.reset()
+
     @commands.command(
         description="Search for an emoji I have access to.",
         aliases=["emote", "nitro"],

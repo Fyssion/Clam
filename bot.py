@@ -189,7 +189,7 @@ class Clam(commands.Bot):
         self.google_client = async_cse.Search(self.config.google_api_key)
         self.session = aiohttp.ClientSession(loop=self.loop)
         self._adapter = discord.AsyncWebhookAdapter(self.session)
-        self.cleverbot = cleverbot.Cleverbot(self.config.cleverbot_api_key)
+        self.cleverbot = cleverbot.Cleverbot(self.config.cleverbot_api_key, tweak1=0, tweak2=100, tweak3=100)
 
         # Cache a list of highlight words for lookup
         query = "SELECT word FROM highlight_words;"
