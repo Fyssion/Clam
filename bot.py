@@ -11,6 +11,7 @@ import async_cse
 import collections
 import os
 import os.path
+from cleverbot import async_ as cleverbot
 
 from config import Config
 from cogs.utils import db
@@ -137,6 +138,7 @@ class Clam(commands.Bot):
         self.startup_time = None
         self.session = None
         self.highlight_words = []
+        self.cleverbot = None
         self.loop.create_task(self.prepare_bot())
 
         # user_id: spam_amount
@@ -187,6 +189,7 @@ class Clam(commands.Bot):
         self.google_client = async_cse.Search(self.config.google_api_key)
         self.session = aiohttp.ClientSession(loop=self.loop)
         self._adapter = discord.AsyncWebhookAdapter(self.session)
+        self.cleverbot = cleverbot.Cleverbot(self.config.cleverbot_api_key)
 
         # Cache a list of highlight words for lookup
         query = "SELECT word FROM highlight_words;"
@@ -366,6 +369,7 @@ class Clam(commands.Bot):
         await super().logout()
         await self.pool.close()
         await self.google_client.close()
+        await self.cleverbot.close()
         if not self.session.closed:
             await self.session.close()
 

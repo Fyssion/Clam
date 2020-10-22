@@ -15,3 +15,4 @@ beautifulsoup4
 async-cse
 gitpython
 lru-dict
+cleverbot.py[async]

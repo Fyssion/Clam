@@ -10,6 +10,7 @@ import importlib
 import asyncio
 import collections
 import humanize
+from cleverbot import async_ as cleverbot
 
 from .utils import colors, human_time
 from .utils.utils import is_int, quote
@@ -87,6 +88,14 @@ class Fun(commands.Cog):
             "It could go either way",
             ])
         await quote(ctx.message, result, quote=question)
+
+    @commands.command(aliases=["cleverbot"])
+    @commands.cooldown(5, 10, commands.BucketType.user)
+    async def ask(self, ctx, *, anything):
+        """Ask the bot anything through the Cleverbot API"""
+        async with ctx.typing():
+            reply = await self.bot.cleverbot.say(anything)
+            await quote(ctx.message, reply, quote=anything)
 
     @commands.command(
         description="Search for an emoji I have access to.",

@@ -55,6 +55,7 @@ class Config:
         self.reddit_secret = self._data["reddit-secret"]  # Reddit app secret
         self.google_api_key = self._data["google-api-key"]  # Google api key
         self.database_uri = self._data["database-uri"]  # Postgres database URI
+        self.cleverbot_api_key = self._data["cleverbot-api-key"]  # Cleverbot API key
 
         # Optional config stuff
         # Run the bot in debug mode or not
