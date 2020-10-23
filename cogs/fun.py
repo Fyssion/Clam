@@ -60,6 +60,10 @@ class Fun(commands.Cog):
         self.emoji = ":tada:"
         self.log = self.bot.log
 
+        if not hasattr(bot, "cleverbot_convos"):
+            # user_id: (convo, last_used_datetime)
+            bot.cleverbot_convos = {}
+
     def number(self, num):
         if 1 <= num <= 19:
             return num2words1[num]
@@ -73,31 +77,104 @@ class Fun(commands.Cog):
 
     @commands.command(name="8ball", aliases=["eightball"])
     async def eightball(self, ctx, *, question):
-        result = random.choice([
-            "Yes",
-            "Certainly",
-            "Of course",
-            "Without a doubt",
-            "No",
-            "Not a chance",
-            "Nope",
-            "No way",
-            "Maybe",
-            "Quite possibly",
-            "There is a chance",
-            "It could go either way",
-            ])
+        result = random.choice(
+            [
+                "Yes",
+                "Certainly",
+                "Of course",
+                "Without a doubt",
+                "No",
+                "Not a chance",
+                "Nope",
+                "No way",
+                "Maybe",
+                "Quite possibly",
+                "There is a chance",
+                "It could go either way",
+            ]
+        )
         await quote(ctx.message, result, quote=question)
 
-    @commands.command(aliases=["cleverbot"])
+    @commands.group(aliases=["cleverbot"], invoke_without_command=True)
     @commands.cooldown(5, 10, commands.BucketType.user)
-    async def ask(self, ctx, *, anything):
+    async def ask(self, ctx, *, anything=None):
         """Ask the bot anything through the Cleverbot API"""
         async with ctx.typing():
-            reply = await self.bot.cleverbot.say(anything)
+            convo, last_used = self.bot.cleverbot_convos.get(
+                ctx.author.id, (None, d.utcnow())
+            )
+
+            if last_used > d.utcnow() - timedelta(minutes=10):
+                convo = None
+
+            if not convo:
+                convo = self.bot.cleverbot.conversation()
+                self.bot.cleverbot_convos[ctx.author.id] = (convo, d.utcnow())
+
+            if anything:
+                reply = await convo.say()
+
+            else:
+                reply = await convo.say(anything)
+
             await quote(ctx.message, reply, quote=anything)
 
-        self.bot.cleverbot.reset()
+    @ask.command(name="reset")
+    async def ask_reset(self, ctx):
+        if not self.bot.cleverbot_convos.get(ctx.author.id):
+            return await ctx.send("You don't have a conversation.")
+
+        self.bot.cleverbot_convos.pop(ctx.author.id)
+
+        await ctx.send(ctx.tick(True, "Reset conversation"))
+
+    @commands.command(aliases=["conversation"])
+    async def convo(self, ctx, starting_phrase=None):
+        """Start a conversation with Cleverbot.
+        Use the `done` command when you are done.
+        """
+
+        convo = self.bot.cleverbot.conversation()
+
+        async with ctx.typing():
+            if starting_phrase:
+                reply = await convo.say(starting_phrase)
+
+            else:
+                reply = await convo.say()
+            await ctx.send(
+                "Starting a Cleverbot conversation...\n\n"
+                f"Use **`{ctx.guild_prefix}done`** to stop the conversation.\n"
+                "The conversation also times out after 2 minutes if you do not respond.\n\n"
+                f"**Cleverbot:**\n"
+                f"{reply}"
+            )
+
+        def check(ms):
+            return ms.author == ctx.author and ms.channel == ctx.channel
+
+        while True:
+            try:
+                message = await self.bot.wait_for("message", check=check, timeout=120)
+
+            except asyncio.TimeoutError:
+                await ctx.send("You timed out. Ended conversation.")
+                return
+
+            message_ctx = await self.bot.get_context(message)
+
+            invoked_with = message_ctx.invoked_with
+            if invoked_with and invoked_with.lower().startswith("done"):
+                break
+
+            if message_ctx.valid:
+                continue
+
+            async with ctx.typing():
+                reply = await convo.say(message.content)
+                await quote(message, reply)
+
+        await ctx.send("Ended conversation. Thanks for talking!")
 
     @commands.command(
         description="Search for an emoji I have access to.",
@@ -229,9 +306,7 @@ class Fun(commands.Cog):
             f"total of **{self.number(sum(rolls))}**."
         )
 
-    @commands.command(
-        description="Choose a random option", aliases=["choice"]
-    )
+    @commands.command(description="Choose a random option", aliases=["choice"])
     async def choose(self, ctx, *choices):
         await ctx.send(random.choice(choices))
 
