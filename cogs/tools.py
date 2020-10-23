@@ -149,9 +149,7 @@ class Tools(commands.Cog):
         if not ctx.guild.chunked:
             await self.bot.request_offline_members(ctx.guild)
 
-        members = sorted(ctx.guild.members, key=lambda m: m.joined_at)[
-            :count
-        ]
+        members = sorted(ctx.guild.members, key=lambda m: m.joined_at)[:count]
 
         em = discord.Embed(title="Oldest Joins", colour=colors.PRIMARY)
 
@@ -173,9 +171,7 @@ class Tools(commands.Cog):
         if not ctx.guild.chunked:
             await self.bot.request_offline_members(ctx.guild)
 
-        members = sorted(ctx.guild.members, key=lambda m: m.created_at)[
-            :count
-        ]
+        members = sorted(ctx.guild.members, key=lambda m: m.created_at)[:count]
 
         em = discord.Embed(title="Boomers (oldest accounts)", colour=colors.PRIMARY)
 
@@ -306,17 +302,51 @@ class Tools(commands.Cog):
         for i in range(len(options)):
             await poll_message.add_reaction(emojis[i])
 
+    def is_url_spoiler(self, text, url):
+        spoilers = re.findall(r"\|\|(.+?)\|\|", text)
+        for spoiler in spoilers:
+            if url in spoiler:
+                return True
+        return False
+
     async def send_sniped_message(self, ctx, message):
+        description = message.content
+
+        to_add = []
+        if message.embeds:
+            if any(e.type == "rich" for e in message.embeds):
+                to_add.append("embed")
+
+        if message.attachments:
+            to_add.append("deleted attachment")
+
+        human_friendly = " and ".join(to_add)
+
+        if human_friendly:
+            if description:
+                description += f"\n\n*Message also contained {human_friendly}*"
+
+            else:
+                description = f"*[{human_friendly}]*"
+
         em = discord.Embed(
-            description=message.content,
+            description=description,
             color=colors.PRIMARY,
             timestamp=message.created_at,
         )
 
-        em.set_author(name=str(message.author), icon_url=message.author.avatar_url)
-        em.set_footer(text=f"ID: {message.id} | Message sent")
+        if message.embeds:
+            data = message.embeds[0]
+            if data.type == "image" and not self.is_url_spoiler(
+                message.content, data.url
+            ):
+                em.set_image(url=data.url)
 
-        await ctx.send(embed=em)
+        em.set_author(name=str(message.author), icon_url=message.author.avatar_url)
+        em.set_footer(text=f"Message sent")
+        content = f"ID: {message.id}"
+
+        await ctx.send(content, embed=em)
 
     @commands.command(
         description="Get the previous or a specific deleted message in this channel",
@@ -340,7 +370,10 @@ class Tools(commands.Cog):
 
         await self.send_sniped_message(ctx, message)
 
-    @commands.group(description="Get all sniped messages in this channel", invoke_without_command=True)
+    @commands.group(
+        description="Get all sniped messages in this channel",
+        invoke_without_command=True,
+    )
     async def sniped(self, ctx):
         sniped = [m for m in self.bot.sniped_messages if m.channel == ctx.channel]
 
@@ -367,7 +400,9 @@ class Tools(commands.Cog):
 
         else:
             before_amount = len(self.bot.sniped_messages)
-            self.bot.sniped_messages = [m for m in self.bot.sniped_messages if m.channel != ctx.channel]
+            self.bot.sniped_messages = [
+                m for m in self.bot.sniped_messages if m.channel != ctx.channel
+            ]
             cleared = before_amount - len(self.bot.sniped_messages)
 
         await ctx.send(ctx.tick(True, f"Cleared **`{cleared}`** sniped messages."))
@@ -394,7 +429,8 @@ class Tools(commands.Cog):
             return None
 
     @commands.command(
-        description="Get the avatar of a member.", aliases=["profilepic"],
+        description="Get the avatar of a member.",
+        aliases=["profilepic"],
     )
     async def avatar(self, ctx, *, member: discord.Member = None):
         if not member:
