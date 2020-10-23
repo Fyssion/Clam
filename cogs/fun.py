@@ -121,6 +121,7 @@ class Fun(commands.Cog):
 
     @ask.command(name="reset")
     async def ask_reset(self, ctx):
+        """Reset your current conversation"""
         if not self.bot.cleverbot_convos.get(ctx.author.id):
             return await ctx.send("You don't have a conversation.")
 
