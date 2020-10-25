@@ -282,7 +282,7 @@ class Moderation(commands.Cog):
                 "You can't preform this action due to role hierarchy."
             )
 
-        if isinstance(user, discord.User):
+        if isinstance(user, discord.User) or isinstance(user, discord.Member):
             user_id = user.id
             human_friendly = f"`{str(user)}`"
         else:
