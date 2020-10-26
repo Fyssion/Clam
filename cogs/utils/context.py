@@ -68,7 +68,6 @@ class EmbedPageSource(menus.ListPageSource):
         super().__init__(entries, per_page=per_page)
         self.embed = embed
         self.original_description = embed.description or ""
-        self.original_footer = embed.footer
 
     def format_page(self, menu, entries):
         offset = menu.current_page * self.per_page
@@ -81,11 +80,7 @@ class EmbedPageSource(menus.ListPageSource):
 
         page_num = f"Page {menu.current_page + 1}/{self.get_max_pages()}"
 
-        if self.original_footer:
-            self.embed.footer = f"{self.original_footer} | {page_num}"
-
-        else:
-            self.embed.footer = page_num
+        self.embed.set_footer(text=page_num)
 
         return self.embed
 
