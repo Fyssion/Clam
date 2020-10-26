@@ -35,34 +35,6 @@ class Confirm(menus.Menu):
 
 class BasicPageSource(menus.ListPageSource):
     def __init__(self, entries, per_page, *, title=None, description=None, footer=None):
-        super().__init__(self, entries, per_page=per_page)
-        self.title = title
-        self.description = description
-        self.footer = footer
-
-    def format_page(self, menu, entries):
-        offset = menu.current_page * self.per_page
-
-        message = []
-        if self.title:
-            message.append(f"**{self.title}**")
-
-        if self.description:
-            message.append(self.description)
-
-        message.append(f"Page {menu.current_page + 1}/{self.get_max_pages()}")
-        message.append(
-            "\n".join(f"{i+1}. {v}" for i, v in enumerate(entries, start=offset))
-        )
-
-        if self.footer:
-            message.append(self.footer)
-
-        return "\n".join(message)
-
-
-class BasicPageSource(menus.ListPageSource):
-    def __init__(self, entries, per_page, *, title=None, description=None, footer=None):
         super().__init__(entries, per_page=per_page)
         self.title = title
         self.description = description
@@ -96,6 +68,7 @@ class EmbedPageSource(menus.ListPageSource):
         super().__init__(entries, per_page=per_page)
         self.embed = embed
         self.original_description = embed.description or ""
+        self.original_footer = embed.footer
 
     def format_page(self, menu, entries):
         offset = menu.current_page * self.per_page
@@ -105,6 +78,14 @@ class EmbedPageSource(menus.ListPageSource):
         )
         self.embed.description = self.original_description
         self.embed.description += "\n\n" + formatted
+
+        page_num = f"Page {menu.current_page + 1}/{self.get_max_pages()}"
+
+        if self.original_footer:
+            self.embed.footer = f"{self.original_footer} | {page_num}"
+
+        else:
+            self.embed.footer = page_num
 
         return self.embed
 
