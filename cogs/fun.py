@@ -354,7 +354,7 @@ class Fun(commands.Cog):
             return ms.channel == ctx.channel and ms.author == ctx.author
 
         await self.bot.loop.create_task(
-            await ctx.send(
+            ctx.send(
                 "**Start typing!** The timer started when you sent your message."
             )
         )
