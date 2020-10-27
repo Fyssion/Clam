@@ -309,7 +309,7 @@ class Tools(commands.Cog):
                 return True
         return False
 
-    async def send_sniped_message(self, ctx, message):
+    async def send_sniped_message(self, ctx, message, deleted):
         description = message.content
 
         to_add = []
@@ -343,7 +343,8 @@ class Tools(commands.Cog):
                 em.set_image(url=data.url)
 
         em.set_author(name=str(message.author), icon_url=message.author.avatar_url)
-        em.set_footer(text=f"Message sent")
+        formatted = human_time.human_timedelta(deleted, brief=True, accuracy=1)
+        em.set_footer(text=f"Deleted {formatted} | Message sent")
         content = f"ID: {message.id}"
 
         await ctx.send(content, embed=em)
@@ -352,35 +353,40 @@ class Tools(commands.Cog):
         description="Get the previous or a specific deleted message in this channel",
     )
     async def snipe(self, ctx, message_id: int = None):
-        sniped = [m for m in self.bot.sniped_messages if m.channel == ctx.channel]
+        sniped = [(m, d) for m, d in self.bot.sniped_messages if m.channel == ctx.channel]
 
         if not sniped:
             return await ctx.send("I haven't sniped any messages in this channel.")
 
         if message_id:
-            message = discord.utils.get(sniped, id=message_id)
+            result = None
+            for message, deleted in sniped:
+                if message.id == message_id:
+                    result = (message, deleted)
 
-            if not message:
+            if not result:
                 raise commands.BadArgument(
                     "I don't have a sniped message with that ID."
                 )
 
-        else:
-            message = sniped[0]
+            message, deleted = result
 
-        await self.send_sniped_message(ctx, message)
+        else:
+            message, deleted = sniped[0]
+
+        await self.send_sniped_message(ctx, message, deleted)
 
     @commands.group(
         description="Get all sniped messages in this channel",
         invoke_without_command=True,
     )
     async def sniped(self, ctx):
-        sniped = [m for m in self.bot.sniped_messages if m.channel == ctx.channel]
+        sniped = [(m, d) for m, d in self.bot.sniped_messages if m.channel == ctx.channel]
 
         if not sniped:
             return await ctx.send("I haven't sniped any messages in this channel.")
 
-        entries = [f"{m.author} `(ID: {m.id})`" for m in sniped]
+        entries = [f"{m.author} - {human_time.human_timedelta(d, brief=True, accuracy=1)} `(ID: {m.id})`" for m, d in sniped]
 
         em = discord.Embed(title="Sniped Messages", color=colors.PRIMARY)
 
@@ -401,7 +407,7 @@ class Tools(commands.Cog):
         else:
             before_amount = len(self.bot.sniped_messages)
             self.bot.sniped_messages = [
-                m for m in self.bot.sniped_messages if m.channel != ctx.channel
+                (m, d) for m, d in self.bot.sniped_messages if m.channel != ctx.channel
             ]
             cleared = before_amount - len(self.bot.sniped_messages)
 
@@ -409,7 +415,8 @@ class Tools(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):
-        self.bot.sniped_messages.insert(0, message)
+        now = d.utcnow()
+        self.bot.sniped_messages.insert(0, (message, now))
 
         if len(self.bot.sniped_messages) > 1000:
             self.bot.sniped_messages.pop(len(self.bot.sniped_messages) - 1)
