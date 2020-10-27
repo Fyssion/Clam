@@ -93,6 +93,9 @@ initial_extensions = [
 
 class Clam(commands.Bot):
     def __init__(self):
+        log.info("Starting bot...")
+
+        log.info("Loading config...")
         self.config = Config("config.yml")
 
         command_prefix = get_prefix
@@ -113,6 +116,7 @@ class Clam(commands.Bot):
         )
         self.log = log
 
+        log.info("Loading prefixes...")
         if not os.path.isfile("prefixes.json"):
             log.info("prefixes.json not found, creating...")
             with open("prefixes.json", "w") as f:
@@ -121,6 +125,7 @@ class Clam(commands.Bot):
         with open("prefixes.json", "r") as f:
             self.guild_prefixes = json.load(f)
 
+        log.info("Loading blacklist...")
         if not os.path.isfile("blacklist.json"):
             with open("blacklist.json", "w") as f:
                 json.dump([], f)
@@ -151,9 +156,11 @@ class Clam(commands.Bot):
 
         self.add_check(self.private_cog_check)
 
+        log.info("Loading extension 'jishaku'")
         self.load_extension("jishaku")
 
         for cog in initial_extensions:
+            log.info(f"Loading extension '{cog}'")
             self.load_extension(cog)
 
         self.ordered_cogs = [c for c in self.cogs.keys()]
@@ -185,12 +192,14 @@ class Clam(commands.Bot):
         super().dispatch(event, *args, **kwargs)
 
     async def prepare_bot(self):
+        log.info("Preparing async features...")
         self.pool = await db.Table.create_pool(self.config.database_uri)
         self.google_client = async_cse.Search(self.config.google_api_key)
         self.session = aiohttp.ClientSession(loop=self.loop)
         self._adapter = discord.AsyncWebhookAdapter(self.session)
         self.cleverbot = cleverbot.Cleverbot(self.config.cleverbot_api_key, tweak1=0, tweak2=100, tweak3=100)
 
+        log.info("Preparing highlight cache...")
         # Cache a list of highlight words for lookup
         query = "SELECT word FROM highlight_words;"
         records = await self.pool.fetch(query)
@@ -198,6 +207,7 @@ class Clam(commands.Bot):
         # Remove duplicates
         self.highlight_words = list(dict.fromkeys(self.highlight_words))
 
+        log.info("Preparing status hook...")
         if self.config.status_hook:
             self.status_hook = discord.Webhook.from_url(
                 self.config.status_hook, adapter=self._adapter
