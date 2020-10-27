@@ -609,7 +609,8 @@ class Tools(commands.Cog):
             value=str(guild.region).replace("-", " ").upper(),
             inline=True,
         )
-        em.add_field(name=":family: Members", value=len(guild.members), inline=True)
+        bot_amount = len([m for m in guild.members if m.bot])
+        em.add_field(name=":family: Members", value=f"{len(guild.members)} ({bot_amount} bots)", inline=True)
         em.add_field(
             name=":speech_balloon: Channels",
             value=f"<:text_channel:661798072384225307> {len(guild.text_channels)} • <:voice_channel:665577300552843294> {len(guild.voice_channels)}",
