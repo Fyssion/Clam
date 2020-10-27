@@ -353,8 +353,10 @@ class Fun(commands.Cog):
         def check(ms):
             return ms.channel == ctx.channel and ms.author == ctx.author
 
-        await ctx.send(
-            "**Start typing!** The timer started when you sent your message."
+        await self.bot.loop.create_task(
+            await ctx.send(
+                "**Start typing!** The timer started when you sent your message."
+            )
         )
         start = ctx.message.created_at
 
