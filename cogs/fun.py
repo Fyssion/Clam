@@ -349,6 +349,7 @@ class Fun(commands.Cog):
             return None
 
     @commands.command(description="See how fast you can type something")
+    @commands.is_owner()
     async def timeme(self, ctx):
         def check(ms):
             return ms.channel == ctx.channel and ms.author == ctx.author
