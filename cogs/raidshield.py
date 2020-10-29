@@ -20,7 +20,7 @@ import logging
 import asyncpg
 
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("clam.raidshield")
 
 # Misc utilities
 
