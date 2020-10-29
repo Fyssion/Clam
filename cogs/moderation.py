@@ -273,8 +273,18 @@ class Moderation(commands.Cog):
     @checks.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
     async def ban(
-        self, ctx, user: typing.Union[discord.Member, discord.User, int], *, reason=None
+        self,
+        ctx,
+        user: typing.Union[discord.Member, discord.User, int, str],
+        *,
+        reason=None,
     ):
+        if type(user) == str:
+            raise commands.BadArgument(
+                f'User "{user}" not found.'
+                "\nIf they aren't in the server, try banning by ID instead."
+            )
+
         if isinstance(user, discord.Member) and not role_hierarchy_check(
             ctx, ctx.author, user
         ):
