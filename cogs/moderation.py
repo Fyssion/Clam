@@ -171,7 +171,7 @@ class BannedUser(commands.Converter):
             arg = int(arg)
         except ValueError:
             raise commands.BadArgument(
-                "Couldn't find a banned user by that name."
+                f'Banned user "{arg}" not found.'
             )
 
         user = discord.utils.get(banned_users, id=arg)
@@ -180,7 +180,7 @@ class BannedUser(commands.Converter):
             return user
 
         raise commands.BadArgument(
-            "Couldn't find a banned user by that name or ID."
+            f'Banned user "{arg}" not found.'
         )
 
 
