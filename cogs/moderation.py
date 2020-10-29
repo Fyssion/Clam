@@ -149,7 +149,7 @@ class BannedUser(commands.Converter):
         # Finally, see if the arg is an int and if it's
         # that of a user in the banned list.
 
-        banned_users = [b[0] for b in bans]
+        banned_users = [b[0] for b in bans if b[0]]
 
         user = discord.utils.get(banned_users, name=arg)
 
@@ -157,6 +157,9 @@ class BannedUser(commands.Converter):
             return user
 
         for banned_user, reason in bans:
+            if not banned_user:
+                continue
+
             if arg.startswith(banned_user.name):
                 user = banned_user
                 break
@@ -168,7 +171,7 @@ class BannedUser(commands.Converter):
             arg = int(arg)
         except ValueError:
             raise commands.BadArgument(
-                f"{ctx.Tick(False)} Couldn't find a banned user by that name."
+                "Couldn't find a banned user by that name."
             )
 
         user = discord.utils.get(banned_users, id=arg)
@@ -177,7 +180,7 @@ class BannedUser(commands.Converter):
             return user
 
         raise commands.BadArgument(
-            f"{ctx.Tick(False)} Couldn't find a banned user by that name or ID."
+            "Couldn't find a banned user by that name or ID."
         )
 
 
