@@ -456,9 +456,11 @@ class RaidShield(commands.Cog, name="Raid Shield"):
             async with self._batch_message_lock:
                 self.message_batches[(guild_id, message.channel.id)].append(to_send)
 
+            # log.info(
+            #     f"Member {author} (ID: {author.id}) has been autobanned from guild ID {guild_id}"
+            # )
             log.info(
-                f"Member {author} (ID: {author.id}) has been autobanned from guild ID {guild_id}"
-            )
+                f"[MentionSpam] Banned {author} (ID: {author.id}) from server {author.guild} for spamming {mention_count} mentions.")
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
