@@ -580,6 +580,8 @@ class Highlight(commands.Cog):
         else:
             blocked_users = record["blocked_users"]
 
+            blocked_users = blocked_users or []
+
             if blocked_users and user in blocked_users:
                 raise AlreadyBlocked()
 
