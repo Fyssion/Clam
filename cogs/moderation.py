@@ -149,19 +149,17 @@ class BannedUser(commands.Converter):
         # Finally, see if the arg is an int and if it's
         # that of a user in the banned list.
 
-        banned_users = [b[0] for b in bans if hasattr(b[0], "name")]
+        banned_users = [b.user for b in bans]
 
         user = discord.utils.get(banned_users, name=arg)
 
         if user:
             return user
 
-        for banned_user, reason in bans:
-            if not hasattr(banned_user, "name"):
-                continue
+        for ban_entry in bans:
 
-            if arg.startswith(banned_user.name):
-                user = banned_user
+            if arg.startswith(ban_entry.user.name):
+                user = ban_entry.user
                 break
 
         if user:
