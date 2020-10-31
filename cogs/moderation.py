@@ -157,7 +157,7 @@ class BannedUser(commands.Converter):
             return user
 
         for banned_user, reason in bans:
-            if not banned_user:
+            if not hasattr(banned_user, "name"):
                 continue
 
             if arg.startswith(banned_user.name):
