@@ -580,7 +580,7 @@ class Highlight(commands.Cog):
         else:
             blocked_users = record["blocked_users"]
 
-            if user in blocked_users:
+            if blocked_users and user in blocked_users:
                 raise AlreadyBlocked()
 
             blocked_users.append(user)
@@ -606,7 +606,7 @@ class Highlight(commands.Cog):
         else:
             blocked_users = record["blocked_users"]
 
-            if user not in blocked_users:
+            if not blocked_users or user not in blocked_users:
                 raise NotBlocked()
 
             blocked_users.pop(blocked_users.index(user))
