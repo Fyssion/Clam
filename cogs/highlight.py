@@ -74,6 +74,9 @@ class NotBlocked(commands.CommandError):
 
 class BlockConverter(commands.Converter):
     async def convert(self, ctx, arg):
+        if not arg:
+            return None
+
         try:
             user = await commands.UserConverter().convert(ctx, arg)
             return user
