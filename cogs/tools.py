@@ -4,7 +4,10 @@ import discord
 from datetime import datetime as d
 from datetime import timedelta
 import re
+import collections
 import os
+import os.path
+import json
 import base64
 import binascii
 import humanize
@@ -99,6 +102,10 @@ class SearchPages(menus.ListPageSource):
         return msg
 
 
+DeletedMessage = collections.namedtuple("DeletedMessage", ("message", "id", "channel", "deleted_at"))
+EditedMessage = collections.namedtuple("EditedMessage", ("before", "after", "id", "channel", "edited_at"))
+
+
 class Tools(commands.Cog):
     """Useful Discord tools."""
 
@@ -109,6 +116,13 @@ class Tools(commands.Cog):
 
         if not hasattr(bot, "sniped_messages"):
             self.bot.sniped_messages = []
+
+        if not os.path.exists("snipe_ignored.json"):
+            with open("snipe_ignored.json", "w") as f:
+                json.dump([], f)
+
+        with open("snipe_ignored.json", "r") as f:
+            self.snipe_ignored = json.load(f)
 
     @commands.command(aliases=["newmembers"])
     @commands.guild_only()
@@ -309,7 +323,7 @@ class Tools(commands.Cog):
                 return True
         return False
 
-    async def send_sniped_message(self, ctx, message, deleted):
+    async def send_deleted_message(self, ctx, message, deleted_at):
         description = message.content
 
         to_add = []
@@ -343,50 +357,192 @@ class Tools(commands.Cog):
                 em.set_image(url=data.url)
 
         em.set_author(name=str(message.author), icon_url=message.author.avatar_url)
-        formatted = human_time.human_timedelta(deleted, brief=True, accuracy=1)
+        formatted = human_time.human_timedelta(deleted_at, brief=True, accuracy=1)
         em.set_footer(text=f"Deleted {formatted} | Message sent")
-        content = f"ID: {message.id}"
+        content = f"\N{WASTEBASKET} Deleted Message | ID: {message.id}"
 
         await ctx.send(content, embed=em)
 
-    @commands.command(
+    def format_edit(self, message):
+        content = message.content
+
+        to_add = []
+        if message.embeds:
+            if any(e.type == "rich" for e in message.embeds):
+                to_add.append("embed")
+
+        if message.attachments:
+            to_add.append("attachment")
+
+        human_friendly = " and ".join(to_add)
+
+        if human_friendly:
+            if content:
+                content += f"\n\n*Message also contained {human_friendly}*"
+
+            else:
+                content = f"*[{human_friendly}]*"
+
+        return content
+
+    async def send_sniped_message(self, ctx, snipe):
+        if isinstance(snipe, DeletedMessage):
+            await self.send_deleted_message(ctx, snipe.message, snipe.deleted_at)
+            return
+
+        before = snipe.before
+        after = snipe.after
+        edited_at = snipe.edited_at
+
+        em = discord.Embed(
+            color=colors.PRIMARY,
+            timestamp=before.created_at,
+        )
+
+        em.add_field(name="Before", value=self.format_edit(before) or "*Nothing to display*", inline=False)
+        em.add_field(name="After", value=self.format_edit(after) or "*Nothing to display*")
+
+        if after.embeds:
+            data = after.embeds[0]
+            if data.type == "image" and not self.is_url_spoiler(
+                after.content, data.url
+            ):
+                em.set_image(url=data.url)
+
+        em.set_author(name=str(after.author), icon_url=after.author.avatar_url)
+        formatted = human_time.human_timedelta(edited_at, brief=True, accuracy=1)
+        em.set_footer(text=f"Edited {formatted} | Message sent")
+        content = f"\N{MEMO} Edited Message | ID: {after.id}"
+
+        await ctx.send(content, embed=em)
+
+    @commands.group(
         description="Get the previous or a specific deleted message in this channel",
+        invoke_without_command=True,
     )
     async def snipe(self, ctx, message_id: int = None):
-        sniped = [(m, d) for m, d in self.bot.sniped_messages if m.channel == ctx.channel]
+        if str(ctx.author.id) in self.snipe_ignored:
+            return await ctx.send(
+                f"You are opted out of sniped messages. To opt back in, use `{ctx.prefix}snipe optin`"
+            )
+
+        sniped = [
+            s for s in self.bot.sniped_messages if s.channel == ctx.channel
+        ]
 
         if not sniped:
             return await ctx.send("I haven't sniped any messages in this channel.")
 
         if message_id:
             result = None
-            for message, deleted in sniped:
-                if message.id == message_id:
-                    result = (message, deleted)
+            for snipe in sniped:
+                if snipe.id == message_id:
+                    result = snipe
 
             if not result:
                 raise commands.BadArgument(
                     "I don't have a sniped message with that ID."
                 )
 
-            message, deleted = result
-
         else:
-            message, deleted = sniped[0]
+            snipe = sniped[0]
 
-        await self.send_sniped_message(ctx, message, deleted)
+        await self.send_sniped_message(ctx, snipe)
+
+    @snipe.command(
+        name="optout",
+        description="Opt out of sniped messages tracking",
+        aliases=["ignore", "nothanks"],
+    )
+    async def snipe_optout(self, ctx):
+        if str(ctx.author.id) in self.snipe_ignored:
+            return await ctx.send(
+                f"You are already opted out of sniped messages. To opt back in, use `{ctx.prefix}snipe optin`"
+            )
+
+        self.snipe_ignored.append(str(ctx.author.id))
+        with open("snipe_ignored.json", "w") as f:
+            json.dump(self.snipe_ignored, f)
+
+        await ctx.send(ctx.tick(True, "Opted out of sniped messages tracking"))
+
+    @snipe.command(
+        name="optin",
+        description="Opt in to sniped messages tracking",
+        aliases=["unignore", "yesplease"],
+    )
+    async def snipe_optin(self, ctx):
+        if str(ctx.author.id) not in self.snipe_ignored:
+            return await ctx.send(
+                f"You are not opted out of sniped messages. To optout, use `{ctx.prefix}snipe optout`"
+            )
+
+        self.snipe_ignored.pop(self.snipe_ignored.index(str(ctx.author.id)))
+        with open("snipe_ignored.json", "w") as f:
+            json.dump(self.snipe_ignored, f)
+
+        await ctx.send(ctx.tick(True, "Opted in to sniped messages tracking"))
+
+    @snipe.command(name="ignored", description="View all ignored users")
+    @commands.is_owner()
+    async def snipe_ignored(self, ctx):
+        if not self.snipe_ignored:
+            return await ctx.send("No ignored users")
+
+        users = []
+
+        for user_id in self.snipe_ignored:
+            user_id = int(user_id)
+            user = self.bot.get_user(user_id)
+
+            if not user:
+                users.append(f"User with an ID of {user_id}")
+
+            else:
+                users.append(f"{user} (ID: {user.id}")
+
+        pages = ctx.pages(
+            users,
+            per_page=10,
+            title="Snipe Ignored Users",
+            description="Users that have opted out of sniped messages",
+        )
+        await pages.start(ctx)
 
     @commands.group(
         description="Get all sniped messages in this channel",
         invoke_without_command=True,
     )
     async def sniped(self, ctx):
-        sniped = [(m, d) for m, d in self.bot.sniped_messages if m.channel == ctx.channel]
+        if str(ctx.author.id) in self.snipe_ignored:
+            return await ctx.send(
+                f"You are opted out of sniped messages. To opt back in, use `{ctx.prefix}snipe optin`"
+            )
+
+        sniped = [
+            s for s in self.bot.sniped_messages if s.channel == ctx.channel
+        ]
 
         if not sniped:
             return await ctx.send("I haven't sniped any messages in this channel.")
 
-        entries = [f"{m.author} - {human_time.human_timedelta(d, brief=True, accuracy=1)} `(ID: {m.id})`" for m, d in sniped]
+        entries = []
+
+        for snipe in sniped:
+            if isinstance(snipe, DeletedMessage):
+                message = snipe.message
+                human_friendly = human_time.human_timedelta(snipe.deleted_at, brief=True, accuracy=1)
+                entries.append(f"\N{WASTEBASKET} {message.author} - {human_friendly} `(ID: {message.id})`")
+
+            else:
+                message = snipe.before
+                human_friendly = human_time.human_timedelta(snipe.edited_at, brief=True, accuracy=1)
+                entries.append(f"\N{MEMO} {message.author} - {human_friendly} `(ID: {message.id})`")
+
+        # entries = [
+        #     f"{m.author} - {human_time.human_timedelta(d, brief=True, accuracy=1)} `(ID: {m.id})`"
+        #     for m, d in sniped
+        # ]
 
         em = discord.Embed(title="Sniped Messages", color=colors.PRIMARY)
 
@@ -407,7 +563,7 @@ class Tools(commands.Cog):
         else:
             before_amount = len(self.bot.sniped_messages)
             self.bot.sniped_messages = [
-                (m, d) for m, d in self.bot.sniped_messages if m.channel != ctx.channel
+                s for s in self.bot.sniped_messages if s.channel != ctx.channel
             ]
             cleared = before_amount - len(self.bot.sniped_messages)
 
@@ -415,8 +571,25 @@ class Tools(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):
+        if str(message.author.id) in self.snipe_ignored:
+            return
+
         now = d.utcnow()
-        self.bot.sniped_messages.insert(0, (message, now))
+        self.bot.sniped_messages.insert(0, DeletedMessage(message, message.id, message.channel, now))
+
+        if len(self.bot.sniped_messages) > 1000:
+            self.bot.sniped_messages.pop(len(self.bot.sniped_messages) - 1)
+
+    @commands.Cog.listener()
+    async def on_message_edit(self, before, after):
+        if str(after.author.id) in self.snipe_ignored:
+            return
+
+        if before.content == after.content:
+            return
+
+        now = d.utcnow()
+        self.bot.sniped_messages.insert(0, EditedMessage(before, after, after.id, after.channel, now))
 
         if len(self.bot.sniped_messages) > 1000:
             self.bot.sniped_messages.pop(len(self.bot.sniped_messages) - 1)
@@ -617,7 +790,11 @@ class Tools(commands.Cog):
             inline=True,
         )
         bot_amount = len([m for m in guild.members if m.bot])
-        em.add_field(name=":family: Members", value=f"{len(guild.members)} ({bot_amount} bots)", inline=True)
+        em.add_field(
+            name=":family: Members",
+            value=f"{len(guild.members)} ({bot_amount} bots)",
+            inline=True,
+        )
         em.add_field(
             name=":speech_balloon: Channels",
             value=f"<:text_channel:661798072384225307> {len(guild.text_channels)} • <:voice_channel:665577300552843294> {len(guild.voice_channels)}",
