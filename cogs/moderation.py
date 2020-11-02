@@ -1,4 +1,4 @@
-from discord.ext import commands
+from discord.ext import commands, flags
 from discord.flags import BaseFlags, fill_with_flags, flag_value
 import discord
 
@@ -168,18 +168,14 @@ class BannedUser(commands.Converter):
         try:
             arg = int(arg)
         except ValueError:
-            raise commands.BadArgument(
-                f'Banned user "{arg}" not found.'
-            )
+            raise commands.BadArgument(f'Banned user "{arg}" not found.')
 
         user = discord.utils.get(banned_users, id=arg)
 
         if user:
             return user
 
-        raise commands.BadArgument(
-            f'Banned user "{arg}" not found.'
-        )
+        raise commands.BadArgument(f'Banned user "{arg}" not found.')
 
 
 class NoMuteRole(commands.CommandError):
@@ -206,9 +202,7 @@ def can_mute():
 
         await commands.bot_has_permissions(manage_roles=True).predicate(ctx)
 
-        settings = await ctx.cog.get_guild_settings(
-            ctx.guild.id
-        )
+        settings = await ctx.cog.get_guild_settings(ctx.guild.id)
 
         if not settings:
             raise NoMuteRole()
@@ -963,6 +957,190 @@ class Moderation(commands.Cog):
 
         tasks[f"Send messages to {channel.mention}"] = done
         await progress_message.edit(content=format_tasks())
+
+    async def do_purge(self, ctx, limit, predicate, *, before=None, after=None):
+        if limit > 2000:
+            return await ctx.send(f"Too many messages to search given ({limit}/2000)")
+
+        if before is None:
+            before = ctx.message
+        else:
+            before = discord.Object(id=before)
+
+        if after is not None:
+            after = discord.Object(id=after)
+
+        try:
+            deleted = await ctx.channel.purge(
+                limit=limit, before=before, after=after, check=predicate
+            )
+
+        except discord.Forbidden:
+            return await ctx.send("I do not have permissions to delete messages.")
+
+        except discord.HTTPException as e:
+            return await ctx.send(f"Error: {e} (try a smaller search?)")
+
+        spammers = Counter(m.author.display_name for m in deleted)
+        deleted = len(deleted)
+        messages = [f'{deleted} message{" was" if deleted == 1 else "s were"} removed.']
+        if deleted:
+            messages.append("")
+            spammers = sorted(spammers.items(), key=lambda t: t[1], reverse=True)
+            messages.extend(f"**{name}**: {count}" for name, count in spammers)
+
+        to_send = "\n".join(messages)
+
+        if len(to_send) > 2000:
+            await ctx.send(f"Successfully removed {deleted} messages.", delete_after=10)
+        else:
+            await ctx.send(to_send, delete_after=10)
+
+    @flags.add_flag("--user", nargs="+")
+    @flags.add_flag("--contains", nargs="+")
+    @flags.add_flag("--starts", nargs="+")
+    @flags.add_flag("--ends", nargs="+")
+    @flags.add_flag("--before", type=int)
+    @flags.add_flag("--after", type=int)
+    @flags.add_flag("--bot", action="store_true")
+    @flags.add_flag("--embeds", action="store_true")
+    @flags.add_flag("--files", action="store_true")
+    @flags.add_flag("--emoji", action="store_true")
+    @flags.add_flag("--reactions", action="store_true")
+    @flags.add_flag("--or", action="store_true")
+    @flags.add_flag("--not", action="store_true")
+    @flags.group(invoke_without_command=True)
+    @checks.has_permissions(manage_messages=True)
+    @commands.bot_has_permissions(manage_messages=True)
+    async def purge(self, ctx, search: typing.Optional[int] = None, **flags):
+        """Purge messages in a channel using an optional command-line syntax
+
+        Flags:
+          --user       The author of the message
+          --contains   A string to search for in the message
+          --starts     A string the message starts with
+          --ends       A string the message ends with
+          --before     Messages must come before this message
+          --after      Messages must come after this message
+
+        Boolean Flags:
+          --bot        The message was sent by a bot
+          --embeds     The message contains an embed
+          --files      The message contains file(s)
+          --emoji      The message contains custom emoji
+          --reactions  The message has been reacted to
+          --or         Use logical OR for all flags
+          --not        Use logical NOT for all flags
+        """
+        predicates = []
+        if flags["bot"]:
+            predicates.append(lambda m: m.author.bot)
+
+        if flags["embeds"]:
+            predicates.append(lambda m: len(m.embeds))
+
+        if flags["files"]:
+            predicates.append(lambda m: len(m.attachments))
+
+        if flags["reactions"]:
+            predicates.append(lambda m: len(m.reactions))
+
+        if flags["emoji"]:
+            custom_emoji = re.compile(r"<:(\w+):(\d+)>")
+            predicates.append(lambda m: custom_emoji.search(m.content))
+
+        if flags["user"]:
+            users = []
+            converter = commands.MemberConverter()
+            for u in flags["user"]:
+                try:
+                    user = await converter.convert(ctx, u)
+                    users.append(user)
+                except Exception as e:
+                    await ctx.send(str(e))
+                    return
+
+            predicates.append(lambda m: m.author in users)
+
+        if flags["contains"]:
+            predicates.append(
+                lambda m: any(sub in m.content for sub in flags["contains"])
+            )
+
+        if flags["starts"]:
+            predicates.append(
+                lambda m: any(m.content.startswith(s) for s in flags["starts"])
+            )
+
+        if flags["ends"]:
+            predicates.append(
+                lambda m: any(m.content.endswith(s) for s in flags["ends"])
+            )
+
+        op = all if not flags["or"] else any
+
+        def predicate(m):
+            r = op(p(m) for p in predicates)
+            if flags["not"]:
+                return not r
+            return r
+
+        async def warn_them(search):
+            return await ctx.confirm(
+                f"This action might delete up to {search} messages. Continue?"
+            )
+
+        if flags["after"]:
+            if search is None:
+                search = 2000
+                if not await warn_them(search):
+                    return await ctx.send("Aborted")
+
+        if search is None:
+            search = 100
+            if not await warn_them(search):
+                return await ctx.send("Aborted")
+
+        search = max(0, min(2000, search))  # clamp from 0-2000
+        await self.do_purge(
+            ctx, search, predicate, before=flags["before"], after=flags["after"]
+        )
+
+    @purge.command(name="bot")
+    async def purge_bot(
+        self, ctx, search: typing.Optional[int], bot: discord.User, *prefixes
+    ):
+        """Purge commands from another bot with their prefixes
+
+        Example usage:
+            - purge bot @BotName ! ? "$ "
+
+            This will purge message from @BotName and messages
+            that start with "?", "!", or "$ ".
+        """
+
+        async def warn_them(search):
+            return await ctx.confirm(
+                f"This action might delete up to {search} messages. Continue?"
+            )
+
+        if not search:
+            search = 100
+            if not await warn_them(search):
+                return await ctx.send("Aborted.")
+
+        predicates = []
+        predicates.append(lambda m: m.author == bot)
+
+        if prefixes:
+            predicates.append(lambda m: any(m.content.startswith(p) for p in prefixes))
+
+        def predicate(m):
+            r = any(p(m) for p in predicates)
+            return r
+
+        search = max(0, min(2000, search))  # clamp from 0-2000
+        await self.do_purge(ctx, search, predicate)
 
     @commands.group(
         description="View the current verification system", invoke_without_command=True
