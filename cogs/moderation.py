@@ -1219,7 +1219,15 @@ class Moderation(commands.Cog):
     )
     @checks.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
-    async def purge_command(self, ctx, amount: int = 100):
+    async def purge_command(self, ctx, amount: int = None):
+        async def warn_them(search):
+            return await ctx.confirm(f"This action might delete up to {search} messages. Continue?")
+
+        if amount is None:
+            amount = 100
+            if not await warn_them(amount):
+                return await ctx.send("Aborted")
+
         deleted = await ctx.channel.purge(limit=amount + 1)
         return await ctx.channel.send(
             f"{ctx.tick(True)} Deleted {len(deleted)} message(s)", delete_after=5
