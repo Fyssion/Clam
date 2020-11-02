@@ -1016,21 +1016,21 @@ class Moderation(commands.Cog):
         """Purge messages in a channel using an optional command-line syntax
 
         Flags:
-          --user       The author of the message
-          --contains   A string to search for in the message
-          --starts     A string the message starts with
-          --ends       A string the message ends with
-          --before     Messages must come before this message
-          --after      Messages must come after this message
+          `--user`       The author of the message
+          `--contains`   A string to search for in the message
+          `--starts`     A string the message starts with
+          `--ends`       A string the message ends with
+          `--before`     Messages must come before this message
+          `--after`      Messages must come after this message
 
         Boolean Flags:
-          --bot        The message was sent by a bot
-          --embeds     The message contains an embed
-          --files      The message contains file(s)
-          --emoji      The message contains custom emoji
-          --reactions  The message has been reacted to
-          --or         Use logical OR for all flags
-          --not        Use logical NOT for all flags
+          `--bot`        The message was sent by a bot
+          `--embeds`     The message contains an embed
+          `--files`      The message contains file(s)
+          `--emoji`      The message contains custom emoji
+          `--reactions`  The message has been reacted to
+          `--or`         Use logical OR for all flags
+          `--not`        Use logical NOT for all flags
         """
         predicates = []
         if flags["bot"]:
