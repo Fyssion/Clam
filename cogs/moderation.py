@@ -1009,7 +1009,7 @@ class Moderation(commands.Cog):
     @flags.add_flag("--reactions", action="store_true")
     @flags.add_flag("--or", action="store_true")
     @flags.add_flag("--not", action="store_true")
-    @flags.group(invoke_without_command=True)
+    @flags.group(usage="[search=100] [flags...]", invoke_without_command=True)
     @checks.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
     async def purge(self, ctx, search: typing.Optional[int] = None, **flags):
@@ -1106,7 +1106,7 @@ class Moderation(commands.Cog):
             ctx, search, predicate, before=flags["before"], after=flags["after"]
         )
 
-    @purge.command(name="bot")
+    @purge.command(name="bot", usage="[search=100] <bot> [prefixes...]",)
     async def purge_bot(
         self, ctx, search: typing.Optional[int], bot: discord.User, *prefixes
     ):
@@ -1118,7 +1118,6 @@ class Moderation(commands.Cog):
             This will purge message from @BotName and messages
             that start with "?", "!", or "$ ".
         """
-
         async def warn_them(search):
             return await ctx.confirm(
                 f"This action might delete up to {search} messages. Continue?"
