@@ -474,7 +474,7 @@ class Tools(commands.Cog):
     async def snipe_optin(self, ctx):
         if str(ctx.author.id) not in self.snipe_ignored:
             return await ctx.send(
-                f"You are not opted out of sniped messages. To optout, use `{ctx.prefix}snipe optout`"
+                f"You have not opted out of sniped messages. To optout, use `{ctx.prefix}snipe optout`"
             )
 
         self.snipe_ignored.pop(self.snipe_ignored.index(str(ctx.author.id)))
