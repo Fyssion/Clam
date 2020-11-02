@@ -4,7 +4,7 @@ import asyncio
 import functools
 import io
 import typing
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 import discord
 from discord.ext import commands, tasks
@@ -17,6 +17,7 @@ import itertools
 from .utils.utils import get_lines_of_code, TabularData
 from .utils import db, colors, human_time
 from .utils.emojis import TEXT_CHANNEL, VOICE_CHANNEL
+from .utils.menus import MenuPages
 
 
 class Commands(db.Table):
@@ -59,6 +60,9 @@ class Stats(commands.Cog):
         self._data_batch = []
         self.bulk_insert_loop.add_exception_type(asyncpg.PostgresConnectionError)
         self.bulk_insert_loop.start()
+
+        if not hasattr(bot, "socket_stats"):
+            self.bot.socket_stats = Counter()
 
     async def bulk_insert(self):
         query = """INSERT INTO commands (name, guild_id, channel_id, author_id, invoked_at, prefix, failed)
@@ -907,6 +911,34 @@ class Stats(commands.Cog):
         em.add_field(name="Member Count", value=guild.member_count)
 
         await self.bot.console.send(embed=em)
+
+    # Socket Stats
+
+    @commands.Cog.listener()
+    async def on_socket_response(self, msg):
+        self.bot.socket_stats[msg.get("t") or "None"] += 1
+
+    @commands.command(
+        description="View websocket stats",
+        aliases=["ws", "ss", "socket", "websocket", "websocketstats"],
+    )
+    async def socketstats(self, ctx):
+        sorted_stats = {}
+
+        for name in sorted(self.bot.socket_stats.keys()):
+            sorted_stats[name] = self.bot.socket_stats[name]
+
+        data = [[n or "None", v] for n, v in sorted_stats.items()]
+        data.insert(0, ["Total", sum(self.bot.socket_stats.values())])
+
+        delta = datetime.utcnow() - self.bot.startup_time
+        minutes = delta.total_seconds() / 60
+        total = sum(self.bot.socket_stats.values())
+        cpm = total / minutes
+
+        description = f"Total socket events observed: {total} ({cpm:.2f}/minute)"
+        pages = ctx.table_pages(data, title="Websocket Stats", description=description)
+        await pages.start(ctx)
 
 
 def setup(bot):
