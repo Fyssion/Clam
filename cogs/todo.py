@@ -12,7 +12,7 @@ import asyncpg
 import humanize
 
 from .utils.menus import MenuPages
-from .utils import db, colors
+from .utils import db, colors, human_time
 
 
 class TodoTaskSource(menus.ListPageSource):
@@ -25,19 +25,25 @@ class TodoTaskSource(menus.ListPageSource):
         offset = menu.current_page * self.per_page
         all_todos = []
         if self.list_type == "all":
-            for i, (todo_id, name, completed_at) in enumerate(entries, start=offset):
+            for i, (todo_id, name, created_at, completed_at) in enumerate(entries, start=offset):
                 if completed_at:
+                    human_friendly = human_time.human_timedelta(completed_at, brief=True, accuracy=1)
                     all_todos.append(
-                        f":ballot_box_with_check: ~~{name}~~ `({todo_id})`"
+                        f":ballot_box_with_check: ~~{name}~~ - {human_friendly} `(ID: {todo_id})`"
                     )
                 else:
-                    all_todos.append(f":black_large_square: {name} `({todo_id})`")
+                    human_friendly = human_time.human_timedelta(created_at, brief=True, accuracy=1)
+                    all_todos.append(f":black_large_square: {name} - {human_friendly} `(ID: {todo_id})`")
         else:
-            for i, (todo_id, name) in enumerate(entries, start=offset):
-                all_todos.append(f":black_large_square: {name} `({todo_id})`")
+            for i, (todo_id, name, created_at) in enumerate(entries, start=offset):
+                human_friendly = human_time.human_timedelta(created_at, brief=True, accuracy=1)
+                all_todos.append(f":black_large_square: {name} - {human_friendly} `(ID: {todo_id})`")
+
+        # "created/completed at" or "created at"
+        friendly = "created" + ("/completed" if self.list_type == "all" else "") + " at"
 
         description = (
-            f"Total tasks: **{len(self.entries)}**\nKey: name `(id)`\n\n"
+            f"Total tasks: **{len(self.entries)}**\nKey: name - {friendly} `(ID: id)`\n\n"
             + "\n".join(all_todos)
         )
 
@@ -52,7 +58,7 @@ class TodoTaskSource(menus.ListPageSource):
 
 class Todos(db.Table):
     id = db.PrimaryKeyColumn()
-    name = db.Column(db.String(length=64), index=True)
+    name = db.Column(db.String(length=512), index=True)
     author_id = db.Column(db.Integer(big=True), index=True)
     created_at = db.Column(
         db.Datetime(), default="now() at time zone 'utc'", index=True
@@ -116,9 +122,9 @@ class Todo(commands.Cog):
         aliases=["create", "new"],
     )
     async def todo_add(self, ctx, *, name):
-        if len(name) > 64:
+        if len(name) > 512:
             raise commands.BadArgument(
-                "That name is too long. Must be 64 characters or less."
+                f"That name is too long. Must be 512 characters or less ({len(name)}/512)."
             )
 
         query = """INSERT INTO todos (name, author_id)
@@ -246,7 +252,7 @@ class Todo(commands.Cog):
         name="list", description="List all incomplete tasks", aliases=["incomplete"],
     )
     async def todo_list(self, ctx):
-        query = """SELECT id, name
+        query = """SELECT id, name, created_at
                    FROM todos
                    WHERE author_id=$1 AND completed_at IS NULL
                    ORDER BY created_at DESC
@@ -264,7 +270,7 @@ class Todo(commands.Cog):
 
     @todo.command(name="all", description="View all tasks")
     async def todo_all(self, ctx):
-        query = """SELECT id, name, completed_at
+        query = """SELECT id, name, created_at, completed_at
                    FROM todos
                    WHERE author_id=$1
                    ORDER BY created_at DESC
