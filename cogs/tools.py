@@ -464,7 +464,7 @@ class Tools(commands.Cog):
         with open("snipe_ignored.json", "w") as f:
             json.dump(self.snipe_ignored, f)
 
-        await ctx.send(ctx.tick(True, "Opted out of sniped messages tracking"))
+        await ctx.send(ctx.tick(True, "Opted out of sniped messages"))
 
     @snipe.command(
         name="optin",
@@ -481,7 +481,7 @@ class Tools(commands.Cog):
         with open("snipe_ignored.json", "w") as f:
             json.dump(self.snipe_ignored, f)
 
-        await ctx.send(ctx.tick(True, "Opted in to sniped messages tracking"))
+        await ctx.send(ctx.tick(True, "Opted in to sniped messages"))
 
     @snipe.command(name="ignored", description="View all ignored users")
     @commands.is_owner()
