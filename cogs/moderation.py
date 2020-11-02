@@ -1009,7 +1009,7 @@ class Moderation(commands.Cog):
     @flags.add_flag("--reactions", action="store_true")
     @flags.add_flag("--or", action="store_true")
     @flags.add_flag("--not", action="store_true")
-    @flags.group(usage="[search=100] [flags...]", invoke_without_command=True)
+    @flags.group(usage="[search=100]", invoke_without_command=True)
     @checks.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
     async def purge(self, ctx, search: typing.Optional[int] = None, **flags):
