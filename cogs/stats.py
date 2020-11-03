@@ -7,7 +7,7 @@ import typing
 from collections import defaultdict, Counter
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands, tasks, flags
 import asyncpg
 import humanize
 import git
@@ -918,14 +918,30 @@ class Stats(commands.Cog):
     async def on_socket_response(self, msg):
         self.bot.socket_stats[msg.get("t") or "None"] += 1
 
-    @commands.command(
-        description="View websocket stats",
+    @flags.add_flag("--sort", "-s", default="name")
+    @flags.command(
         aliases=["ws", "ss", "socket", "websocket", "websocketstats"],
     )
-    async def socketstats(self, ctx):
+    async def socketstats(self, ctx, **flags):
+        """View websocket stats
+
+        Flags:
+          `--sort` `-s`  Sort by 'name' or by 'count'. Defaults to 'name'
+        """
+        sort = flags["sort"].lower()
+
+        if sort not in ["name", "count"]:
+            raise commands.BadArgument("`--sort` flag must be either 'name' or 'count'")
+
         sorted_stats = {}
 
-        for name in sorted(self.bot.socket_stats.keys()):
+        if sort == "name":
+            the_stats_sorted = sorted(self.bot.socket_stats.keys())
+
+        else:
+            the_stats_sorted = {k: v for k, v in reversed(sorted(self.bot.socket_stats.items(), key=lambda item: item[1]))}
+
+        for name in the_stats_sorted:
             sorted_stats[name] = self.bot.socket_stats[name]
 
         data = [[n or "None", v] for n, v in sorted_stats.items()]
