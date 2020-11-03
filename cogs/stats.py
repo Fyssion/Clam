@@ -13,6 +13,7 @@ import humanize
 import git
 import psutil
 import itertools
+import json
 
 from .utils.utils import get_lines_of_code, TabularData
 from .utils import db, colors, human_time
@@ -919,15 +920,28 @@ class Stats(commands.Cog):
         self.bot.socket_stats[msg.get("t") or "None"] += 1
 
     @flags.add_flag("--sort", "-s", default="name")
+    @flags.add_flag("--json", action="store_true")
     @flags.command(
-        aliases=["ws", "ss", "socket", "websocket", "websocketstats"],
+        aliases=["socket", "websocket"],
     )
     async def socketstats(self, ctx, **flags):
         """View websocket stats
 
         Flags:
           `--sort` `-s`  Sort by 'name' or by 'count'. Defaults to 'name'
+          `--json`  Save socketstats to a json file for use programmatically
         """
+        if flags["json"]:
+            stats = {"uptime": datetime.timestamp(self.bot.startup_time), "total": sum(self.bot.socket_stats.values())}
+            stats.update(self.bot.socket_stats)
+
+            output = io.BytesIO()
+            output.write(json.dumps(stats, indent=2).encode())
+            output.seek(0)
+
+            file = discord.File(output, filename="socketstats.json")
+            return await ctx.send("Socket stats attached below", file=file)
+
         sort = flags["sort"].lower()
 
         if sort not in ["name", "count"]:
