@@ -69,7 +69,9 @@ class BasicPageSource(menus.ListPageSource):
             "\n".join(f"[{i+1}] {v}" for i, v in enumerate(entries, start=offset))
         )
         message.append("```")
-        message.append(f"{len(self.entries)} entries | Page {menu.current_page + 1}/{self.get_max_pages()}")
+
+        friendly = "entries" if len(self.entries) > 1 else "entry"
+        message.append(f"{len(self.entries)} {friendly} | Page {menu.current_page + 1}/{self.get_max_pages()}")
 
         if self.footer:
             message.append(self.footer)
@@ -94,7 +96,8 @@ class EmbedPageSource(menus.ListPageSource):
 
         page_num = f"Page {menu.current_page + 1}/{self.get_max_pages()}"
 
-        self.embed.set_footer(text=page_num)
+        friendly = "entries" if len(self.entries) > 1 else "entry"
+        self.embed.set_footer(text=f"{len(self.entries)} {friendly} | {page_num}")
 
         return self.embed
 
