@@ -1,4 +1,4 @@
-from discord.ext import commands
+from discord.ext import commands, menus
 import discord
 
 from datetime import datetime as d
@@ -12,8 +12,10 @@ import collections
 import humanize
 from cleverbot import async_ as cleverbot
 
-from .utils import colors, human_time
+from .utils import colors, human_time, fuzzy
 from .utils.utils import is_int, quote
+from .utils.menus import MenuPages
+from .utils.human_time import plural
 
 # from .utils.utils import thesaurize
 
@@ -48,6 +50,44 @@ num2words2 = [
     "eighty",
     "ninety",
 ]
+
+
+class GuildConverter(commands.Converter):
+    async def convert(self, ctx, argument):
+        try:
+            int_argument = int(argument)
+            guild = ctx.bot.get_guild(int_argument)
+            if guild:
+                return guild
+
+        except ValueError:
+            pass
+
+        guild = discord.utils.get(ctx.bot.guilds, name=argument)
+        if not guild:
+            raise commands.BadArgument("No matching guilds.")
+
+        return guild
+
+
+class EmojiResultSource(menus.ListPageSource):
+    def __init__(self, descriptions, emojis, title):
+        self.descriptions = descriptions
+        self.emojis = emojis
+        self.title = title
+
+        super().__init__(descriptions, per_page=1)
+
+    def format_page(self, menu, entry):
+        em = discord.Embed(title=self.title, color=colors.PRIMARY)
+
+        em.description = entry
+
+        em.set_footer(
+            text=f"{plural(len(self.emojis)):result} | Page {menu.current_page + 1}/{self.get_max_pages()}"
+        )
+
+        return em
 
 
 class Fun(commands.Cog):
@@ -192,6 +232,64 @@ class Fun(commands.Cog):
             return await ctx.send(f"{ctx.tick(False)} Sorry, I can't use this emoji.")
 
         await ctx.send(str(emoji))
+
+    def format_emojis(self, emojis):
+        descriptions = [""]
+        current_column = 0
+
+        for name, emoji in emojis:
+            if current_column >= 15:
+                to_add = f"\n{emoji} "
+                current_column = 0
+
+            else:
+                to_add = f"{emoji} "
+
+            if len(descriptions[-1]) + len(to_add) > 2048:
+                descriptions.append("")
+                current_column = 0
+                to_add = f"{emoji} "
+
+            descriptions[-1] += to_add
+            current_column += 1
+
+        return descriptions
+
+    @commands.command()
+    async def emojisearch(self, ctx, *, query):
+        """Search Clam's emojis"""
+        emojis = [(emoji.name, str(emoji)) for emoji in self.bot.emojis]
+
+        def transform(tup):
+            return tup[0]
+
+        matches = fuzzy.finder(query, emojis, key=transform, lazy=False)
+
+        descriptions = self.format_emojis(matches)
+
+        menu = MenuPages(
+            source=EmojiResultSource(descriptions, matches, f"Results for '{query}'"), clear_reactions_after=True
+        )
+        await menu.start(ctx)
+
+    @commands.command()
+    @commands.is_owner()
+    async def emojis(self, ctx, *, guild: GuildConverter = None):
+        """List all of Clam's emojis or emojis for a specific guild"""
+        if guild:
+            emojis = [(e.name, str(e)) for e in self.bot.emojis if e.guild == guild]
+            title = f"Emojis in {guild}"
+
+        else:
+            emojis = [(e.name, str(e)) for e in self.bot.emojis]
+            title = "All Emojis"
+
+        descriptions = self.format_emojis(emojis)
+
+        menu = MenuPages(
+            source=EmojiResultSource(descriptions, emojis, title), clear_reactions_after=True
+        )
+        await menu.start(ctx)
 
     @commands.command(
         description="Search for an emoji I have access to and react with it",
@@ -355,9 +453,7 @@ class Fun(commands.Cog):
             return ms.channel == ctx.channel and ms.author == ctx.author
 
         await self.bot.loop.create_task(
-            ctx.send(
-                "**Start typing!** The timer started when you sent your message."
-            )
+            ctx.send("**Start typing!** The timer started when you sent your message.")
         )
         start = ctx.message.created_at
 
