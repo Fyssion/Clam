@@ -288,7 +288,7 @@ class Fun(commands.Cog):
             title = "All Emojis"
 
         if not emojis:
-            return await ctx.send("No emojis found. Sorry.")
+            return await ctx.send("No emojis found.")
 
         descriptions = self.format_emojis(emojis)
 
