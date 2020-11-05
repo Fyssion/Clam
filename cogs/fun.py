@@ -265,6 +265,9 @@ class Fun(commands.Cog):
 
         matches = fuzzy.finder(query, emojis, key=transform, lazy=False)
 
+        if not matches:
+            return await ctx.send("Could not find anything. Sorry.")
+
         descriptions = self.format_emojis(matches)
 
         menu = MenuPages(
@@ -283,6 +286,9 @@ class Fun(commands.Cog):
         else:
             emojis = [(e.name, str(e)) for e in self.bot.emojis]
             title = "All Emojis"
+
+        if not emojis:
+            return await ctx.send("No emojis found. Sorry.")
 
         descriptions = self.format_emojis(emojis)
 
