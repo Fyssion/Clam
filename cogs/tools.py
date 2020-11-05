@@ -438,6 +438,7 @@ class Tools(commands.Cog):
             for snipe in sniped:
                 if snipe.id == message_id:
                     result = snipe
+                    break
 
             if not result:
                 raise commands.BadArgument(
