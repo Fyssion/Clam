@@ -530,7 +530,7 @@ class Tools(commands.Cog):
         entries = []
 
         for snipe in sniped:
-            if isinstance(snipe, DeletedMessage):
+            if isinstance(snipe, DeletedMessage) or hasattr(snipe, "message"):
                 message = snipe.message
                 human_friendly = human_time.human_timedelta(snipe.deleted_at, brief=True, accuracy=1)
                 entries.append(f"\N{WASTEBASKET} {message.author} - {human_friendly} `(ID: {message.id})`")
