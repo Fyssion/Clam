@@ -500,7 +500,7 @@ class Tools(commands.Cog):
                 users.append(f"User with an ID of {user_id}")
 
             else:
-                users.append(f"{user} (ID: {user.id}")
+                users.append(f"{user} (ID: {user.id})")
 
         pages = ctx.pages(
             users,
