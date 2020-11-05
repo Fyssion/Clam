@@ -64,12 +64,12 @@ class BasicPageSource(menus.ListPageSource):
         if self.description:
             message.append(self.description)
 
-        message.append(f"Page {menu.current_page + 1}/{self.get_max_pages()}")
         message.append("```ini")
         message.append(
             "\n".join(f"[{i+1}] {v}" for i, v in enumerate(entries, start=offset))
         )
         message.append("```")
+        message.append(f"{len(self.entries)} entries | Page {menu.current_page + 1}/{self.get_max_pages()}")
 
         if self.footer:
             message.append(self.footer)
