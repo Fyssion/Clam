@@ -104,7 +104,14 @@ class Admin(commands.Cog):
         specify exactly which deps to check.
         """
         self.bot.log.info("Checking dependancies...")
-        deps_to_check = ["youtube-dl", "gitpython", "jishaku", "asyncpg", "pytz", "beautifulsoup4"]
+        deps_to_check = [
+            "youtube-dl",
+            "gitpython",
+            "jishaku",
+            "asyncpg",
+            "pytz",
+            "beautifulsoup4",
+        ]
         packages = []
 
         for dep in deps_to_check:
