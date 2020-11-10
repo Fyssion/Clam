@@ -12,13 +12,42 @@ import os
 import traceback
 import youtube_dl
 import importlib
+import enum
 
-from .utils import ytdl
-from .utils import music_player
+from .utils import db, ytdl, music_player
+from .utils.colors import PRIMARY
+from .utils.emojis import GREEN_TICK
 
 
 log = logging.getLogger("clam.music")
 bin_log = logging.getLogger("clam.music.bin")
+
+
+class SongsTable(db.Table, table_name="songs"):
+    id = db.PrimaryKeyColumn()
+
+    filename = db.Column(db.String())
+    title = db.Column(db.String())
+    song_id = db.Column(db.String())  # id that youtube gives the song
+    extractor = db.Column(db.String())  # the extractor that was used (platform like youtube, soundcloud)
+    info = db.Column(db.JSON, default="'{}'::jsonb")  # info dict that youtube_dl gives
+    plays = db.Column(db.Integer, default=0)
+
+    registered_at = db.Column(db.Datetime(), default="now() at time zone 'utc'")
+    last_updated = db.Column(db.Datetime(), default="now() at time zone 'utc'")
+
+    @classmethod
+    def create_table(cls, *, exists_ok=True):
+        statement = super().create_table(exists_ok=exists_ok)
+        sql = "CREATE INDEX IF NOT EXISTS songs_title_trgm_idx ON songs USING GIN (title gin_trgm_ops);"
+        return statement + "\n" + sql
+
+
+class LocationType(enum.Enum):
+    youtube = 0
+    soundcloud = 1
+    db = 2
+    bin = 3
 
 
 class BinFetchingError(Exception):
@@ -98,6 +127,7 @@ class Music(commands.Cog):
             await player.stop()
 
         self.bot.players.clear()
+        self.players = self.bot.players
 
         for voice in self.bot.voice_clients:
             await voice.disconnect()
@@ -106,6 +136,34 @@ class Music(commands.Cog):
         for file in os.listdir("cache"):
             if file.endswith(".webm"):
                 os.remove(file)
+
+    @commands.command()
+    @commands.is_owner()
+    async def reload_music(self, ctx):
+        modules = [music_player, ytdl]
+
+        output = []
+
+        for module in modules:
+            try:
+                importlib.reload(module)
+
+            except Exception as e:
+                formatted = "".join(
+                    traceback.format_exception(type(e), e, e.__traceback__, 1)
+                )
+                output.append(
+                    ctx.tick(
+                        False,
+                        f"Failed to reload `{module.__name__}`"
+                        f"\n```py\n{formatted}\n```",
+                    )
+                )
+
+            else:
+                output.append(ctx.tick(True, f"Reloaded `{module.__name__}`"))
+
+        await ctx.send("\n".join(output))
 
     @commands.command()
     @commands.is_owner()
@@ -184,12 +242,6 @@ class Music(commands.Cog):
 
     @commands.Cog.listener("on_voice_state_update")
     async def on_voice_leave(self, member, before, after):
-        def check(mem, bf, af):
-            if mem.bot:
-                return False
-            if af.channel:
-                return True
-
         if member.bot:
             return
         player = self.players.get(member.guild.id)
@@ -200,31 +252,40 @@ class Music(commands.Cog):
         if not player.voice:
             return
 
-        if len(player.voice.channel.members) == 1:
-            player.pause()
+        members = [m for m in player.voice.channel.members if not m.bot]
 
-            try:
-                await self.bot.wait_for("voice_state_update", timeout=120, check=check)
-            except asyncio.TimeoutError:
-                if len(player.songs) > 0:
-                    songs = player.songs.to_list()
-                    songs = [s.url for s in songs]
-                    songs.insert(0, player.current.url)
-                else:
-                    songs = None
-                await player.stop()
-                del self.players[member.guild.id]
-                if songs:
-                    url = await self.post("\n".join(songs))
-                    if url is None:
-                        return await player.text_channel.send(
-                            "Sorry, I couldn't save your queue."
-                        )
-                    await player.text_channel.send(
-                        "**I saved your queue!**\n"
-                        f"To resume where you left off, use this link with the `playbin` command: **{url}**"
+        def check(mem, bf, af):
+            if not mem.bot and af.channel and af.channel == player.voice.channel:
+                return True
+            return False
+
+        if len(members) > 0:
+            return
+
+        player.pause()
+
+        try:
+            await self.bot.wait_for("voice_state_update", timeout=120, check=check)
+        except asyncio.TimeoutError:
+            if len(player.songs) > 0:
+                songs = player.songs.to_list()
+                songs = [s.url for s in songs]
+                songs.insert(0, player.current.url)
+            else:
+                songs = None
+            await player.stop()
+            del self.players[member.guild.id]
+            if songs:
+                url = await self.post("\n".join(songs))
+                if url is None:
+                    return await player.text_channel.send(
+                        "Sorry, I couldn't save your queue."
                     )
-            player.resume()
+                await player.text_channel.send(
+                    "**I saved your queue!**\n"
+                    f"To resume where you left off, use this link with the `playbin` command: **{url}**"
+                )
+        player.resume()
 
     async def votes(self, ctx, cmd: str, func, param=None):
         async def run_func():
@@ -248,9 +309,11 @@ class Music(commands.Cog):
             else:
                 is_only_user = False
                 required_votes = len(ctx.player.voice.channel.members) - 1
+
         else:
             is_only_user = False
             required_votes = 3
+
         if if_is_requester or if_has_perms or is_only_user or if_is_dj:
             await run_func()
 
@@ -284,9 +347,11 @@ class Music(commands.Cog):
         ctx.player.text_channel = ctx.channel
         if ctx.player.voice:
             await ctx.player.voice.move_to(destination)
+
         else:
             ctx.player.voice = await destination.connect()
             await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
+
         v_emote = "<:voice_channel:665577300552843294>"
         t_emote = "<:text_channel:661798072384225307>"
         await ctx.send(
@@ -521,7 +586,7 @@ class Music(commands.Cog):
         aliases=["playlist"],
         invoke_without_command=True,
     )
-    async def _queue(self, ctx):
+    async def queue(self, ctx):
         """Shows the player's queue. You can optionally select the page."""
         if not ctx.player:
             return await ctx.send("This server doesn't have a player.")
@@ -539,7 +604,7 @@ class Music(commands.Cog):
         )
         return await pages.start(ctx)
 
-    @_queue.command(
+    @queue.command(
         name="save", description="Save the queue to a bin!", aliases=["upload"]
     )
     @commands.cooldown(1, 10)
@@ -557,8 +622,8 @@ class Music(commands.Cog):
             return await ctx.send("Sorry, I couldn't save your queue.")
         await ctx.send(f"**Current queue: {url}**")
 
-    @commands.command()
-    async def clear(self, ctx):
+    @queue.command(name="clear")
+    async def queue_lear(self, ctx):
         """Clears the queue"""
         if not ctx.player:
             return await ctx.send("This server doesn't have a player.")
@@ -582,12 +647,12 @@ class Music(commands.Cog):
 
         await self.votes(ctx, "shuffle", shuffle_queue)
 
-    @commands.command(
+    @queue.command(
         name="remove",
         description="Removes a song from the queue at a given index.",
         usage="[song #]",
     )
-    async def _remove(self, ctx, index: int):
+    async def queue_remove(self, ctx, index: int):
         if not ctx.player:
             return await ctx.send("This server doesn't have a player.")
 
@@ -603,6 +668,7 @@ class Music(commands.Cog):
 
     @commands.command()
     async def notify(self, ctx):
+        """Enable or disable now playing notifications"""
         if not ctx.player:
             return await ctx.send("This server doesn't have a player.")
 
@@ -619,7 +685,7 @@ class Music(commands.Cog):
         description="Loops/unloops the currently playing song.",
         invoke_without_command=True,
     )
-    async def _loop(self, ctx):
+    async def loop(self, ctx):
         """Loop a single song. To loop the queue use loop queue"""
         if not ctx.player:
             return await ctx.send("This server doesn't have a player.")
@@ -643,10 +709,10 @@ class Music(commands.Cog):
                 f"`{ctx.player.current.title}`"
             )
 
-    @_loop.command(
+    @loop.command(
         name="queue", description="Loop the entire queue.", aliases=["playlist"]
     )
-    async def _loop_queue(self, ctx):
+    async def loop_queue(self, ctx):
         if not ctx.player:
             return await ctx.send("This server doesn't have a player.")
 
@@ -662,34 +728,6 @@ class Music(commands.Cog):
             await ctx.send(f"**:repeat: Now looping queue**")
         else:
             await ctx.send(f"**:repeat: :x: No longer looping queue**")
-
-    async def get_haste(self, url="https://mystb.in"):
-        parsed = urlparse(url)
-        newpath = "/raw" + parsed.path
-        url = parsed.scheme + "://" + parsed.netloc + newpath
-
-        try:
-            async with timeout(10):
-                async with self.bot.session.get(
-                    url, headers={"User-Agent": "Clam Music Cog"}
-                ) as resp:
-                    if resp.status != 200:
-                        raise BinFetchingError(
-                            "There was an error while fetching that bin."
-                        )
-                    f = await resp.read()
-        except asyncio.TimeoutError:
-            raise TimeoutError(
-                ":warning: Could not fetch data from mystbin. \
-            Is the site down? Try https://www.pastebin.com"
-            )
-            return None
-        async with self.bot.session.get(
-            url, headers={"User-Agent": "Clam Music Cog"}
-        ) as resp:
-            f = await resp.read()
-            f = f.decode("utf-8")
-            return f
 
     @commands.command(description="Start the current song over from the beginning")
     async def startover(self, ctx):
@@ -714,23 +752,140 @@ class Music(commands.Cog):
 
         await ctx.send("**⏪ Starting song over**")
 
+    async def fetch_yt_playlist(self, ctx, url):
+        await ctx.send(
+            "**<:youtube:667536366447493120> Fetching YouTube playlist** "
+            f"`{url}`\nThis make take awhile depending on playlist size."
+        )
+
+        try:
+            playlist, failed_songs = await ytdl.Song.get_playlist(
+                ctx, url, loop=self.bot.loop
+            )
+        except ytdl.YTDLError as e:
+            print(e)
+            await ctx.send(
+                f"An error occurred while processing this request: ```py\n{str(e)}\n```"
+            )
+        else:
+            em = discord.Embed(
+                title="**:page_facing_up: Enqueued:**",
+                color=0xFF0000,
+            )
+            description = ""
+            total_duration = 0
+            for i, song in enumerate(playlist):
+                if not song:
+                    failed_songs += 1
+                    continue
+
+                await ctx.player.songs.put(song)
+                total_duration += int(song.data.get("duration"))
+                if i < 9:
+                    description += f"\n• [{song.title}]({song.url}) `{song.duration}`"
+                elif i == 9 and len(playlist) > 10:
+                    songs_left = len(playlist) - (i + 1)
+                    description += f"\n• [{song.title}]({song.url}) \
+                    `{song.duration}`\n...and {songs_left} more song(s)"
+
+            total_duration = ytdl.Song.parse_duration(total_duration)
+            description += f"\nTotal duration: {total_duration}"
+            if failed_songs > 0:
+                description += (
+                    f"\n:warning: Sorry, {failed_songs} song(s) failed to download."
+                )
+
+            em.description = description
+            await ctx.send(embed=em)
+
+    URLS = re.compile(
+        r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
+    )
+    YT_URLS = re.compile(
+        r"(?:https?://)?(?:www.)?(?:youtube.com|youtu.be)/(?:watch\?v=)?([^\s]+)"
+    )
+
+    async def play_song(self, ctx, location_type, query):
+        if not ctx.player.voice:
+            await ctx.invoke(self._join)
+
+        if query.startswith("<") and query.endswith(">"):
+            query = query.strip("<>")
+
+        if self.URLS.match(query):
+            if self.YT_URLS.match(query):
+                if "list=" in query:
+                    return await self.fetch_yt_playlist(ctx, query)
+
+            elif "soundcloud" in query:
+                pass
+
+        await ctx.send(f"**:mag: Searching** `{query}`")
+
+        async with ctx.typing():
+            try:
+                async with timeout(180):  # 3m
+                    song = await ytdl.Song.get_song(ctx, query, loop=self.bot.loop)
+
+            except ytdl.YTDLError as e:
+                print(e)
+                await ctx.send(
+                    f"An error occurred while processing this request: ```py {str(e)}```"
+                )
+
+            except asyncio.TimeoutError:
+                await ctx.send("Timed out while fetching song. Sorry.")
+
+            else:
+                if not song:
+                    return await ctx.send("Sorry. I couldn't fetch that song.")
+
+                await ctx.player.songs.put(song)
+
+                if ctx.player.is_playing:
+                    await ctx.send(f"**:page_facing_up: Enqueued** {str(song)}")
+
+                elif not ctx.player._notify:
+                    await ctx.send(f"**:notes: Now playing** `{song.title}`")
+
+    async def get_haste(self, url="https://mystb.in"):
+        parsed = urlparse(url)
+        newpath = "/raw" + parsed.path
+        url = parsed.scheme + "://" + parsed.netloc + newpath
+
+        try:
+            async with timeout(10):
+                async with self.bot.session.get(
+                    url, headers={"User-Agent": "Clam Music Cog"}
+                ) as resp:
+                    if resp.status != 200:
+                        raise BinFetchingError(
+                            f"Could not fetch bin: Error {resp.status}"
+                        )
+
+                    f = await resp.read()
+                    f = f.decode("utf-8")
+                    return f
+
+        except asyncio.TimeoutError:
+            raise TimeoutError("Timed out while fetching from bin.")
+
     async def hastebin_playlist(self, ctx, search):
         bin_log.info(f"Fetching from bin: '{search}'")
+
         output = await self.get_haste(search)
         if not output or output == """{"message":"Document not found."}""":
-            return await ctx.send("That bin doesn't exist.")
-        yt_urls = (
-            "(?:https?://)?(?:www.)?(?:youtube.com|youtu.be)/(?:watch\?v=)?([^\s]+)"
-        )
+            return await ctx.send("Bin returned an error: `Document not found.`")
+
         if output == "404: Not Found":
-            return await ctx.send(
-                ":warning: This is not a hastebin or hastebin-like website."
-            )
-        if len(re.findall(yt_urls, output)) == 0:
+            return await ctx.send("Site returned an error: `404: Not Found`")
+
+        if len(self.YT_URLS.findall(output)) == 0:
             await ctx.send(
                 ":warning: There are no YouTube URLs in this bin. "
                 "Are you sure this is the correct site?\n**Continuing download...**"
             )
+
         videos = output.splitlines()
         if len(videos) > 50:
             confirm = await ctx.confirm(
@@ -789,59 +944,18 @@ class Music(commands.Cog):
             ":white_check_mark: **Finished downloading songs from bin**", embed=em
         )
 
-    async def fetch_yt_playlist(self, ctx, url):
-        try:
-            playlist, failed_songs = await ytdl.Song.get_playlist(
-                ctx, url, loop=self.bot.loop
-            )
-        except ytdl.YTDLError as e:
-            print(e)
-            await ctx.send(
-                f"An error occurred while processing this request: ```py {str(e)}```"
-            )
-        else:
-            em = discord.Embed(
-                title="**:page_facing_up: Enqueued:**",
-                color=0xFF0000,
-            )
-            description = ""
-            total_duration = 0
-            for i, song in enumerate(playlist):
-                if not song:
-                    failed_songs += 1
-                    continue
-
-                await ctx.player.songs.put(song)
-                total_duration += int(song.data.get("duration"))
-                if i < 9:
-                    description += f"\n• [{song.title}]({song.url}) `{song.duration}`"
-                elif i == 9 and len(playlist) > 10:
-                    songs_left = len(playlist) - (i + 1)
-                    description += f"\n• [{song.title}]({song.url}) \
-                    `{song.duration}`\n...and {songs_left} more song(s)"
-
-            total_duration = ytdl.Song.parse_duration(total_duration)
-            description += f"\nTotal duration: {total_duration}"
-            if failed_songs > 0:
-                description += (
-                    f"\n:warning: Sorry, {failed_songs} song(s) failed to download."
-                )
-
-            em.description = description
-            await ctx.send(embed=em)
-
     @commands.command(aliases=["pb"])
     async def playbin(self, ctx, *, url):
+        """Play a song from a bin"""
         if not ctx.player:
             player = self.create_player(ctx)
+            ctx.player = player
 
         if not ctx.player.voice:
             await ctx.invoke(self._join)
 
-        """Add a list of songs from a hastebin-like site to the queue"""
-        urls = "http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
-        if len(re.findall(urls, url)) == 0:
-            return await ctx.send("You must provide a URL.")
+        if not self.URLS.match(url):
+            raise commands.BadArgument("You must provide a valid URL.")
 
         await ctx.send(
             "**:globe_with_meridians: Fetching from bin** "
@@ -854,10 +968,26 @@ class Music(commands.Cog):
         aliases=["p", "yt"],
         usage="[song]",
     )
-    async def _play(self, ctx, *, search: str = None):
-        """Search for a song and play it"""
+    async def play(self, ctx, *, search=None):
+        """Search for a song and play it
+
+        You can specify where to search for the song with `source: search`
+        Defaults to Youtube.
+
+        Sources:
+          - `youtube` `yt` - Search Youtube
+          ~~- `soundcloud` sc` - Search Soundcloud~~song
+          - `database` `db` - Search the bot's database
+          - `bin` - Give a bin URL (similar to `playbin` command)
+
+        Examples:
+         ~~- `soundcloud: a song here` - Searches Soundcloud~~
+          - `search here` - Searches Youtube
+          - `db: a song` - Searches the database
+        """
         if not ctx.player:
             player = self.create_player(ctx)
+            ctx.player = player
 
         if (
             not search
@@ -869,53 +999,43 @@ class Music(commands.Cog):
             return await ctx.send(
                 f"**:arrow_forward: Resuming** `{ctx.player.current.title}`"
             )
+
         if not search:
             return await ctx.send("Please specify a song to play/search for.")
 
-        if not ctx.player.voice:
-            await ctx.invoke(self._join)
+        type_regex = re.compile(r"(\w+):\s?(.+)")
 
-        if search.startswith("<") and search.endswith(">"):
-            search = search.strip("<>")
+        location_types = {
+            LocationType.youtube: ["youtube", "yt"],
+            LocationType.db: ["database", "db"],
+            # LocationType.soundcloud: ["soundcloud", "sc"],
+            LocationType.bin: ["bin"],
+        }
 
-        urls = re.compile(
-            "http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
-        )
-        if urls.match(search):
-            youtube_urls = re.compile(
-                "(?:https?://)?(?:www.)?(?:youtube.com|youtu.be)/(?:watch\?v=)?([^\s]+)"
-            )
-            if youtube_urls.match(search):
-                if "list=" in search:
-                    await ctx.send(
-                        "**<:youtube:667536366447493120> Fetching YouTube playlist** "
-                        f"`{search}`\nThis make take awhile depending on playlist size."
-                    )
+        valid_types = []
+        for types in location_types.values():
+            valid_types.extend(types)
 
-                    await self.fetch_yt_playlist(ctx, search)
-                    return
-            elif "soundcloud" in search:
-                pass
+        location_type = None
 
-        await ctx.send(f"**:mag: Searching** `{search}`")
+        match = type_regex.match(search)
 
-        async with ctx.typing():
-            try:
-                song = await ytdl.Song.get_song(ctx, search, loop=self.bot.loop)
-            except ytdl.YTDLError as e:
-                print(e)
-                await ctx.send(
-                    f"An error occurred while processing this request: ```py {str(e)}```"
-                )
-            else:
-                if not song:
-                    return await ctx.send(
-                        "Sorry. I couldn't fetch that song. Possibly being ratelimited."
-                    )
+        if not match:
+            query = search
 
-                await ctx.player.songs.put(song)
-                if ctx.player.is_playing:
-                    await ctx.send(f"**:page_facing_up: Enqueued** {str(song)}")
+        else:
+            their_type, query = match.groups()
+            their_type = their_type.lower()
+            if match and their_type in valid_types:
+                for loctype, types in location_types.items():
+                    if their_type in types:
+                        location_type = loctype
+                        break
+
+            if not location_type:
+                query = search
+
+        await self.play_song(ctx, location_type, query)
 
     @commands.command(
         name="ytdl", description="Test YTDL to see if it works", hidden=True
@@ -931,26 +1051,36 @@ class Music(commands.Cog):
             download=False,
             process=False,
         )
+
         try:
             data = await self.bot.loop.run_in_executor(None, partial)
+
         except youtube_dl.DownloadError as e:
             print("Could not connect to YouTube")
             traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
             error = "".join(traceback.format_exception(type(e), e, e.__traceback__, 1))
             return await ctx.send(f"Could not connect to YouTube!```py\n{error}```")
+
         if not data:
             return await ctx.send("YouTube did not return any data.")
+
         await ctx.send("Successfully connected to YouTube with youtube_dl")
 
     @_join.before_invoke
-    @_play.before_invoke
+    @play.before_invoke
     async def ensure_player(self, ctx):
         if not ctx.author.voice or not ctx.author.voice.channel:
             raise commands.CommandError("You are not connected to a voice channel.")
 
         if ctx.voice_client:
             if ctx.voice_client.channel != ctx.author.voice.channel:
-                raise commands.CommandError("Bot is already in a voice channel.")
+                dj = await is_dj().predicate(ctx)
+                hint = (
+                    f" Use `{ctx.prefix}summon` to summon the bot to a channel."
+                    if dj
+                    else ""
+                )
+                raise commands.CommandError(f"Bot is in another voice channel.{hint}")
 
 
 def setup(bot):

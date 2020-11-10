@@ -105,7 +105,7 @@ class Player:
         self.duration = stopwatch.StopWatch()
         self.closed = False
         self.startover = False
-        self._notify = True
+        self._notify = False
 
         self._loop = False
         self._loop_queue = False

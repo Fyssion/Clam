@@ -5,6 +5,7 @@ import asyncio
 import functools
 import logging
 import os
+import re
 import youtube_dl
 
 
@@ -65,6 +66,7 @@ class Song:
         self.filename = filename
         self._volume = volume
 
+        self.id = data.get("id")
         self.uploader = data.get("uploader")
         self.uploader_url = data.get("uploader_url")
         date = data.get("upload_date")
@@ -82,6 +84,11 @@ class Song:
         self.likes = data.get("like_count")
         self.dislikes = data.get("dislike_count")
         self.stream_url = data.get("url")
+
+        # database stuff
+        self.database = False
+        self.registered_at = None
+        self.last_updated = None
 
     def __str__(self):
         return f"`{self.title}`"
@@ -105,6 +112,46 @@ class Song:
         self.source = None
 
     @classmethod
+    def from_record(cls, record, ctx):
+        filename = record["filename"]
+        info = record["info"]
+        registered_at = record["registered_at"]
+        last_updated = record["last_updated"]
+
+        self = cls(ctx, data=info, filename=filename)
+
+        self.database = True
+        self.registered_at = registered_at
+        self.last_updated = last_updated
+
+        return self
+
+    @classmethod
+    async def fetch_from_database(cls, ctx, song_id, extractor="youtube"):
+        query = """SELECT * FROM songs
+                   WHERE song_id=$1 AND extractor=$2;
+                """
+
+        record = await ctx.db.fetchrow(query, song_id, extractor)
+
+        if not record:
+            return None
+
+        return cls.from_record(record, ctx)
+
+    @staticmethod
+    def parse_youtube_id(search):
+        yt_urls = re.compile(
+            r"(?:https?://)?(?:www.)?(?:youtube.com|youtu.be)/(?:watch\?v=)?([^\s]+)"
+        )
+        match = yt_urls.match(search)
+
+        if match:
+            return match.groups()[0]
+
+        return None
+
+    @classmethod
     async def get_song(
         cls,
         ctx: commands.Context,
@@ -117,11 +164,23 @@ class Song:
 
         log.info(f"Searching for '{search}'")
 
+        song_id = cls.parse_youtube_id(search)
+
+        log.info(f"Search database for id: {song_id or search}")
+        song = await cls.fetch_from_database(ctx, song_id or search)
+
+        if song:
+            log.info(f"Found song in database: {song.id}")
+            return song
+
+        log.info("Song not in database, fetching info from youtube")
+
         partial = functools.partial(
             cls.ytdl.extract_info, search, download=False, process=False
         )
         try:
             data = await loop.run_in_executor(None, partial)
+
         except youtube_dl.DownloadError as e:
             print(e)
             if send_errors:
@@ -148,6 +207,15 @@ class Song:
         webpage_url = process_info["webpage_url"]
 
         log.info(f"Found URL '{webpage_url}'")
+
+        song_id = process_info.get("id")
+        extractor = process_info.get("extractor")
+
+        song = await cls.fetch_from_database(ctx, song_id, extractor)
+
+        if song:
+            log.info(f"Song '{extractor}-{song_id}' in database, skipping further extraction")
+            return song
 
         # YTDL is weird about file extensions
         # Since the file extension is always .NA, I'll have to
@@ -205,7 +273,24 @@ class Song:
                         raise YTDLError(
                             "Couldn't retrieve any matches for `{}`".format(webpage_url)
                         )
+
             filename = cls.ytdl.prepare_filename(info)
+
+            song_id = info.get("id")
+            extractor = info.get("extractor")
+
+            song = await cls.fetch_from_database(ctx, song_id, extractor)
+
+            if not song:
+                log.info(f"Song '{extractor}-{song_id}' not in database, inserting")
+                query = """INSERT INTO songs (filename, title, song_id, extractor, info)
+                           VALUES ($1, $2, $3, $4, $5::jsonb)
+                        """
+
+                await ctx.db.execute(
+                    query, filename, info.get("title"), song_id, extractor, info
+                )
+
             return cls(
                 ctx,
                 data=info,
@@ -255,7 +340,9 @@ class Song:
                 log.info("Downloading song...")
                 download = True
 
-            full = functools.partial(cls.ytdl.extract_info, webpage_url, download=download)
+            full = functools.partial(
+                cls.ytdl.extract_info, webpage_url, download=download
+            )
             try:
                 data = await loop.run_in_executor(None, full)
             except youtube_dl.DownloadError:
