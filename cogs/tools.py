@@ -124,6 +124,16 @@ class Tools(commands.Cog):
         with open("snipe_ignored.json", "r") as f:
             self.snipe_ignored = json.load(f)
 
+    @commands.command(aliases=["inrole"])
+    async def hasrole(self, ctx, *, role: discord.Role):
+        role_members = []
+
+        for member in sorted(role.members, key=lambda m: m.name.lower()):
+            role_members.append(f"{member} - ID: {member.id}")
+
+        pages = ctx.pages(role_members, per_page=10, title=f"Members with role '{role}'")
+        await pages.start(ctx)
+
     @commands.command(aliases=["newmembers"])
     @commands.guild_only()
     async def newjoins(self, ctx, *, count=5):
