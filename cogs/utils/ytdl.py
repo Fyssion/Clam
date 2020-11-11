@@ -67,6 +67,7 @@ class Song:
         self._volume = volume
 
         self.id = data.get("id")
+        self.extractor = data.get("extractor")
         self.uploader = data.get("uploader")
         self.uploader_url = data.get("uploader_url")
         date = data.get("upload_date")
@@ -127,6 +128,33 @@ class Song:
         return self
 
     @classmethod
+    async def get_song_from_db(cls, ctx, search, *, loop):
+        loop = loop or asyncio.get_event_loop()
+
+        log.info(f"Searching database for '{search}'")
+
+        song_id = cls.parse_youtube_id(search)
+
+        log.info(f"Searching database for id: {song_id or search}")
+        song = await cls.fetch_from_database(ctx, song_id or search)
+
+        if song:
+            log.info(f"Found song in database: {song.id}")
+            return song
+
+        query = """SELECT *
+                   FROM songs
+                   ORDER BY similarity(title, $1) DESC
+                """
+
+        record = await ctx.db.fetchrow(query, search)
+
+        if not record:
+            return await ctx.send(f":x: Could not find a match for `{search}`")
+
+        return cls.from_record(record, ctx)
+
+    @classmethod
     async def fetch_from_database(cls, ctx, song_id, extractor="youtube"):
         query = """SELECT * FROM songs
                    WHERE song_id=$1 AND extractor=$2;
@@ -166,14 +194,14 @@ class Song:
 
         song_id = cls.parse_youtube_id(search)
 
-        log.info(f"Search database for id: {song_id or search}")
+        log.info(f"Searching database for id: {song_id or search}")
         song = await cls.fetch_from_database(ctx, song_id or search)
 
         if song:
             log.info(f"Found song in database: {song.id}")
             return song
 
-        log.info("Song not in database, fetching info from youtube")
+        log.info("Song not in database, searching youtube")
 
         partial = functools.partial(
             cls.ytdl.extract_info, search, download=False, process=False
@@ -206,10 +234,12 @@ class Song:
 
         webpage_url = process_info["webpage_url"]
 
-        log.info(f"Found URL '{webpage_url}'")
+        log.info(f"Found URL for '{webpage_url}'")
 
         song_id = process_info.get("id")
         extractor = process_info.get("extractor")
+
+        print(song_id, extractor)
 
         song = await cls.fetch_from_database(ctx, song_id, extractor)
 
@@ -290,6 +320,9 @@ class Song:
                 await ctx.db.execute(
                     query, filename, info.get("title"), song_id, extractor, info
                 )
+
+            else:
+                log.info(f"Song '{extractor}-{song_id}' is already in database, skipping insertion")
 
             return cls(
                 ctx,

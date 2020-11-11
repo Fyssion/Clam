@@ -11,11 +11,11 @@ import sys
 import os
 import traceback
 import youtube_dl
+import datetime
 import importlib
 import enum
 
-from .utils import db, ytdl, music_player
-from .utils.colors import PRIMARY
+from .utils import db, ytdl, music_player, colors
 from .utils.emojis import GREEN_TICK
 
 
@@ -75,7 +75,7 @@ class Music(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.emoji = ":notes:"
+        self.emoji = "\N{MULTIPLE MUSICAL NOTES}"
         self.private = True
         self.private_user_overrides = [612816777994305566]
         self.private_guild_overrides = [
@@ -241,9 +241,24 @@ class Music(commands.Cog):
         await ctx.send("Disconnected bot from voice.")
 
     @commands.Cog.listener("on_voice_state_update")
+    async def auto_self_deafen(self, member, before, after):
+        """Automatically self-deafen when connecting to a voice channel"""
+        if member != self.bot.user:
+            return
+
+        player = self.players.get(member.guild.id)
+
+        if not player or not player.voice or not player.voice.channel:
+            return
+
+        if not before.channel and after.channel:
+            await member.guild.change_voice_state(channel=player.voice.channel, self_deaf=True)
+
+    @commands.Cog.listener("on_voice_state_update")
     async def on_voice_leave(self, member, before, after):
         if member.bot:
             return
+
         player = self.players.get(member.guild.id)
 
         if not player:
@@ -338,7 +353,7 @@ class Music(commands.Cog):
         aliases=["connect"],
         invoke_without_subcommand=True,
     )
-    async def _join(self, ctx):
+    async def join(self, ctx):
         """Joins a voice channel."""
         if not ctx.player:
             player = self.create_player(ctx)
@@ -354,6 +369,7 @@ class Music(commands.Cog):
 
         v_emote = "<:voice_channel:665577300552843294>"
         t_emote = "<:text_channel:661798072384225307>"
+
         await ctx.send(
             f"**Connected to ** {v_emote}`{destination}` and **bound to** {t_emote}`{ctx.channel}`"
         )
@@ -364,7 +380,7 @@ class Music(commands.Cog):
             If no channel was specified, it joins your channel.",
     )
     @is_dj()
-    async def _summon(self, ctx, *, channel: discord.VoiceChannel = None):
+    async def summon(self, ctx, *, channel: discord.VoiceChannel = None):
         if not ctx.player:
             player = self.create_player(ctx)
 
@@ -380,6 +396,7 @@ class Music(commands.Cog):
         else:
             ctx.player.voice = await destination.connect()
             await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
+
         v_emote = "<:voice_channel:665577300552843294>"
         t_emote = "<:text_channel:661798072384225307>"
         await ctx.send(
@@ -399,7 +416,7 @@ class Music(commands.Cog):
         aliases=["disconnect"],
     )
     @is_dj()
-    async def _leave(self, ctx):
+    async def leave(self, ctx):
         """Clears the queue and leaves the voice channel."""
         if not ctx.player:
             return await ctx.send("This server doesn't have a player.")
@@ -411,27 +428,10 @@ class Music(commands.Cog):
             else:
                 return await ctx.send("Not connected to any voice channel.")
 
-        if len(ctx.player.songs) > 0:
-            songs = ctx.player.songs.to_list()
-            songs = [s.url for s in songs]
-            songs.insert(0, ctx.player.current.url)
-
-        else:
-            songs = None
-
         await ctx.player.stop()
-
         del self.players[ctx.guild.id]
 
-        if songs:
-            url = await self.post("\n".join(songs))
-            if url is None:
-                return await ctx.send("Sorry, I couldn't save your queue.")
-
-            await ctx.send(
-                "**I saved your queue!**\n"
-                f"To resume where you left off, use this link with the `playbin` command: **{url}**"
-            )
+        await ctx.send(ctx.tick(True, "Disconnected and cleared queue."))
 
     def get_volume_emoji(self, volume):
         if volume >= 50:
@@ -440,7 +440,7 @@ class Music(commands.Cog):
             return ":sound:"
 
     @commands.command(name="volume")
-    async def _volume(self, ctx, *, volume: int = None):
+    async def volume(self, ctx, *, volume: int = None):
         """Sets the volume of the player. Must be between 1 and 100."""
         if not ctx.player:
             return await ctx.send("This server doesn't have a player.")
@@ -466,7 +466,7 @@ class Music(commands.Cog):
         name="now",
         aliases=["current", "playing", "np"],
     )
-    async def _now(self, ctx):
+    async def now(self, ctx):
         """Displays the currently playing song."""
         if not ctx.player:
             return await ctx.send("This server doesn't have a player.")
@@ -486,7 +486,7 @@ class Music(commands.Cog):
 
     @commands.command(name="pause")
     @is_dj()
-    async def _pause(self, ctx):
+    async def pause(self, ctx):
         """Pauses the currently playing song."""
         if not ctx.player:
             return await ctx.send("This server doesn't have a player.")
@@ -501,7 +501,7 @@ class Music(commands.Cog):
         aliases=["unpause"],
     )
     @is_dj()
-    async def _resume(self, ctx):
+    async def resume(self, ctx):
         """Resumes a currently paused song."""
         if not ctx.player:
             return await ctx.send("This server doesn't have a player.")
@@ -513,42 +513,25 @@ class Music(commands.Cog):
 
     @commands.command(name="stop")
     @is_dj()
-    async def _stop(self, ctx):
+    async def stop(self, ctx):
         """Stops playing song and clears the queue."""
         if not ctx.player:
             return await ctx.send("This server doesn't have a player.")
 
-        if len(ctx.player.songs) > 0:
-            songs = ctx.player.songs.to_list()
-            songs = [s.url for s in songs]
-            songs.insert(0, ctx.player.current.url)
-        else:
-            songs = None
         if ctx.player.is_playing:
             ctx.player.voice.stop()
-
-        filenames = [s.filename for s in ctx.player.songs._queue]
-        filenames.insert(0, ctx.player.current.filename)
 
         ctx.player.songs.clear()
         ctx.player.loop = False
         ctx.player.loop_queue = False
 
-        await ctx.send("**:stop_button: Song stopped and queue cleared.**")
-        if songs:
-            url = await self.post("\n".join(songs))
-            if url is None:
-                return await ctx.send("Sorry, I couldn't save your queue.")
-            await ctx.send(
-                "**I saved your queue!**\n"
-                f"To resume where you left off, use this link with the `playbin` command: **{url}**"
-            )
+        await ctx.send("**\N{BLACK SQUARE FOR STOP} Song stopped and queue cleared.**")
 
     @commands.command(
         name="skip",
         aliases=["next"],
     )
-    async def _skip(self, ctx):
+    async def skip(self, ctx):
         """Vote to skip a song. The requester can automatically skip."""
         if not ctx.player:
             return await ctx.send("This server doesn't have a player.")
@@ -630,17 +613,17 @@ class Music(commands.Cog):
 
         ctx.player.songs.clear()
 
-        await ctx.send("**:wastebasket: Cleared queue**")
+        await ctx.send("**\N{WASTEBASKET} Cleared queue**")
 
     @commands.command(name="shuffle")
-    async def _shuffle(self, ctx):
+    async def shuffle(self, ctx):
         """Shuffles the queue"""
         if not ctx.player:
             return await ctx.send("This server doesn't have a player.")
 
         async def shuffle_queue():
             ctx.player.songs.shuffle()
-            await ctx.send("**:twisted_rightwards_arrows: Shuffled songs**")
+            await ctx.send("**\N{TWISTED RIGHTWARDS ARROWS} Shuffled songs**")
 
         if len(ctx.player.songs) == 0:
             return await ctx.send("Queue is empty. Nothing to shuffle!")
@@ -659,7 +642,7 @@ class Music(commands.Cog):
         async def remove_song(index):
             to_be_removed = ctx.player.songs[index - 1].title
             ctx.player.songs.remove(index - 1)
-            await ctx.send(f"**:wastebasket: Removed** `{to_be_removed}`")
+            await ctx.send(f"**\N{WASTEBASKET} Removed** `{to_be_removed}`")
 
         if len(ctx.player.songs) == 0:
             return await ctx.send("Queue is empty. Nothing to remove!")
@@ -694,7 +677,7 @@ class Music(commands.Cog):
         # currently under maintenance. Check back later.")
 
         if not ctx.player.is_playing and not ctx.player.loop:
-            return await ctx.send("Nothing being played at the moment.")
+            return await ctx.send("Nothing is being played at the moment.")
 
         # Inverse boolean value to loop and unloop.
         ctx.player.loop = not ctx.player.loop
@@ -725,9 +708,9 @@ class Music(commands.Cog):
         ctx.player.loop = False
 
         if ctx.player.loop_queue:
-            await ctx.send(f"**:repeat: Now looping queue**")
+            await ctx.send("**:repeat: Now looping queue**")
         else:
-            await ctx.send(f"**:repeat: :x: No longer looping queue**")
+            await ctx.send("**:repeat: :x: No longer looping queue**")
 
     @commands.command(description="Start the current song over from the beginning")
     async def startover(self, ctx):
@@ -769,7 +752,7 @@ class Music(commands.Cog):
             )
         else:
             em = discord.Embed(
-                title="**:page_facing_up: Enqueued:**",
+                title="**\N{PAGE FACING UP} Enqueued:**",
                 color=0xFF0000,
             )
             description = ""
@@ -807,7 +790,7 @@ class Music(commands.Cog):
 
     async def play_song(self, ctx, location_type, query):
         if not ctx.player.voice:
-            await ctx.invoke(self._join)
+            await ctx.invoke(self.join)
 
         if query.startswith("<") and query.endswith(">"):
             query = query.strip("<>")
@@ -825,7 +808,10 @@ class Music(commands.Cog):
         async with ctx.typing():
             try:
                 async with timeout(180):  # 3m
-                    song = await ytdl.Song.get_song(ctx, query, loop=self.bot.loop)
+                    if location_type is LocationType.db:
+                        song = await ytdl.Song.get_song_from_db(ctx, query, loop=self.bot.loop)
+                    else:
+                        song = await ytdl.Song.get_song(ctx, query, loop=self.bot.loop)
 
             except ytdl.YTDLError as e:
                 print(e)
@@ -843,10 +829,10 @@ class Music(commands.Cog):
                 await ctx.player.songs.put(song)
 
                 if ctx.player.is_playing:
-                    await ctx.send(f"**:page_facing_up: Enqueued** {str(song)}")
+                    await ctx.send(f"**\N{PAGE FACING UP} Enqueued** {str(song)}")
 
                 elif not ctx.player._notify:
-                    await ctx.send(f"**:notes: Now playing** `{song.title}`")
+                    await ctx.send(f"**\N{MULTIPLE MUSICAL NOTES} Now playing** `{song.title}`")
 
     async def get_haste(self, url="https://mystb.in"):
         parsed = urlparse(url)
@@ -917,7 +903,7 @@ class Music(commands.Cog):
                     failed_songs += 1
 
         em = discord.Embed(
-            title="**:page_facing_up: Enqueued:**",
+            title="**\N{PAGE FACING UP} Enqueued:**",
             color=discord.Color.green(),
         )
         description = ""
@@ -952,7 +938,7 @@ class Music(commands.Cog):
             ctx.player = player
 
         if not ctx.player.voice:
-            await ctx.invoke(self._join)
+            await ctx.invoke(self.join)
 
         if not self.URLS.match(url):
             raise commands.BadArgument("You must provide a valid URL.")
@@ -1066,7 +1052,7 @@ class Music(commands.Cog):
 
         await ctx.send("Successfully connected to YouTube with youtube_dl")
 
-    @_join.before_invoke
+    @join.before_invoke
     @play.before_invoke
     async def ensure_player(self, ctx):
         if not ctx.author.voice or not ctx.author.voice.channel:
@@ -1081,6 +1067,60 @@ class Music(commands.Cog):
                     else ""
                 )
                 raise commands.CommandError(f"Bot is in another voice channel.{hint}")
+
+    # music db management commands
+
+    @commands.group(aliases=["mdb"], invoke_without_command=True)
+    @commands.is_owner()
+    async def musicdb(self, ctx):
+        """Commands to manage the music db"""
+        query = "SELECT COUNT(*), SUM(plays) FROM songs;"
+        count, plays = await ctx.db.fetchrow(query)
+
+        await ctx.send(f"Music database contains **{count} songs** with a total of **{plays} plays**.")
+
+    @musicdb.command(name="stats")
+    async def musicdb_stats(self, ctx):
+        await ctx.trigger_typing()
+
+        places = (
+            "`1.`",
+            "`2.`",
+            "`3.`",
+            "`4.`",
+            "`5.`",
+        )
+
+        query = "SELECT COUNT(*), SUM(plays), MIN(registered_at) FROM songs;"
+        count = await ctx.db.fetchrow(query)
+
+        em = discord.Embed(
+            title="Song Stats",
+            color=colors.PRIMARY,
+            timestamp=count[2] or datetime.datetime.utcnow(),
+        )
+
+        em.description = f"Music database contains **{count[0]} songs** with a total of **{count[1]} plays**."
+        em.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
+        em.set_footer(text=f"First song registered")
+
+        query = """SELECT title, plays
+            FROM songs
+            ORDER BY plays DESC
+            LIMIT 5;
+        """
+
+        records = await ctx.db.fetch(query)
+
+        formatted = []
+        for (i, (title, plays)) in enumerate(records):
+            formatted.append(f"{places[i]} **{title}** ({plays} plays)")
+
+        value = "\n".join(formatted) or "None"
+
+        em.add_field(name=":trophy: Top Songs", value=value, inline=True)
+
+        await ctx.send(embed=em)
 
 
 def setup(bot):
