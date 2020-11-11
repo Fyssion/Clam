@@ -16,7 +16,8 @@ import importlib
 import enum
 
 from .utils import db, ytdl, music_player, colors
-from .utils.emojis import GREEN_TICK
+from .utils.emojis import GREEN_TICK, LOADING
+from cogs.utils.menus import UpdatingMessage
 
 
 log = logging.getLogger("clam.music")
@@ -294,11 +295,13 @@ class Music(commands.Cog):
                 url = await self.post("\n".join(songs))
                 if url is None:
                     return await player.text_channel.send(
-                        "Sorry, I couldn't save your queue."
+                        "There was an error while automatically your saving queue. Sorry."
                     )
+
+                prefix = self.bot.guild_prefix(member.guild)
                 await player.text_channel.send(
                     "**I saved your queue!**\n"
-                    f"To resume where you left off, use this link with the `playbin` command: **{url}**"
+                    f"To resume where you left off, use: {prefix}playbin {url}"
                 )
         player.resume()
 
@@ -792,7 +795,7 @@ class Music(commands.Cog):
         if not ctx.player.voice:
             await ctx.invoke(self.join)
 
-        if location_type is location_type.bin:
+        if location_type is LocationType.bin:
             return await ctx.invoke(self.playbin, query)
 
         if query.startswith("<") and query.endswith(">"):
@@ -827,7 +830,7 @@ class Music(commands.Cog):
 
             else:
                 if not song:
-                    return await ctx.send("Sorry. I couldn't fetch that song.")
+                    return await ctx.send("I couldn't fetch that song. Sorry.")
 
                 await ctx.player.songs.put(song)
 
@@ -862,6 +865,14 @@ class Music(commands.Cog):
     async def hastebin_playlist(self, ctx, search):
         bin_log.info(f"Fetching from bin: '{search}'")
 
+        em = discord.Embed(title="Fetching from bin", color=discord.Color.blue())
+        em.set_footer(text="This may take some time.")
+        progress_message = UpdatingMessage(embed=em)
+        progress_message.add_label(LOADING, "Fetch from bin")
+        progress_message.add_label(LOADING, "Find and enqueue songs")
+
+        await progress_message.start(ctx)
+
         output = await self.get_haste(search)
         if not output or output == """{"message":"Document not found."}""":
             return await ctx.send("Bin returned an error: `Document not found.`")
@@ -884,10 +895,15 @@ class Music(commands.Cog):
                 bin_log.info("User denied bin. Cancelling...")
                 return await ctx.send("Cancelled.")
 
+        length = len(videos)
+
+        progress_message.change_label(0, emoji=GREEN_TICK)
+        progress_message.change_label(1, text=f"Find and enqueue songs (0/{length})")
+
         bin_log.info(f"Fetching {len(videos)} songs...")
         playlist = []
         failed_songs = 0
-        for video in videos:
+        for i, video in enumerate(videos):
             try:
                 song = await ytdl.Song.get_song(
                     ctx, video, loop=self.bot.loop, send_errors=False
@@ -904,6 +920,10 @@ class Music(commands.Cog):
                     playlist.append(song)
                 else:
                     failed_songs += 1
+
+            progress_message.change_label(1, text=f"Find and enqueue songs ({i+1}/{length})")
+
+        progress_message.change_label(1, emoji=GREEN_TICK)
 
         em = discord.Embed(
             title="**\N{PAGE FACING UP} Enqueued:**",
@@ -946,10 +966,6 @@ class Music(commands.Cog):
         if not self.URLS.match(url):
             raise commands.BadArgument("You must provide a valid URL.")
 
-        await ctx.send(
-            "**:globe_with_meridians: Fetching from bin** "
-            f"`{url}`\nThis make take awhile depending on amount of songs."
-        )
         await self.hastebin_playlist(ctx, url)
 
     @commands.command(

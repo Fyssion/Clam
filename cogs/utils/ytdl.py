@@ -27,6 +27,22 @@ class Song:
         "audioformat": "mp3",
         "outtmpl": "cache/%(extractor)s-%(id)s.%(ext)s",
         "restrictfilenames": True,
+        "noplaylist": True,
+        "nocheckcertificate": True,
+        "ignoreerrors": False,
+        "logtostderr": False,
+        "quiet": True,
+        "no_warnings": True,
+        "default_search": "auto",
+        "source_address": "0.0.0.0",
+    }
+
+    YTDL_PLAYLIST_OPTIONS = {
+        "format": "bestaudio/best",
+        "extractaudio": True,
+        "audioformat": "mp3",
+        "outtmpl": "cache/%(extractor)s-%(id)s.%(ext)s",
+        "restrictfilenames": True,
         "noplaylist": False,
         "nocheckcertificate": True,
         "ignoreerrors": False,
@@ -47,6 +63,7 @@ class Song:
     }
 
     ytdl = youtube_dl.YoutubeDL(YTDL_OPTIONS)
+    playlist_ytdl = youtube_dl.YoutubeDL(YTDL_PLAYLIST_OPTIONS)
 
     def __init__(
         self,
@@ -210,9 +227,11 @@ class Song:
             data = await loop.run_in_executor(None, partial)
 
         except youtube_dl.DownloadError as e:
-            print(e)
+            log.warning(f"Error while searching for '{search}': {e}")
             if send_errors:
-                await ctx.send(f"**:x: Error while searching for** `{search}`")
+                await ctx.send(
+                    f"**:x: Error while searching for** `{search}`\n```\n{e}\n```"
+                )
             return
 
         if data is None:
@@ -239,12 +258,12 @@ class Song:
         song_id = process_info.get("id")
         extractor = process_info.get("extractor")
 
-        print(song_id, extractor)
-
         song = await cls.fetch_from_database(ctx, song_id, extractor)
 
         if song:
-            log.info(f"Song '{extractor}-{song_id}' in database, skipping further extraction")
+            log.info(
+                f"Song '{extractor}-{song_id}' in database, skipping further extraction"
+            )
             return song
 
         # YTDL is weird about file extensions
@@ -281,9 +300,11 @@ class Song:
         try:
             processed_info = await loop.run_in_executor(None, partial)
         except youtube_dl.DownloadError as e:
-            print(e)
+            log.warning(f"Error while downloading '{webpage_url}': {e}")
             if send_errors:
-                await ctx.send(f"**:x: Error while downloading** `{webpage_url}`")
+                await ctx.send(
+                    f"**:x: Error while downloading** `{webpage_url}`\n``\n{e}\n```"
+                )
                 return
         else:
             if processed_info is None:
@@ -322,7 +343,9 @@ class Song:
                 )
 
             else:
-                log.info(f"Song '{extractor}-{song_id}' is already in database, skipping insertion")
+                log.info(
+                    f"Song '{extractor}-{song_id}' is already in database, skipping insertion"
+                )
 
             return cls(
                 ctx,
@@ -339,7 +362,7 @@ class Song:
         log.info("Searching for playlist")
 
         partial = functools.partial(
-            cls.ytdl.extract_info, search, download=False, process=False
+            cls.playlist_ytdl.extract_info, search, download=False, process=False
         )
         unproccessed = await loop.run_in_executor(None, partial)
 
@@ -365,7 +388,7 @@ class Song:
             webpage_url = video["url"]
             log.info(f"Song: '{webpage_url}'")
 
-            filename = cls.ytdl.prepare_filename(video)[:-3] + ".webm"
+            filename = cls.playlist_ytdl.prepare_filename(video)[:-3] + ".webm"
             if os.path.isfile(filename):
                 log.info("Song is already downloaded. Skipping download.")
                 download = False
@@ -374,7 +397,7 @@ class Song:
                 download = True
 
             full = functools.partial(
-                cls.ytdl.extract_info, webpage_url, download=download
+                cls.playlist_ytdl.extract_info, webpage_url, download=download
             )
             try:
                 data = await loop.run_in_executor(None, full)
@@ -397,7 +420,7 @@ class Song:
                             await ctx.send(
                                 f"Couldn't retrieve any matches for `{webpage_url}`"
                             )
-                filename = cls.ytdl.prepare_filename(info)
+                filename = cls.playlist_ytdl.prepare_filename(info)
                 source = cls(
                     ctx,
                     data=info,
