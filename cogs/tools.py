@@ -481,7 +481,7 @@ class Tools(commands.Cog):
         with open("snipe_ignored.json", "w") as f:
             json.dump(self.snipe_ignored, f)
 
-        await ctx.send(ctx.tick(True, "Disabled sniped messages for this sever"))
+        await ctx.send(ctx.tick(True, "Disabled sniped messages for this server"))
 
     @snipe.command(name="enable")
     @checks.has_permissions(manage_guild=True)
