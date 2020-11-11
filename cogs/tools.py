@@ -18,7 +18,7 @@ import typing
 import dateparser
 import asyncio
 
-from .utils import colors, emojis, human_time
+from .utils import colors, emojis, human_time, checks
 from .utils.human_time import plural
 
 
@@ -27,6 +27,13 @@ def snowstamp(snowflake):
     timestamp /= 1000
 
     return d.utcfromtimestamp(timestamp).strftime("%b %d, %Y at %#I:%M %p")
+
+
+def can_snipe():
+    async def predicate(ctx):
+        return str(ctx.guild.id) not in ctx.cog.snipe_ignored
+
+    return commands.check(predicate)
 
 
 class GlobalUser(commands.Converter):
@@ -430,6 +437,7 @@ class Tools(commands.Cog):
         description="Get the previous or a specific deleted message in this channel",
         invoke_without_command=True,
     )
+    @can_snipe()
     async def snipe(self, ctx, message_id: int = None):
         if str(ctx.author.id) in self.snipe_ignored:
             return await ctx.send(
@@ -459,6 +467,36 @@ class Tools(commands.Cog):
             snipe = sniped[0]
 
         await self.send_sniped_message(ctx, snipe)
+
+    @snipe.command(name="disable", aliases=["goaway"])
+    @checks.has_permissions(manage_guild=True)
+    async def sniped_disable(self, ctx):
+        """Disable sniped messages for this server"""
+        if str(ctx.guild.id) in self.snipe_ignored:
+            return await ctx.send(
+                f"Snipe is already disabled. To enable, use `{ctx.prefix}snipe enable`"
+            )
+
+        self.snipe_ignored.append(str(ctx.guild.id))
+        with open("snipe_ignored.json", "w") as f:
+            json.dump(self.snipe_ignored, f)
+
+        await ctx.send(ctx.tick(True, "Disabled sniped messages for this sever"))
+
+    @snipe.command(name="enable")
+    @checks.has_permissions(manage_guild=True)
+    async def sniped_enable(self, ctx):
+        """Enable sniped messages for this server"""
+        if str(ctx.guild.id) not in self.snipe_ignored:
+            return await ctx.send(
+                f"Snipe is enabled. To disable, use `{ctx.prefix}snipe disable`"
+            )
+
+        self.snipe_ignored.pop(self.snipe_ignored.index(str(ctx.guild.id)))
+        with open("snipe_ignored.json", "w") as f:
+            json.dump(self.snipe_ignored, f)
+
+        await ctx.send(ctx.tick(True, "Enabled sniped messages for this server"))
 
     @snipe.command(
         name="optout",
@@ -498,25 +536,29 @@ class Tools(commands.Cog):
     @commands.is_owner()
     async def snipe_ignored(self, ctx):
         if not self.snipe_ignored:
-            return await ctx.send("No ignored users")
+            return await ctx.send("No ignored entities")
 
-        users = []
+        entities = []
 
-        for user_id in self.snipe_ignored:
-            user_id = int(user_id)
-            user = self.bot.get_user(user_id)
+        for entity_id in self.snipe_ignored:
+            entity_id = int(entity_id)
+            user = self.bot.get_user(entity_id)
 
             if not user:
-                users.append(f"User with an ID of {user_id}")
+                guild = self.bot.get_guild(entity_id)
+
+                if guild:
+                    entities.append(f"Guild: {guild} (ID: {guild.id})")
+                entities.append(f"User or guild with an ID of {entity_id}")
 
             else:
-                users.append(f"{user} (ID: {user.id})")
+                entities.append(f"User: {user} (ID: {user.id})")
 
         pages = ctx.pages(
-            users,
+            entities,
             per_page=10,
-            title="Snipe Ignored Users",
-            description="Users that have opted out of sniped messages",
+            title="Snipe Ignored Entities",
+            description="Entities that have opted out of sniped messages",
         )
         await pages.start(ctx)
 
@@ -524,6 +566,7 @@ class Tools(commands.Cog):
         description="Get all sniped messages in this channel",
         invoke_without_command=True,
     )
+    @can_snipe()
     async def sniped(self, ctx):
         if str(ctx.author.id) in self.snipe_ignored:
             return await ctx.send(
@@ -582,7 +625,7 @@ class Tools(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):
-        if str(message.author.id) in self.snipe_ignored:
+        if str(message.author.id) in self.snipe_ignored or str(message.guild.id) in self.snipe_ignored:
             return
 
         now = d.utcnow()
@@ -593,7 +636,7 @@ class Tools(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
-        if str(after.author.id) in self.snipe_ignored:
+        if str(after.author.id) in self.snipe_ignored or str(after.guild.id) in self.snipe_ignored:
             return
 
         if before.content == after.content:
