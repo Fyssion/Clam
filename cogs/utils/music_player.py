@@ -1,4 +1,4 @@
-from discord.ext import commands, menus
+from discord.ext import commands
 import discord
 
 import asyncio
@@ -14,47 +14,6 @@ from .ytdl import Song
 
 
 log = logging.getLogger("clam.music.player")
-
-
-def hover_link(ctx, msg, text="`?`"):
-    return (
-        f"[{text}](https://www.discordapp.com/"
-        f"channels/{ctx.guild.id}/{ctx.channel.id} "
-        f""""{msg}")"""
-    )
-
-
-class SearchPages(menus.ListPageSource):
-    def __init__(self, data, total_duration):
-        super().__init__(data, per_page=10)
-        self.total_duration = total_duration
-
-    async def format_page(self, menu, entries):
-        offset = menu.current_page * self.per_page
-        ctx = menu.ctx
-
-        hover = hover_link(ctx, "Song Title", text="Song")
-        queue = f"`#` {hover} `Duration` @Requester\n\n"
-        for i, song in enumerate(entries, start=offset):
-            queue += f"`{i+1}.` [{song.title}]({song.url}) `{song.duration}` {song.requester.mention}\n"
-
-        em = discord.Embed(
-            title="**:page_facing_up: Queue**",
-            description=f"**{len(ctx.player.songs)} Song(s):**\n{queue}",
-            color=discord.Color.green(),
-        )
-        if ctx.player.loop_queue:
-            em.title += " (:repeat: looping)"
-            em.description = "**:repeat: Loop queue is on**\n" + em.description
-        if ctx.player.loop:
-            em.title += " (:repeat_one: looping)"
-            em.description = "**:repeat_one: Loop single is on**\n" + em.description
-        em.description += (
-            f"\nTotal duration: {self.total_duration}\n\n"
-            f"To see what's currently playing, use `{ctx.prefix}now`"
-        )
-        em.set_footer(text=f"Page {menu.current_page+1} of {self.get_max_pages()}")
-        return em
 
 
 class VoiceError(commands.CommandError):

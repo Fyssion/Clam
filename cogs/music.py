@@ -15,7 +15,7 @@ import datetime
 import importlib
 import enum
 
-from .utils import db, ytdl, music_player, colors
+from .utils import db, ytdl, music_player, colors, human_time
 from .utils.emojis import GREEN_TICK, RED_TICK, LOADING
 from cogs.utils.menus import UpdatingMessage
 
@@ -42,6 +42,73 @@ class SongsTable(db.Table, table_name="songs"):
         statement = super().create_table(exists_ok=exists_ok)
         sql = "CREATE INDEX IF NOT EXISTS songs_title_trgm_idx ON songs USING GIN (title gin_trgm_ops);"
         return statement + "\n" + sql
+
+
+def hover_link(ctx, msg, text="`?`"):
+    return (
+        f"[{text}](https://www.discordapp.com/"
+        f"channels/{ctx.guild.id}/{ctx.channel.id} "
+        f""""{msg}")"""
+    )
+
+
+class QueuePages(menus.ListPageSource):
+    def __init__(self, player):
+        super().__init__(player.songs, per_page=10)
+        self.player = player
+
+        queue = player.songs._queue
+        total_duration = sum(int(s.data.get("duration")) for s in queue)
+        self.total_duration = ytdl.Song.parse_duration(total_duration)
+
+    def format_song(self, song):
+        return f"[{song.title}]({song.url}) `{song.duration}` {song.requester.mention}"
+
+    async def format_page(self, menu, entries):
+        offset = menu.current_page * self.per_page
+        ctx = menu.ctx
+        player = self.player
+        max_pages = self.get_max_pages()
+
+        hover = hover_link(ctx, "Song Title", text="Song")
+        queue = []
+
+        queue.append("Key:")
+        queue.append(f"`#` {hover} `Duration` @Requester\n")
+
+        if menu.current_page == 0:
+            queue.append(f"**Now Playing:**\n{self.format_song(player.current)}\n")
+
+        if ctx.player.songs:
+            queue.append(f"**{len(ctx.player.songs)} Song(s) Up Next:**")
+
+            for i, song in enumerate(entries, start=offset):
+                queue.append(f"`{i+1}.` {self.format_song(song)}")
+
+            if max_pages > 1 and menu.current_page + 1 != max_pages:
+                queue.append("\n*More songs on the next page -->*")
+
+        else:
+            queue.append("**No Songs Up Next**")
+
+        em = discord.Embed(
+            title="**:page_facing_up: Queue**",
+            description="\n".join(queue),
+            color=discord.Color.green(),
+        )
+        if ctx.player.loop_queue:
+            em.title += " (:repeat: looping)"
+            em.description = "**:repeat: Loop queue is on**\n\n" + em.description
+        if ctx.player.loop:
+            em.title += " (:repeat_one: looping)"
+            em.description = "**:repeat_one: Loop single is on**\n\n" + em.description
+
+        duration = f"\n\nTotal queue duration: {self.total_duration}\n" if player.songs else "\n\n"
+        em.description += (
+            f"{duration}To see more about what's currently playing, use `{ctx.prefix}now`"
+        )
+        em.set_footer(text=f"Page {menu.current_page+1} of {max_pages or 1}")
+        return em
 
 
 class LocationType(enum.Enum):
@@ -525,6 +592,10 @@ class Music(commands.Cog):
         """Vote to skip a song. The requester can automatically skip."""
         async def skip_song():
             await ctx.message.add_reaction("⏭")
+
+            if ctx.player.loop:
+                ctx.player.loop = False
+
             ctx.player.skip()
 
         if not ctx.player.is_playing:
@@ -555,15 +626,8 @@ class Music(commands.Cog):
     )
     async def queue(self, ctx):
         """Shows the player's queue. You can optionally select the page."""
-        if len(ctx.player.songs) == 0:
-            return await ctx.send("Queue is empty.")
-
-        queue = ctx.player.songs._queue
-        total_duration = sum(int(s.data.get("duration")) for s in queue)
-        total_duration = ytdl.Song.parse_duration(total_duration)
-
         pages = menus.MenuPages(
-            source=music_player.SearchPages(ctx.player.songs, total_duration),
+            source=QueuePages(ctx.player),
             clear_reactions_after=True,
         )
         return await pages.start(ctx)
@@ -1112,8 +1176,126 @@ class Music(commands.Cog):
 
         await ctx.send(f"Music database contains **{count} songs** with a total of **{plays} plays**.")
 
+    @musicdb.command(name="list", aliases=["all"])
+    @commands.is_owner()
+    async def musicdb_list(self, ctx):
+        """List all songs in the database"""
+        query = "SELECT id, title, plays, last_updated FROM songs;"
+        records = await ctx.db.fetch(query)
+
+        songs = []
+        for song_id, title, plays, last_updated in records:
+            formatted = human_time.human_timedelta(last_updated, brief=True, accuracy=1)
+            songs.append(f"{title} # ID: {song_id} ({plays } plays) last updated {formatted}")
+
+        pages = ctx.pages(songs, per_page=10, title="Music Database")
+        await pages.start(ctx)
+
+    @musicdb.command(name="search", aliases=["find"])
+    @commands.is_owner()
+    async def musicdb_search(self, ctx, *, song):
+        """Search the database for songs"""
+        query = """SELECT id, title, plays, last_updated
+                   FROM songs
+                   ORDER BY similarity(title, $1) DESC
+                   LIMIT 10;
+                """
+
+        records = await ctx.db.fetch(query, song)
+
+        songs = []
+        for song_id, title, plays, last_updated in records:
+            formatted = human_time.human_timedelta(last_updated, brief=True, accuracy=1)
+            songs.append(f"{title} # ID: {song_id} ({plays } plays) last updated {formatted}")
+
+        pages = ctx.pages(songs, per_page=10, title=f"Results for '{song}'")
+        await pages.start(ctx)
+
+    @musicdb.command(name="delete", aliases=["remove"])
+    @commands.is_owner()
+    async def musicdb_delete(self, ctx, song_id: int):
+        """Delete a song from the database"""
+        query = """DELETE FROM songs WHERE id=$1 RETURNING songs.title;"""
+        title = await ctx.db.fetchrow(query, song_id)
+
+        if not title:
+            return await ctx.send(f"No song with the id of `{song_id}`")
+
+        await ctx.send(f"Deleted song `{title}`")
+
+    async def get_song_info(self, ctx, old_info):
+        webpage_url = old_info["webpage_url"]
+
+        partial = functools.partial(
+            ytdl.Song.ytdl.extract_info, old_info["webpage_url"], download=False
+        )
+
+        try:
+            processed_info = await self.bot.loop.run_in_executor(None, partial)
+
+        except youtube_dl.DownloadError as e:
+            await ctx.send(
+                f"Error while fetching `{webpage_url}`\n```\n{e}\n```"
+            )
+            return
+
+        else:
+            if processed_info is None:
+                await ctx.send(f"Couldn't fetch `{webpage_url}`")
+                return
+
+            if "entries" not in processed_info:
+                info = processed_info
+
+            else:
+                info = None
+                while info is None:
+                    try:
+                        info = processed_info["entries"].pop(0)
+
+                    except IndexError as e:
+                        await ctx.send(
+                            f"Couldn't retrieve any matches for `{webpage_url}`\n```\n{e}\n```"
+                        )
+                        return
+
+        if not info:
+            await ctx.send(f"Couldn't fetch info for {webpage_url}")
+            return
+
+        return info
+
+    @musicdb.command(name="refresh", aliases=["update"])
+    @commands.is_owner()
+    async def musicdb_refresh(self, ctx, song_id: int):
+        """Refetch information about a song"""
+        query = "SELECT info FROM songs WHERE id=$1;"
+        record = await ctx.db.fetchrow(query, song_id)
+
+        if not record:
+            return await ctx.send(f"No song with the id of `{song_id}`")
+
+        old_info = record[0]
+
+        info = await self.get_song_info(ctx, old_info)
+
+        if not info:
+            return
+
+        query = """UPDATE songs
+                   SET info=$1, last_updated=(now() at time zone 'utc')
+                   WHERE id=$2;
+                """
+
+        await ctx.db.execute(query, info, song_id)
+
+        title = info["title"]
+        await ctx.send(ctx.tick(True, f"Updated info for `{title}`"))
+
     @musicdb.command(name="stats")
+    @commands.is_owner()
     async def musicdb_stats(self, ctx):
+        """View stats about the database"""
         await ctx.trigger_typing()
 
         places = (
@@ -1134,7 +1316,6 @@ class Music(commands.Cog):
         )
 
         em.description = f"Music database contains **{count[0]} songs** with a total of **{count[1]} plays**."
-        em.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
         em.set_footer(text=f"First song registered")
 
         query = """SELECT title, plays
