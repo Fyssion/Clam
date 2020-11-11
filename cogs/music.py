@@ -643,6 +643,10 @@ class Music(commands.Cog):
             return await ctx.send("This server doesn't have a player.")
 
         async def remove_song(index):
+            if index > len(ctx.player.songs):
+                length = len(ctx.player.songs)
+                raise commands.BadArgument(f"There is no song at position {index}. Queue length is only {length}.")
+
             to_be_removed = ctx.player.songs[index - 1].title
             ctx.player.songs.remove(index - 1)
             await ctx.send(f"**\N{WASTEBASKET} Removed** `{to_be_removed}`")
