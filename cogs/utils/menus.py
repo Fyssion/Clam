@@ -1,8 +1,127 @@
 import discord
 from discord.ext import menus
 
+import asyncio
+import datetime
+
 from cogs.utils.emojis import WAY_BACK, BACK, FORWARD, WAY_FOWARD, STOP, GREEN_TICK, RED_TICK
 from .tabulate import tabulate
+
+
+class MessageLabel:
+    __slots__ = ("emoji", "text")
+
+    def __init__(self, emoji, text):
+        self.emoji = emoji
+        self.text = text
+
+    def __repr__(self):
+        return f"MessageLablel<emoji='{self.emoji}', text='{self.text}'>"
+
+
+class UpdatingMessage:
+    def __init__(self, *, embed=None, labels=None):
+        self.context = None
+
+        self.changes = 0
+        self.labels = labels or []
+        self.embed = embed or discord.Embed()
+        self.original_description = self.embed.description
+        self.message = None
+
+        self._closed = False
+        self._last_update = None
+        self._updater_task = None
+
+    @property
+    def closed(self):
+        return self._closed
+
+    def render_embed(self):
+        em = self.embed
+
+        description = []
+
+        for label in self.labels:
+            description.append(f"{label.emoji} {label.text}")
+
+        description = "\n".join(description)
+
+        if self.original_description:
+            em.description = self.original_description + description
+
+        else:
+            em.description = description
+
+        return em
+
+    def add_label(self, emoji, text):
+        """Add a label
+
+        Parameters
+        -----------
+        emoji: Optional[:class:`str`]
+            The emoji of the label
+        text: Optional[:class:`str`]
+            The text of the label
+        """
+        self.labels.append(MessageLabel(emoji, text))
+
+    def change_label(self, label, emoji=None, text=None):
+        """Change a label
+
+        Parameters
+        -----------
+        label: :class:`int`
+            The index of the label
+        emoji: Optional[:class:`str`]
+            The emoji to change to
+        text: Optional[:class:`str`]
+            The text to change to
+        """
+        label = self.labels[label]
+
+        label.emoji = emoji or label.emoji
+        label.text = text or label.text
+
+        self.changes += 1
+
+    async def start(self, ctx):
+        self.context = ctx
+
+        em = self.render_embed()
+        self.message = await ctx.send(embed=em)
+
+        self._updater_task = ctx.bot.loop.create_task(self.updater_loop())
+
+    async def stop(self):
+        await self.message.edit(embed=self.render_embed())
+        self._closed = True
+
+    async def updater_loop(self):
+        bot = self.context.bot
+        changes = self.changes
+
+        await bot.wait_until_ready()
+
+        while not bot.is_closed() and not self.closed:
+            await asyncio.sleep(0.5)
+
+            if not self.changes:
+                pass
+
+            elif changes >= self.changes:
+                pass
+
+            else:
+                now = datetime.datetime.utcnow()
+                if self._last_update and self._last_update + datetime.timedelta(seconds=1) > now:
+                    await discord.utils.sleep_until(self._last_update + datetime.timedelta(seconds=1))
+
+                em = self.render_embed()
+
+                changes = self.changes
+                await self.message.edit(embed=em)
 
 
 class TablePages(menus.ListPageSource):

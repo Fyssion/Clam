@@ -105,7 +105,7 @@ class Player:
         self.duration = stopwatch.StopWatch()
         self.closed = False
         self.startover = False
-        self._notify = True
+        self._notify = False
 
         self._loop = False
         self._loop_queue = False
@@ -197,6 +197,10 @@ class Player:
         em.add_field(name="URL", value=f"[Click]({src.url})")
         em.set_thumbnail(url=src.thumbnail)
 
+        if self.current.database:
+            em.set_footer(text="Song cached in database. Last updated")
+            em.timestamp = self.current.last_updated
+
         return em
 
     async def player_loop(self):
@@ -228,6 +232,9 @@ class Player:
 
                 # Start our stopwatch for keeping track of position
                 self.duration.start()
+
+                query = "UPDATE songs SET plays = plays + 1 WHERE song_id=$1 AND extractor=$2;"
+                await self.bot.pool.execute(query, self.current.id, self.current.extractor)
 
                 if not self.loop and self.notify and not self.startover:
                     await self.text_channel.send(f"**:notes: Now playing** `{self.current.title}`")
