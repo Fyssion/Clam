@@ -578,7 +578,7 @@ class Music(commands.Cog):
             return await ctx.send("This server doesn't have a player.")
 
         if len(ctx.player.songs) == 0:
-            return await ctx.send("Queue is empty. Nothing to display!")
+            return await ctx.send("Queue is empty.")
 
         queue = ctx.player.songs._queue
         total_duration = sum(int(s.data.get("duration")) for s in queue)
@@ -810,7 +810,7 @@ class Music(commands.Cog):
             await ctx.invoke(self.join)
 
         if location_type is LocationType.bin:
-            return await ctx.invoke(self.playbin, query)
+            return await ctx.invoke(self.playbin, url=query)
 
         if query.startswith("<") and query.endswith(">"):
             query = query.strip("<>")
