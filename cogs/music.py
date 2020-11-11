@@ -739,20 +739,31 @@ class Music(commands.Cog):
         await ctx.send("**⏪ Starting song over**")
 
     async def fetch_yt_playlist(self, ctx, url):
-        await ctx.send(
-            "**<:youtube:667536366447493120> Fetching YouTube playlist** "
-            f"`{url}`\nThis make take awhile depending on playlist size."
-        )
+        em = discord.Embed(title="<:youtube:667536366447493120> Fetching YouTube playlist", color=0xFF0000)
+        em.set_footer(text="This may take awhile.")
+
+        progress_message = UpdatingMessage(embed=em)
+        progress_message.add_label(LOADING, "Fetching playlist")
+        progress_message.add_label(LOADING, "Getting songs")
+        progress_message.add_label(LOADING, "Enqueuing songs")
+
+        await progress_message.start(ctx)
 
         try:
             playlist, failed_songs = await ytdl.Song.get_playlist(
-                ctx, url, loop=self.bot.loop
+                ctx, url, progress_message, loop=self.bot.loop
             )
+
         except ytdl.YTDLError as e:
             print(e)
             await ctx.send(
                 f"An error occurred while processing this request: ```py\n{str(e)}\n```"
             )
+            progress_message.change_label(0, emoji=ctx.tick(False))
+            progress_message.change_label(1, emoji=ctx.tick(False))
+            progress_message.change_label(2, emoji=ctx.tick(False))
+            await progress_message.stop()
+
         else:
             em = discord.Embed(
                 title="**\N{PAGE FACING UP} Enqueued:**",
@@ -780,6 +791,9 @@ class Music(commands.Cog):
                 description += (
                     f"\n:warning: Sorry, {failed_songs} song(s) failed to download."
                 )
+
+            progress_message.change_label(2, emoji=GREEN_TICK)
+            await progress_message.stop()
 
             em.description = description
             await ctx.send(embed=em)
@@ -865,7 +879,7 @@ class Music(commands.Cog):
     async def hastebin_playlist(self, ctx, search):
         bin_log.info(f"Fetching from bin: '{search}'")
 
-        em = discord.Embed(title="Fetching from bin", color=discord.Color.blue())
+        em = discord.Embed(title="\N{GLOBE WITH MERIDIANS} Fetching from bin", color=discord.Color.blue())
         em.set_footer(text="This may take some time.")
         progress_message = UpdatingMessage(embed=em)
         progress_message.add_label(LOADING, "Fetch from bin")
@@ -873,11 +887,25 @@ class Music(commands.Cog):
 
         await progress_message.start(ctx)
 
-        output = await self.get_haste(search)
+        try:
+            output = await self.get_haste(search)
+
+        except BinFetchingError as e:
+            progress_message.change_label(0, emoji=ctx.tick(False))
+            progress_message.change_label(1, emoji=ctx.tick(False))
+            await progress_message.stop()
+            return await ctx.send(e)
+
         if not output or output == """{"message":"Document not found."}""":
+            progress_message.change_label(0, emoji=ctx.tick(False))
+            progress_message.change_label(1, emoji=ctx.tick(False))
+            await progress_message.stop()
             return await ctx.send("Bin returned an error: `Document not found.`")
 
         if output == "404: Not Found":
+            progress_message.change_label(0, emoji=ctx.tick(False))
+            progress_message.change_label(1, emoji=ctx.tick(False))
+            await progress_message.stop()
             return await ctx.send("Site returned an error: `404: Not Found`")
 
         if len(self.YT_URLS.findall(output)) == 0:
@@ -893,6 +921,9 @@ class Music(commands.Cog):
             )
             if not confirm:
                 bin_log.info("User denied bin. Cancelling...")
+                progress_message.change_label(0, emoji=ctx.tick(False))
+                progress_message.change_label(1, emoji=ctx.tick(False))
+                await progress_message.stop()
                 return await ctx.send("Cancelled.")
 
         length = len(videos)
@@ -924,6 +955,7 @@ class Music(commands.Cog):
             progress_message.change_label(1, text=f"Find and enqueue songs ({i+1}/{length})")
 
         progress_message.change_label(1, emoji=GREEN_TICK)
+        await progress_message.stop()
 
         em = discord.Embed(
             title="**\N{PAGE FACING UP} Enqueued:**",
@@ -950,7 +982,7 @@ class Music(commands.Cog):
 
         em.description = description
         await ctx.send(
-            ":white_check_mark: **Finished downloading songs from bin**", embed=em
+            ctx.tick(True, "**Finished downloading songs from bin**"), embed=em
         )
 
     @commands.command(aliases=["pb"])

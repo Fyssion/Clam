@@ -355,7 +355,7 @@ class Song:
 
     @classmethod
     async def get_playlist(
-        cls, ctx: commands.Context, search: str, *, loop: asyncio.BaseEventLoop = None
+        cls, ctx: commands.Context, search: str, progress_message, *, loop: asyncio.BaseEventLoop = None
     ):
         loop = loop or asyncio.get_event_loop()
 
@@ -370,7 +370,7 @@ class Song:
             raise YTDLError("Couldn't find anything that matches `{}`".format(search))
 
         if "entries" not in unproccessed:
-            data_list = unproccessed
+            data_list = [unproccessed]
         else:
             data_list = []
             for entry in unproccessed["entries"]:
@@ -380,11 +380,15 @@ class Song:
             if len(data_list) == 0:
                 raise YTDLError("Playlist is empty")
 
+        length = len(data_list)
+        progress_message.change_label(0, emoji=ctx.tick(True))
+        progress_message.change_label(1, text=f"Getting songs (0/{length})")
+
         log.info("Fetching songs in playlist")
 
         playlist = []
         counter = 0
-        for video in data_list:
+        for i, video in enumerate(data_list):
             webpage_url = video["url"]
             log.info(f"Song: '{webpage_url}'")
 
@@ -427,6 +431,9 @@ class Song:
                     filename=filename,
                 )
                 playlist.append(source)
+
+            progress_message.change_label(1, text=f"Getting songs ({i+1}/{length})")
+            progress_message.change_label(1, emoji=ctx.tick(True))
 
         return playlist, counter
 
