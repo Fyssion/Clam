@@ -16,7 +16,7 @@ import importlib
 import enum
 
 from .utils import db, ytdl, music_player, colors
-from .utils.emojis import GREEN_TICK, LOADING
+from .utils.emojis import GREEN_TICK, RED_TICK, LOADING
 from cogs.utils.menus import UpdatingMessage
 
 
@@ -53,6 +53,11 @@ class LocationType(enum.Enum):
 
 class BinFetchingError(Exception):
     pass
+
+
+class NoPlayerError(commands.CommandError):
+    def __init__(self):
+        super().__init__(f"{RED_TICK} This server doesn't have a player. Play a song to create one!")
 
 
 def is_dj():
@@ -117,9 +122,9 @@ class Music(commands.Cog):
         ctx.player = self.get_player(ctx)
 
     async def cog_command_error(self, ctx, error: commands.CommandError):
-        if isinstance(error, music_player.VoiceError) or isinstance(
-            error, ytdl.YTDLError
-        ):
+        overridden_errors = (music_player.VoiceError, ytdl.YTDLError, NoPlayerError)
+
+        if isinstance(error, overridden_errors):
             await ctx.send(str(error))
             ctx.handled = True
 
@@ -281,7 +286,7 @@ class Music(commands.Cog):
         player.pause()
 
         try:
-            await self.bot.wait_for("voice_state_update", timeout=120, check=check)
+            await self.bot.wait_for("voice_state_update", timeout=180, check=check)
         except asyncio.TimeoutError:
             if len(player.songs) > 0:
                 songs = player.songs.to_list()
@@ -421,9 +426,6 @@ class Music(commands.Cog):
     @is_dj()
     async def leave(self, ctx):
         """Clears the queue and leaves the voice channel."""
-        if not ctx.player:
-            return await ctx.send("This server doesn't have a player.")
-
         if not ctx.player.voice:
             if ctx.voice_client:
                 ctx.player.voice = ctx.voice_client
@@ -445,9 +447,6 @@ class Music(commands.Cog):
     @commands.command(name="volume")
     async def volume(self, ctx, *, volume: int = None):
         """Sets the volume of the player. Must be between 1 and 100."""
-        if not ctx.player:
-            return await ctx.send("This server doesn't have a player.")
-
         if not volume:
             volume = ctx.player.volume * 100
             emoji = self.get_volume_emoji(volume)
@@ -471,9 +470,6 @@ class Music(commands.Cog):
     )
     async def now(self, ctx):
         """Displays the currently playing song."""
-        if not ctx.player:
-            return await ctx.send("This server doesn't have a player.")
-
         if not ctx.player.is_playing:
             return await ctx.send("Not currently playing a song.")
 
@@ -491,9 +487,6 @@ class Music(commands.Cog):
     @is_dj()
     async def pause(self, ctx):
         """Pauses the currently playing song."""
-        if not ctx.player:
-            return await ctx.send("This server doesn't have a player.")
-
         if ctx.player.is_playing and ctx.player.voice.is_playing():
             ctx.player.pause()
             song = ctx.player.current.title
@@ -506,9 +499,6 @@ class Music(commands.Cog):
     @is_dj()
     async def resume(self, ctx):
         """Resumes a currently paused song."""
-        if not ctx.player:
-            return await ctx.send("This server doesn't have a player.")
-
         if ctx.player.is_playing and ctx.player.voice.is_paused():
             ctx.player.resume()
             song = ctx.player.current.title
@@ -518,9 +508,6 @@ class Music(commands.Cog):
     @is_dj()
     async def stop(self, ctx):
         """Stops playing song and clears the queue."""
-        if not ctx.player:
-            return await ctx.send("This server doesn't have a player.")
-
         if ctx.player.is_playing:
             ctx.player.voice.stop()
 
@@ -536,9 +523,6 @@ class Music(commands.Cog):
     )
     async def skip(self, ctx):
         """Vote to skip a song. The requester can automatically skip."""
-        if not ctx.player:
-            return await ctx.send("This server doesn't have a player.")
-
         async def skip_song():
             await ctx.message.add_reaction("⏭")
             ctx.player.skip()
@@ -551,9 +535,6 @@ class Music(commands.Cog):
     @commands.command(usage="[position]")
     @is_dj()
     async def skipto(self, ctx, *, position: int):
-        if not ctx.player:
-            return await ctx.send("This server doesn't have a player.")
-
         if len(ctx.player.songs) < position:
             return await ctx.send(f"The queue has less than {position} song(s).")
 
@@ -574,9 +555,6 @@ class Music(commands.Cog):
     )
     async def queue(self, ctx):
         """Shows the player's queue. You can optionally select the page."""
-        if not ctx.player:
-            return await ctx.send("This server doesn't have a player.")
-
         if len(ctx.player.songs) == 0:
             return await ctx.send("Queue is empty.")
 
@@ -594,26 +572,24 @@ class Music(commands.Cog):
         name="save", description="Save the queue to a bin!", aliases=["upload"]
     )
     @commands.cooldown(1, 10)
-    async def _save_queue(self, ctx):
-        if not ctx.player:
-            return await ctx.send("This server doesn't have a player.")
-
+    async def queue_save(self, ctx):
         if len(ctx.player.songs) == 0:
-            return await ctx.send("Queue is empty! Nothing to save.")
+            return await ctx.send("Queue is empty.")
+
         songs = ctx.player.songs.to_list()
         songs = [s.url for s in songs]
         songs.insert(0, ctx.player.current.url)
+
         url = await self.post("\n".join(songs))
+
         if url is None:
             return await ctx.send("Sorry, I couldn't save your queue.")
+
         await ctx.send(f"**Current queue: {url}**")
 
     @queue.command(name="clear")
-    async def queue_lear(self, ctx):
+    async def queue_clear(self, ctx):
         """Clears the queue"""
-        if not ctx.player:
-            return await ctx.send("This server doesn't have a player.")
-
         ctx.player.songs.clear()
 
         await ctx.send("**\N{WASTEBASKET} Cleared queue**")
@@ -621,9 +597,6 @@ class Music(commands.Cog):
     @commands.command(name="shuffle")
     async def shuffle(self, ctx):
         """Shuffles the queue"""
-        if not ctx.player:
-            return await ctx.send("This server doesn't have a player.")
-
         async def shuffle_queue():
             ctx.player.songs.shuffle()
             await ctx.send("**\N{TWISTED RIGHTWARDS ARROWS} Shuffled songs**")
@@ -639,9 +612,6 @@ class Music(commands.Cog):
         usage="[song #]",
     )
     async def queue_remove(self, ctx, index: int):
-        if not ctx.player:
-            return await ctx.send("This server doesn't have a player.")
-
         async def remove_song(index):
             if index > len(ctx.player.songs):
                 length = len(ctx.player.songs)
@@ -652,16 +622,13 @@ class Music(commands.Cog):
             await ctx.send(f"**\N{WASTEBASKET} Removed** `{to_be_removed}`")
 
         if len(ctx.player.songs) == 0:
-            return await ctx.send("Queue is empty. Nothing to remove!")
+            return await ctx.send(ctx.tick(True, "Queue is empty. Nothing to remove!"))
 
         await self.votes(ctx, "remove", remove_song, index)
 
     @commands.command()
     async def notify(self, ctx):
         """Enable or disable now playing notifications"""
-        if not ctx.player:
-            return await ctx.send("This server doesn't have a player.")
-
         ctx.player.notify = not ctx.player.notify
 
         if ctx.player.notify:
@@ -677,9 +644,6 @@ class Music(commands.Cog):
     )
     async def loop(self, ctx):
         """Loop a single song. To loop the queue use loop queue"""
-        if not ctx.player:
-            return await ctx.send("This server doesn't have a player.")
-
         # return await ctx.send(":warning: :( Sorry, this feature is \
         # currently under maintenance. Check back later.")
 
@@ -703,9 +667,6 @@ class Music(commands.Cog):
         name="queue", description="Loop the entire queue.", aliases=["playlist"]
     )
     async def loop_queue(self, ctx):
-        if not ctx.player:
-            return await ctx.send("This server doesn't have a player.")
-
         if not ctx.player.is_playing and not ctx.player.loop_queue:
             return await ctx.send("Nothing being played at the moment.")
         if len(ctx.player.songs) == 0 and not ctx.player.loop_queue:
@@ -721,11 +682,8 @@ class Music(commands.Cog):
 
     @commands.command(description="Start the current song over from the beginning")
     async def startover(self, ctx):
-        if not ctx.player:
-            return await ctx.send("This server doesn't have a player.")
-
         if not ctx.player.is_playing:
-            return await ctx.send("Nothing being played at the moment.")
+            return await ctx.send("Nothing is being played at the moment.")
 
         current = ctx.player.current
 
@@ -1107,9 +1065,29 @@ class Music(commands.Cog):
 
         await ctx.send("Successfully connected to YouTube with youtube_dl")
 
+    @queue_remove.before_invoke
+    @leave.before_invoke
+    @volume.before_invoke
+    @now.before_invoke
+    @pause.before_invoke
+    @resume.before_invoke
+    @stop.before_invoke
+    @skip.before_invoke
+    @skipto.before_invoke
+    @queue.before_invoke
+    @queue_save.before_invoke
+    @queue_clear.before_invoke
+    @shuffle.before_invoke
+    @notify.before_invoke
+    @loop.before_invoke
+    @loop_queue.before_invoke
+    async def ensure_player(self, ctx):
+        if not ctx.cog.get_player(ctx):
+            raise NoPlayerError()
+
     @join.before_invoke
     @play.before_invoke
-    async def ensure_player(self, ctx):
+    async def ensure_player_channel(self, ctx):
         if not ctx.author.voice or not ctx.author.voice.channel:
             raise commands.CommandError("You are not connected to a voice channel.")
 
