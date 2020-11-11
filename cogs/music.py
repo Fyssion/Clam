@@ -792,6 +792,9 @@ class Music(commands.Cog):
         if not ctx.player.voice:
             await ctx.invoke(self.join)
 
+        if location_type is location_type.bin:
+            return await ctx.invoke(self.playbin, query)
+
         if query.startswith("<") and query.endswith(">"):
             query = query.strip("<>")
 
