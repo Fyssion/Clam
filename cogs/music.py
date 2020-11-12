@@ -687,10 +687,11 @@ class Music(commands.Cog):
             if required != 1:
                 await ctx.send(
                     f"Required votes met `({total}/{required})`. **⏭ Skipping.**"
-                )
+                ) 
 
-            ctx.player.loop = False
-            ctx.player.loop_queue = False
+            if not ctx.player.songs:
+                ctx.player.loop = False
+                ctx.player.loop_queue = False
 
             ctx.player.skip()
 
@@ -703,7 +704,9 @@ class Music(commands.Cog):
     @is_dj()
     async def skipto(self, ctx, *, position: int):
         if len(ctx.player.songs) < position:
-            return await ctx.send(f"The queue has less than {position} song(s).")
+            raise commands.BadArgument(f"The queue has less than {position} song(s).")
+
+        song = ctx.player.songs[position-1]
 
         for i in range(position - 1):
             current = await ctx.player.songs.get()
@@ -713,7 +716,7 @@ class Music(commands.Cog):
 
         ctx.player.skip()
 
-        await ctx.send(f"Skipped to song at position `{position}`")
+        await ctx.send(f"**⏩ Skipped to** `{song}`")
 
     @commands.group(
         name="queue",
@@ -780,6 +783,7 @@ class Music(commands.Cog):
         name="remove",
         description="Removes a song from the queue at a given index.",
         usage="[song #]",
+        aliases=["delete"]
     )
     @is_listening()
     async def queue_remove(self, ctx, index: int):
