@@ -351,10 +351,10 @@ class Music(commands.Cog):
     @commands.is_owner()
     async def forcedisconnect(self, ctx):
         """Force disconnect the voice client in this server"""
-        if not ctx.voice_client:
+        if not ctx.guild.voice_client:
             return await ctx.send("Not connected to a voice channel in this server.")
 
-        await ctx.voice_client.disconnect()
+        await ctx.guild.voice_client.disconnect()
 
         await ctx.send("Disconnected bot from voice.")
 
@@ -373,6 +373,36 @@ class Music(commands.Cog):
             await member.guild.change_voice_state(
                 channel=player.voice.channel, self_deaf=True
             )
+
+    @commands.Cog.listener("on_voice_state_update")
+    async def delete_player_on_kick(self, member, before, after):
+        """Delete the player when kicked from a voice channel
+
+        I don't know a good way to know if the disconnect was
+        a leave command, a dc/reconnect, or an actual kick, so
+        this is my solution.
+        """
+        if member != self.bot.user:
+            return
+
+        player = self.players.get(member.guild.id)
+
+        if not player:
+            return
+
+        def check(m, b, a):
+            print(m, m.guild, m == self.bot.user and a.channel)
+            return m == self.bot.user and a.channel
+
+        if before.channel and not after.channel:
+            try:
+                await self.bot.wait_for("voice_state_update", check=check, timeout=5)
+
+            except asyncio.TimeoutError:
+                if not player.closed:
+                    log.info(f"{member.guild}: Bot left voice for 5 seconds, killing player.")
+                    await player.stop()
+                    del self.players[member.guild.id]
 
     @commands.Cog.listener("on_voice_state_update")
     async def on_voice_leave(self, member, before, after):
@@ -538,6 +568,13 @@ class Music(commands.Cog):
     @is_dj()
     async def leave(self, ctx):
         """Clears the queue and leaves the voice channel."""
+        if not ctx.player and ctx.voice_client:
+            await ctx.voice_client.disconnect()
+            return
+
+        if not ctx.player:
+            raise NoPlayerError()
+
         if not ctx.player.voice:
             if ctx.voice_client:
                 ctx.player.voice = ctx.voice_client
@@ -605,6 +642,9 @@ class Music(commands.Cog):
             song = ctx.player.current.title
             await ctx.send(f"**:pause_button: Paused** `{song}`")
 
+        else:
+            await ctx.send("Not currently playing.")
+
     @commands.command(
         name="resume",
         aliases=["unpause"],
@@ -616,6 +656,9 @@ class Music(commands.Cog):
             ctx.player.resume()
             song = ctx.player.current.title
             await ctx.send(f"**:arrow_forward: Resuming** `{song}`")
+
+        else:
+            await ctx.send("Not currently paused.")
 
     @commands.command(name="stop")
     @is_dj()
@@ -1214,7 +1257,6 @@ class Music(commands.Cog):
         await ctx.send("Successfully connected to YouTube with youtube_dl")
 
     @queue_remove.before_invoke
-    @leave.before_invoke
     @volume.before_invoke
     @now.before_invoke
     @pause.before_invoke
