@@ -30,7 +30,9 @@ class SongsTable(db.Table, table_name="songs"):
     filename = db.Column(db.String())
     title = db.Column(db.String())
     song_id = db.Column(db.String())  # id that youtube gives the song
-    extractor = db.Column(db.String())  # the extractor that was used (platform like youtube, soundcloud)
+    extractor = db.Column(
+        db.String()
+    )  # the extractor that was used (platform like youtube, soundcloud)
     info = db.Column(db.JSON, default="'{}'::jsonb")  # info dict that youtube_dl gives
     plays = db.Column(db.Integer, default=0)
 
@@ -103,10 +105,12 @@ class QueuePages(menus.ListPageSource):
             em.title += " (:repeat_one: looping)"
             em.description = "**:repeat_one: Loop single is on**\n\n" + em.description
 
-        duration = f"\n\nTotal queue duration: {self.total_duration}\n" if player.songs else "\n\n"
-        em.description += (
-            f"{duration}To see more about what's currently playing, use `{ctx.prefix}now`"
+        duration = (
+            f"\n\nTotal queue duration: {self.total_duration}\n"
+            if player.songs
+            else "\n\n"
         )
+        em.description += f"{duration}To see more about what's currently playing, use `{ctx.prefix}now`"
         em.set_footer(text=f"Page {menu.current_page+1} of {max_pages or 1}")
         return em
 
@@ -124,12 +128,19 @@ class BinFetchingError(Exception):
 
 class NoPlayerError(commands.CommandError):
     def __init__(self):
-        super().__init__(f"{RED_TICK} This server doesn't have a player. Play a song to create one!")
+        super().__init__(
+            f"{RED_TICK} This server doesn't have a player. Play a song to create one!"
+        )
+
+
+class NotListeningError(commands.CommandError):
+    def __init__(self, message):
+        super().__init__(f"{RED_TICK} {message}")
+        self.message = message
 
 
 def is_dj():
     def predicate(ctx):
-        dev = 224513210471022592
         author = ctx.author
         upper = discord.utils.get(ctx.guild.roles, name="DJ")
         lower = discord.utils.get(ctx.guild.roles, name="dj")
@@ -137,8 +148,37 @@ def is_dj():
             author.guild_permissions.manage_guild
             or upper in author.roles
             or lower in author.roles
-            or author.id == dev
+            or author.id == ctx.bot.owner_id
         )
+
+    return commands.check(predicate)
+
+
+def is_listening():
+    async def predicate(ctx):
+        if await is_dj().predicate(ctx):
+            return True
+
+        player = ctx.cog.get_player(ctx)
+
+        if not player:
+            raise NoPlayerError()
+
+        author = ctx.author
+
+        if (
+            not author.voice
+            or not author.voice.channel
+            or author.voice.channel != player.voice.channel
+        ):
+            raise NotListeningError(
+                "You must be connected to voice to use this command."
+            )
+
+        if author.voice.self_deaf or author.voice.deaf:
+            raise NotListeningError("You must be undeafened to use this command.")
+
+        return True
 
     return commands.check(predicate)
 
@@ -189,7 +229,12 @@ class Music(commands.Cog):
         ctx.player = self.get_player(ctx)
 
     async def cog_command_error(self, ctx, error: commands.CommandError):
-        overridden_errors = (music_player.VoiceError, ytdl.YTDLError, NoPlayerError)
+        overridden_errors = (
+            music_player.VoiceError,
+            ytdl.YTDLError,
+            NoPlayerError,
+            NotListeningError,
+        )
 
         if isinstance(error, overridden_errors):
             await ctx.send(str(error))
@@ -325,7 +370,9 @@ class Music(commands.Cog):
             return
 
         if not before.channel and after.channel:
-            await member.guild.change_voice_state(channel=player.voice.channel, self_deaf=True)
+            await member.guild.change_voice_state(
+                channel=player.voice.channel, self_deaf=True
+            )
 
     @commands.Cog.listener("on_voice_state_update")
     async def on_voice_leave(self, member, before, after):
@@ -377,35 +424,33 @@ class Music(commands.Cog):
                 )
         player.resume()
 
-    async def votes(self, ctx, cmd: str, func, param=None):
-        async def run_func():
-            if param:
-                await func(param)
-            else:
-                await func()
+    async def votes(self, ctx, cmd: str, func):
+        voter = ctx.author
 
-        voter = ctx.message.author
-
-        if_is_requester = voter == ctx.player.current.requester
-        if_has_perms = voter.guild_permissions.manage_guild
+        is_requester = voter == ctx.player.current.requester
+        has_perms = voter.guild_permissions.manage_guild
+        is_owner = voter.id == ctx.bot.owner_id
 
         upper = discord.utils.get(ctx.guild.roles, name="DJ")
         lower = discord.utils.get(ctx.guild.roles, name="dj")
-        if_is_dj = upper in voter.roles or lower in voter.roles
+        is_dj = upper in voter.roles or lower in voter.roles
 
-        if len(ctx.player.voice.channel.members) < 5:
-            if len(ctx.player.voice.channel.members) < 3:
-                is_only_user = True
-            else:
-                is_only_user = False
-                required_votes = len(ctx.player.voice.channel.members) - 1
+        members = [
+            m
+            for m in ctx.player.voice.channel.members
+            if not m.bot and not m.voice.deaf and not m.voice.self_deaf
+        ]
+        length = len(members)
+
+        if length == 1:
+            is_only_user = True
 
         else:
             is_only_user = False
-            required_votes = 3
+            required_votes = round(length * 0.75)  # 75% of members must skip
 
-        if if_is_requester or if_has_perms or is_only_user or if_is_dj:
-            await run_func()
+        if is_requester or has_perms or is_only_user or is_dj or is_owner:
+            await func(1, 1)
 
         elif voter.id not in ctx.player._votes[cmd]:
             ctx.player._votes[cmd].add(voter.id)
@@ -413,7 +458,7 @@ class Music(commands.Cog):
 
             if total_votes >= required_votes:
                 ctx.player._votes[cmd].clear()
-                await run_func()
+                await func(total_votes, required_votes)
             else:
                 await ctx.send(
                     f"{cmd.capitalize()} vote added, "
@@ -512,6 +557,7 @@ class Music(commands.Cog):
             return ":sound:"
 
     @commands.command(name="volume")
+    @is_dj()
     async def volume(self, ctx, *, volume: int = None):
         """Sets the volume of the player. Must be between 1 and 100."""
         if not volume:
@@ -588,10 +634,17 @@ class Music(commands.Cog):
         name="skip",
         aliases=["next"],
     )
+    @is_listening()
     async def skip(self, ctx):
         """Vote to skip a song. The requester can automatically skip."""
-        async def skip_song():
+
+        async def skip_song(total, required):
             await ctx.message.add_reaction("⏭")
+
+            if required != 1:
+                await ctx.send(
+                    f"Required votes met `({total}/{required})`. **⏭ Skipping.**"
+                )
 
             ctx.player.loop = False
             ctx.player.loop_queue = False
@@ -599,7 +652,7 @@ class Music(commands.Cog):
             ctx.player.skip()
 
         if not ctx.player.is_playing:
-            return await ctx.send("Nothing is playing. There is nothing to skip!")
+            return await ctx.send("Nothing is playing.")
 
         await self.votes(ctx, "skip", skip_song)
 
@@ -659,11 +712,21 @@ class Music(commands.Cog):
         await ctx.send("**\N{WASTEBASKET} Cleared queue**")
 
     @commands.command(name="shuffle")
+    @is_listening()
     async def shuffle(self, ctx):
         """Shuffles the queue"""
-        async def shuffle_queue():
+
+        async def shuffle_queue(total, required):
+            if required != 1:
+                votes_msg = f"Required votes met `({total}/{required})`. "
+
+            else:
+                votes_msg = ""
+
             ctx.player.songs.shuffle()
-            await ctx.send("**\N{TWISTED RIGHTWARDS ARROWS} Shuffled songs**")
+            await ctx.send(
+                f"{votes_msg}**\N{TWISTED RIGHTWARDS ARROWS} Shuffled songs**"
+            )
 
         if len(ctx.player.songs) == 0:
             return await ctx.send("Queue is empty. Nothing to shuffle!")
@@ -675,20 +738,29 @@ class Music(commands.Cog):
         description="Removes a song from the queue at a given index.",
         usage="[song #]",
     )
+    @is_listening()
     async def queue_remove(self, ctx, index: int):
-        async def remove_song(index):
-            if index > len(ctx.player.songs):
-                length = len(ctx.player.songs)
-                raise commands.BadArgument(f"There is no song at position {index}. Queue length is only {length}.")
+        async def remove_song(total, required):
+            if required != 1:
+                votes_msg = f"Required votes met `({total}/{required})`. "
+
+            else:
+                votes_msg = ""
 
             to_be_removed = ctx.player.songs[index - 1].title
             ctx.player.songs.remove(index - 1)
-            await ctx.send(f"**\N{WASTEBASKET} Removed** `{to_be_removed}`")
+            await ctx.send(f"{votes_msg}**\N{WASTEBASKET} Removed** `{to_be_removed}`")
 
         if len(ctx.player.songs) == 0:
-            return await ctx.send(ctx.tick(True, "Queue is empty. Nothing to remove!"))
+            return await ctx.send("Queue is empty.")
 
-        await self.votes(ctx, "remove", remove_song, index)
+        if index > len(ctx.player.songs):
+            length = len(ctx.player.songs)
+            raise commands.BadArgument(
+                f"There is no song at position {index}. Queue length is only {length}."
+            )
+
+        await self.votes(ctx, "remove", remove_song)
 
     @commands.command()
     async def notify(self, ctx):
@@ -765,7 +837,10 @@ class Music(commands.Cog):
         await ctx.send("**⏪ Starting song over**")
 
     async def fetch_yt_playlist(self, ctx, url):
-        em = discord.Embed(title="<:youtube:667536366447493120> Fetching YouTube playlist", color=0xFF0000)
+        em = discord.Embed(
+            title="<:youtube:667536366447493120> Fetching YouTube playlist",
+            color=0xFF0000,
+        )
         em.set_footer(text="This may take awhile.")
 
         progress_message = UpdatingMessage(embed=em)
@@ -855,7 +930,9 @@ class Music(commands.Cog):
             try:
                 async with timeout(180):  # 3m
                     if location_type is LocationType.db:
-                        song = await ytdl.Song.get_song_from_db(ctx, query, loop=self.bot.loop)
+                        song = await ytdl.Song.get_song_from_db(
+                            ctx, query, loop=self.bot.loop
+                        )
                     else:
                         song = await ytdl.Song.get_song(ctx, query, loop=self.bot.loop)
 
@@ -878,7 +955,9 @@ class Music(commands.Cog):
                     await ctx.send(f"**\N{PAGE FACING UP} Enqueued** {str(song)}")
 
                 elif not ctx.player._notify:
-                    await ctx.send(f"**\N{MULTIPLE MUSICAL NOTES} Now playing** `{song.title}`")
+                    await ctx.send(
+                        f"**\N{MULTIPLE MUSICAL NOTES} Now playing** `{song.title}`"
+                    )
 
     async def get_haste(self, url="https://mystb.in"):
         parsed = urlparse(url)
@@ -905,7 +984,10 @@ class Music(commands.Cog):
     async def hastebin_playlist(self, ctx, search):
         bin_log.info(f"Fetching from bin: '{search}'")
 
-        em = discord.Embed(title="\N{GLOBE WITH MERIDIANS} Fetching from bin", color=discord.Color.blue())
+        em = discord.Embed(
+            title="\N{GLOBE WITH MERIDIANS} Fetching from bin",
+            color=discord.Color.blue(),
+        )
         em.set_footer(text="This may take some time.")
         progress_message = UpdatingMessage(embed=em)
         progress_message.add_label(LOADING, "Fetch from bin")
@@ -978,7 +1060,9 @@ class Music(commands.Cog):
                 else:
                     failed_songs += 1
 
-            progress_message.change_label(1, text=f"Find and enqueue songs ({i+1}/{length})")
+            progress_message.change_label(
+                1, text=f"Find and enqueue songs ({i+1}/{length})"
+            )
 
         progress_message.change_label(1, emoji=GREEN_TICK)
         await progress_message.stop()
@@ -1153,7 +1237,7 @@ class Music(commands.Cog):
     @play.before_invoke
     async def ensure_player_channel(self, ctx):
         if not ctx.author.voice or not ctx.author.voice.channel:
-            raise commands.CommandError("You are not connected to a voice channel.")
+            raise NotListeningError("You are not connected to a voice channel.")
 
         if ctx.voice_client:
             if ctx.voice_client.channel != ctx.author.voice.channel:
@@ -1163,7 +1247,7 @@ class Music(commands.Cog):
                     if dj
                     else ""
                 )
-                raise commands.CommandError(f"Bot is in another voice channel.{hint}")
+                raise NotListeningError(f"Bot is in another voice channel.{hint}")
 
     # music db management commands
 
@@ -1174,7 +1258,9 @@ class Music(commands.Cog):
         query = "SELECT COUNT(*), SUM(plays) FROM songs;"
         count, plays = await ctx.db.fetchrow(query)
 
-        await ctx.send(f"Music database contains **{count} songs** with a total of **{plays} plays**.")
+        await ctx.send(
+            f"Music database contains **{count} songs** with a total of **{plays} plays**."
+        )
 
     @musicdb.command(name="list", aliases=["all"])
     @commands.is_owner()
@@ -1186,7 +1272,9 @@ class Music(commands.Cog):
         songs = []
         for song_id, title, plays, last_updated in records:
             formatted = human_time.human_timedelta(last_updated, brief=True, accuracy=1)
-            songs.append(f"{title} # ID: {song_id} ({plays } plays) last updated {formatted}")
+            songs.append(
+                f"{title} # ID: {song_id} ({plays } plays) last updated {formatted}"
+            )
 
         pages = ctx.pages(songs, per_page=10, title="Music Database")
         await pages.start(ctx)
@@ -1206,7 +1294,9 @@ class Music(commands.Cog):
         songs = []
         for song_id, title, plays, last_updated in records:
             formatted = human_time.human_timedelta(last_updated, brief=True, accuracy=1)
-            songs.append(f"{title} # ID: {song_id} ({plays } plays) last updated {formatted}")
+            songs.append(
+                f"{title} # ID: {song_id} ({plays } plays) last updated {formatted}"
+            )
 
         pages = ctx.pages(songs, per_page=10, title=f"Results for '{song}'")
         await pages.start(ctx)
@@ -1234,9 +1324,7 @@ class Music(commands.Cog):
             processed_info = await self.bot.loop.run_in_executor(None, partial)
 
         except youtube_dl.DownloadError as e:
-            await ctx.send(
-                f"Error while fetching `{webpage_url}`\n```\n{e}\n```"
-            )
+            await ctx.send(f"Error while fetching `{webpage_url}`\n```\n{e}\n```")
             return
 
         else:
