@@ -593,8 +593,8 @@ class Music(commands.Cog):
         async def skip_song():
             await ctx.message.add_reaction("⏭")
 
-            if ctx.player.loop:
-                ctx.player.loop = False
+            ctx.player.loop = False
+            ctx.player.loop_queue = False
 
             ctx.player.skip()
 
