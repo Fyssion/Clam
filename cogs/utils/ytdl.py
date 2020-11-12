@@ -392,6 +392,18 @@ class Song:
             webpage_url = video["url"]
             log.info(f"Song: '{webpage_url}'")
 
+            song_id = video.get("id")
+            extractor = video.get("extractor")
+
+            song = await cls.fetch_from_database(ctx, song_id, extractor)
+
+            if song:
+                log.info(
+                    f"Song '{extractor}-{song_id}' in database, skipping further extraction"
+                )
+                playlist.append(song)
+                continue
+
             filename = cls.playlist_ytdl.prepare_filename(video)[:-3] + ".webm"
             if os.path.isfile(filename):
                 log.info("Song is already downloaded. Skipping download.")
@@ -424,7 +436,28 @@ class Song:
                             await ctx.send(
                                 f"Couldn't retrieve any matches for `{webpage_url}`"
                             )
+
+                song_id = info.get("id")
+                extractor = info.get("extractor")
                 filename = cls.playlist_ytdl.prepare_filename(info)
+
+                song = await cls.fetch_from_database(ctx, song_id, extractor)
+
+                if not song:
+                    log.info(f"Song '{extractor}-{song_id}' not in database, inserting")
+                    query = """INSERT INTO songs (filename, title, song_id, extractor, info)
+                               VALUES ($1, $2, $3, $4, $5::jsonb)
+                            """
+
+                    await ctx.db.execute(
+                        query, filename, info.get("title"), song_id, extractor, info
+                    )
+
+                else:
+                    log.info(
+                        f"Song '{extractor}-{song_id}' is already in database, skipping insertion"
+                    )
+
                 source = cls(
                     ctx,
                     data=info,
