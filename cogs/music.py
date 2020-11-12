@@ -156,9 +156,6 @@ def is_dj():
 
 def is_listening():
     async def predicate(ctx):
-        if await is_dj().predicate(ctx):
-            return True
-
         player = ctx.cog.get_player(ctx)
 
         if not player:
@@ -174,6 +171,9 @@ def is_listening():
             raise NotListeningError(
                 "You must be connected to voice to use this command."
             )
+
+        if await is_dj().predicate(ctx):
+            return True
 
         if author.voice.self_deaf or author.voice.deaf:
             raise NotListeningError("You must be undeafened to use this command.")
