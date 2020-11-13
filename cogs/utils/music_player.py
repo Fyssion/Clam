@@ -77,6 +77,10 @@ class Player:
     def __del__(self):
         self.audio_player.cancel()
 
+    def __repr__(self):
+        channel = self.voice.channel if self.voice else None
+        return f"<Player guild='{self.ctx.guild}', channel='{channel}'>"
+
     @property
     def loop(self):
         return self._loop
