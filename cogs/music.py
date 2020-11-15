@@ -1281,6 +1281,7 @@ class Music(commands.Cog):
 
     @join.before_invoke
     @play.before_invoke
+    @playbin.before_invoke
     async def ensure_player_channel(self, ctx):
         if not ctx.author.voice or not ctx.author.voice.channel:
             raise NotListeningError("You are not connected to a voice channel.")
