@@ -62,6 +62,9 @@ class Stats(commands.Cog):
         self.bulk_insert_loop.add_exception_type(asyncpg.PostgresConnectionError)
         self.bulk_insert_loop.start()
 
+        if not hasattr(bot, "command_stats"):
+            self.bot.command_stats = Counter()
+
         if not hasattr(bot, "socket_stats"):
             self.bot.socket_stats = Counter()
 
@@ -972,7 +975,4 @@ class Stats(commands.Cog):
 
 
 def setup(bot):
-    if not hasattr(bot, "command_stats"):
-        bot.command_stats = Counter()
-
     bot.add_cog(Stats(bot))
