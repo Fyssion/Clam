@@ -423,6 +423,8 @@ class Meta(commands.Cog):
         extra_info += f"\nGuild: `{ctx.guild}`"
         extra_info += f"\nChannel: `{ctx.channel}`"
         extra_info += f"\nInvoker: `{ctx.author}`"
+        extra_info += f"\nOriginal message: `{discord.utils.escape_markdown(ctx.message.content)}`"
+
         extra_info += f"\n\nError cache position: `{len(self.bot.error_cache) - 1}`"
 
         if ctx.args:
