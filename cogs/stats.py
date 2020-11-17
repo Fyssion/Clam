@@ -922,7 +922,7 @@ class Stats(commands.Cog):
     async def on_socket_response(self, msg):
         self.bot.socket_stats[msg.get("t") or "None"] += 1
 
-    @flags.add_flag("--sort", "-s", default="name")
+    @flags.add_flag("--sort", "-s", default="count")
     @flags.add_flag("--json", action="store_true")
     @flags.command(
         aliases=["socket", "websocket"],
