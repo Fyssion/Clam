@@ -243,12 +243,12 @@ class Settings(commands.Cog):
         return CogPermissions(guild_id, records or [])
 
     async def bot_check(self, ctx):
-        cog_perms = await self.get_cog_permissions(ctx.guild.id)
-        if cog_perms.is_blocked(ctx):
+        cmd_perms = await self.get_command_permissions(ctx.guild.id)
+        if cmd_perms.is_blocked(ctx) is False:
             return False
 
-        cmd_perms = await self.get_command_permissions(ctx.guild.id)
-        return not cmd_perms.is_blocked(ctx)
+        cog_perms = await self.get_cog_permissions(ctx.guild.id)
+        return not cog_perms.is_blocked(ctx)
 
     @cache.cache()
     async def is_ignored(
