@@ -520,6 +520,7 @@ class Settings(commands.Cog):
                 raise RuntimeError(msg)
 
     @settings.group(name="category", aliases=["cog"], invoke_without_command=True)
+    @checks.has_permissions(manage_guild=True)
     async def settings_category(self, ctx):
         """Enable and disable categories in the server or a channel"""
         await ctx.send_help(ctx.command)
