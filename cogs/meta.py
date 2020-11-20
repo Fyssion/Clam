@@ -9,6 +9,7 @@ import sys
 import asyncio
 import inspect
 import functools
+import math
 
 from .utils.utils import get_lines_of_code
 from .utils import colors
@@ -144,7 +145,7 @@ class ClamHelpCommand(commands.HelpCommand):
                 cog_names.append(f":grey_question: {cog.qualified_name}")
 
         if len(cog_names) >= 8:
-            middle = len(cog_names) // 2
+            middle = math.ceil(len(cog_names) / 2)
             first_half = cog_names[:middle]
             second_half = cog_names[middle:]
 
