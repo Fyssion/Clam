@@ -199,6 +199,7 @@ class Settings(commands.Cog):
         await ctx.send_help(ctx.command)
 
     @settings.command(name="ignore")
+    @checks.has_permissions(manage_guild=True)
     async def settings_ignore(self, ctx, *, entity: ChannelOrMember = None):
         """Ignore commands from a member or channel in this server"""
         entity = entity or ctx.channel
@@ -254,11 +255,13 @@ class Settings(commands.Cog):
         )
 
     @settings_unignore.command(name="all")
+    @checks.has_permissions(manage_guild=True)
     async def settings_unignore_all(self, ctx):
         """Alias for settings ignored clear"""
         await ctx.invoke(self.settings_ignored_clear)
 
     @settings.group(name="ignored", invoke_without_command=True)
+    @checks.has_permissions(manage_guild=True)
     @checks.has_permissions(manage_guild=True)
     async def settings_ignored(self, ctx):
         """View the server ignore list"""
@@ -291,6 +294,7 @@ class Settings(commands.Cog):
         await pages.start(ctx)
 
     @settings_ignored.command(name="clear")
+    @checks.has_permissions(manage_guild=True)
     async def settings_ignored_clear(self, ctx):
         """Clear all entities from the server ignore list"""
         query = "DELETE FROM ignored_users WHERE guild_id=$1;"
@@ -334,6 +338,7 @@ class Settings(commands.Cog):
                 raise RuntimeError(msg)
 
     @settings.command(name="disable")
+    @checks.has_permissions(manage_guild=True)
     async def settings_disable(
         self, ctx, channel: Optional[discord.TextChannel], command: CommandName
     ):
@@ -356,6 +361,7 @@ class Settings(commands.Cog):
             )
 
     @settings.command(name="enable")
+    @checks.has_permissions(manage_guild=True)
     async def settings_enable(
         self, ctx, channel: Optional[discord.TextChannel], command: CommandName
     ):
@@ -376,6 +382,7 @@ class Settings(commands.Cog):
             )
 
     @settings.command(name="disabled")
+    @checks.has_permissions(manage_guild=True)
     async def settings_disabled(self, ctx, channel: discord.TextChannel = None):
         """View disabled commands in a channel or the server"""
         perms = await self.get_command_permissions(ctx.guild.id)
