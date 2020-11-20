@@ -128,6 +128,17 @@ class ClamHelpCommand(commands.HelpCommand):
                 f"```css\n[DEBUG mode {bot.debug} is active]\n```\n" + em.description
             )
 
+        settings = bot.get_cog("Settings")
+
+        async def blocked(name):
+            if settings:
+                perms = await settings.get_cog_permissions(ctx.guild.id)
+
+                return perms.is_cog_blocked(name, ctx.channel.id)
+
+            else:
+                return False
+
         cog_names = []
         for cog_name in bot.ordered_cogs:
             cog = bot.get_cog(cog_name)
@@ -135,6 +146,7 @@ class ClamHelpCommand(commands.HelpCommand):
                 hasattr(cog, "hidden")
                 or hasattr(cog, "private")
                 or cog.qualified_name == "Jishaku"
+                or await blocked(cog.qualified_name)
             ):
                 if ctx.author.id != bot.owner_id:
                     continue
