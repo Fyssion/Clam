@@ -94,7 +94,7 @@ class CommandPermissions:
         ret = guild.denied - guild.allowed
 
         # then apply the channel-level denies
-        return ret | (channel.denied - channel.allowed)
+        return (ret | (channel.denied - channel.allowed)) if channel_id else ret
 
     def _is_blocked(self, command, channel_id):
         command_names = self._split(command)
@@ -335,10 +335,12 @@ class Settings(commands.Cog):
         self, ctx, channel: Optional[discord.TextChannel], command: CommandName
     ):
         """Disable a command in the server or a channel"""
+        channel_id = channel.id if channel else None
+
         try:
             async with ctx.db.acquire() as conn:
                 await self.command_toggle(
-                    conn, ctx.guild.id, ctx.channel.id, command, allowed=False
+                    conn, ctx.guild.id, channel_id, command, allowed=False
                 )
 
         except RuntimeError as e:
@@ -355,9 +357,11 @@ class Settings(commands.Cog):
         self, ctx, channel: Optional[discord.TextChannel], command: CommandName
     ):
         """Enable a command in the server or a channel"""
+        channel_id = channel.id if channel else None
+
         try:
             async with ctx.db.acquire() as conn:
-                await self.command_toggle(conn, ctx.guild.id, ctx.channel.id, command)
+                await self.command_toggle(conn, ctx.guild.id, channel_id, command)
 
         except RuntimeError as e:
             await ctx.send(e)
