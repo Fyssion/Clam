@@ -130,6 +130,9 @@ class CommandPermissions:
         if not len(self.permissions):
             return False
 
+        if ctx.author.id == ctx.bot.owner_id:
+            return False
+
         if (
             isinstance(ctx.author, discord.Member)
             and ctx.author.guild_permissions.manage_guild
