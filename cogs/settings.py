@@ -30,6 +30,21 @@ class IgnoredEntities(db.Table, table_name="ignored_entities"):
     entity_id = db.Column(db.Integer(big=True))
 
 
+class CogPermissionsTable(db.Table, table_name="cog_permissions"):
+    id = db.PrimaryKeyColumn()
+
+    guild_id = db.Column(db.Integer(big=True))
+    channel_id = db.Column(db.Integer(big=True))
+    cog = db.Column(db.String)
+    allowed = db.Column(db.Boolean)
+
+    @classmethod
+    def create_table(cls, *, exists_ok=True):
+        statement = super().create_table(exists_ok=exists_ok)
+        sql = "CREATE UNIQUE INDEX IF NOT EXISTS cog_perms_uniq_idx ON cog_permissions (cog, guild_id, channel_id, allowed);\n"
+        return statement + "\n" + sql
+
+
 class CommandName(commands.Converter):
     async def convert(self, ctx, arg):
         arg = arg.lower()
@@ -42,6 +57,20 @@ class CommandName(commands.Converter):
 
         if arg not in valid_commands:
             raise commands.BadArgument(f"Command `{arg}` is not a valid command.")
+
+        return arg
+
+
+class CogName(commands.Converter):
+    async def convert(self, ctx, arg):
+        lowered = arg.lower()
+
+        valid_cogs = {
+            c.lower() for c in ctx.bot.cogs.keys() if c not in ("Settings", "Admin")
+        }
+
+        if lowered not in valid_cogs:
+            raise commands.BadArgument(f"Cog `{arg}` is not a valid cog.")
 
         return arg
 
@@ -142,6 +171,48 @@ class CommandPermissions:
         return self._is_blocked(ctx.command.qualified_name, ctx.channel.id)
 
 
+class CogPermissions(CommandPermissions):
+    """Basically CommandPermissions"""
+
+    def _is_blocked(self, cog, channel_id):
+        guild = self.permissions[None]
+        channel = self.permissions[channel_id]
+
+        blocked = None
+
+        if cog in guild.denied:
+            blocked = True
+
+        if cog in guild.allowed:
+            blocked = False
+
+        if cog in channel.denied:
+            blocked = True
+
+        if cog in channel.allowed:
+            blocked = False
+
+        return blocked
+
+    get_blocked_cogs = CommandPermissions.get_blocked_commands
+    is_cog_blocked = CommandPermissions.is_command_blocked
+
+    def is_blocked(self, ctx):
+        if not len(self.permissions):
+            return False
+
+        if ctx.author.id == ctx.bot.owner_id:
+            return False
+
+        if (
+            isinstance(ctx.author, discord.Member)
+            and ctx.author.guild_permissions.manage_guild
+        ):
+            return False
+
+        return self._is_blocked(ctx.cog.qualified_name, ctx.channel.id)
+
+
 class Settings(commands.Cog):
     """Commands to configure the bot"""
 
@@ -160,12 +231,28 @@ class Settings(commands.Cog):
         records = await self.bot.pool.fetch(query, guild_id)
         return CommandPermissions(guild_id, records or [])
 
+    @cache.cache()
+    async def get_cog_permissions(self, guild_id):
+        query = """SELECT cog, channel_id, allowed
+                   FROM cog_permissions
+                   WHERE guild_id=$1;
+                """
+
+        records = await self.bot.pool.fetch(query, guild_id)
+        return CogPermissions(guild_id, records or [])
+
     async def bot_check(self, ctx):
-        perms = await self.get_command_permissions(ctx.guild.id)
-        return not perms.is_blocked(ctx)
+        cog_perms = await self.get_cog_permissions(ctx.guild.id)
+        if cog_perms.is_blocked(ctx):
+            return False
+
+        cmd_perms = await self.get_command_permissions(ctx.guild.id)
+        return not cmd_perms.is_blocked(ctx)
 
     @cache.cache()
-    async def is_ignored(self, guild_id, member_id, channel_id=None, *, check_bypass=True):
+    async def is_ignored(
+        self, guild_id, member_id, channel_id=None, *, check_bypass=True
+    ):
         """Returns whether a member or channel is ignored in a guild"""
         if member_id in self.bot.blacklist or guild_id in self.bot.blacklist:
             return True
@@ -222,7 +309,9 @@ class Settings(commands.Cog):
         await ctx.db.execute(query, ctx.guild.id, entity.id)
         self.is_ignored.invalidate_containing(f"{ctx.guild.id!r}:")
 
-        await ctx.send(ctx.tick(True, f"Added {human_friendly} to the server ignore list."))
+        await ctx.send(
+            ctx.tick(True, f"Added {human_friendly} to the server ignore list.")
+        )
 
     @settings.group(name="unignore", invoke_without_command=True)
     @checks.has_permissions(manage_guild=True)
@@ -244,9 +333,7 @@ class Settings(commands.Cog):
         record = await ctx.db.fetchrow(query, ctx.guild.id, entity.id)
 
         if not record:
-            return await ctx.send(
-                f"{human_friendly} is not on the server ignore list."
-            )
+            return await ctx.send(f"{human_friendly} is not on the server ignore list.")
 
         self.is_ignored.invalidate_containing(f"{ctx.guild.id!r}:")
 
@@ -395,6 +482,106 @@ class Settings(commands.Cog):
 
         em = discord.Embed(
             title=f"Disabled commands in {human_friendly}", color=colors.PRIMARY
+        )
+
+        pages = ctx.embed_pages(commands, em)
+        await pages.start(ctx)
+
+    async def cog_toggle(
+        self, connection, guild_id, channel_id, command, *, allowed=True
+    ):
+        # clear the cache
+        self.get_cog_permissions.invalidate(self, guild_id)
+
+        if channel_id is None:
+            subcheck = "channel_id IS NULL"
+            args = (guild_id, command)
+        else:
+            subcheck = "channel_id=$3"
+            args = (guild_id, command, channel_id)
+
+        async with connection.transaction():
+            # delete the previous entry regardless of what it was
+            query = f"DELETE FROM cog_permissions WHERE guild_id=$1 AND cog=$2 AND {subcheck};"
+
+            # DELETE <num>
+            await connection.execute(query, *args)
+
+            query = "INSERT INTO cog_permissions (guild_id, channel_id, cog, allowed) VALUES ($1, $2, $3, $4);"
+
+            try:
+                await connection.execute(query, guild_id, channel_id, command, allowed)
+            except asyncpg.UniqueViolationError:
+                msg = (
+                    "This category is already disabled."
+                    if not allowed
+                    else "This category is already explicitly enabled."
+                )
+                raise RuntimeError(msg)
+
+    @settings.group(name="category", aliases=["cog"], invoke_without_command=True)
+    async def settings_category(self, ctx):
+        """Enable and disable categories in the server or a channel"""
+        await ctx.send_help(ctx.command)
+
+    @settings_category.command(name="disable")
+    @checks.has_permissions(manage_guild=True)
+    async def settings_category_disable(
+        self, ctx, channel: Optional[discord.TextChannel], command: CogName
+    ):
+        """Disable a category in the server or a channel"""
+        channel_id = channel.id if channel else None
+
+        try:
+            async with ctx.db.acquire() as conn:
+                await self.cog_toggle(
+                    conn, ctx.guild.id, channel_id, command, allowed=False
+                )
+
+        except RuntimeError as e:
+            await ctx.send(e)
+
+        else:
+            human_friendly = channel.mention if channel else "this server"
+            await ctx.send(
+                ctx.tick(True, f"Disabled category `{command}` in {human_friendly}")
+            )
+
+    @settings_category.command(name="enable")
+    @checks.has_permissions(manage_guild=True)
+    async def settings_cog_enable(
+        self, ctx, channel: Optional[discord.TextChannel], command: CogName
+    ):
+        """Enable a category in the server or a channel"""
+        channel_id = channel.id if channel else None
+
+        try:
+            async with ctx.db.acquire() as conn:
+                await self.cog_toggle(conn, ctx.guild.id, channel_id, command)
+
+        except RuntimeError as e:
+            await ctx.send(e)
+
+        else:
+            human_friendly = channel.mention if channel else "this server"
+            await ctx.send(
+                ctx.tick(True, f"Enabled category `{command}` in {human_friendly}")
+            )
+
+    @settings_category.command(name="disabled")
+    @checks.has_permissions(manage_guild=True)
+    async def settings_cog_disabled(self, ctx, channel: discord.TextChannel = None):
+        """View disabled categories in a channel or the server"""
+        perms = await self.get_cog_permissions(ctx.guild.id)
+        commands = list(perms.get_blocked_cogs(channel.id if channel else None))
+
+        human_friendly = channel.mention if channel else "this server"
+
+        if not commands:
+            return await ctx.send(f"No categories disabled in {human_friendly}")
+
+        em = discord.Embed(
+            title=f"Disabled categories in {human_friendly}", color=colors.PRIMARY
         )
 
         pages = ctx.embed_pages(commands, em)
