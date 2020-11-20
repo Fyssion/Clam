@@ -66,13 +66,14 @@ class CogName(commands.Converter):
         lowered = arg.lower()
 
         valid_cogs = {
-            c.lower() for c in ctx.bot.cogs.keys() if c not in ("Settings", "Admin")
+            c.lower(): c for c in ctx.bot.cogs.keys() if c not in ("Settings", "Admin")
         }
 
-        if lowered not in valid_cogs:
+        cog = valid_cogs.get(lowered)
+        if not cog:
             raise commands.BadArgument(f"Cog `{arg}` is not a valid cog.")
 
-        return arg
+        return cog
 
 
 class ChannelOrMember(commands.Converter):
