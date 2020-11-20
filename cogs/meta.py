@@ -64,7 +64,7 @@ class HelpPages(menus.ListPageSource):
             more_pages = ""
 
         if formatted:
-            em.description += f"\n\n{formatted}{more_pages}\n\n{self.more_info}"
+            em.description += f"\n{formatted}{more_pages}\n\n{self.more_info}"
         else:
             em.description += f"\n\n{self.more_info}"
         return em
@@ -227,7 +227,7 @@ class ClamHelpCommand(commands.HelpCommand):
             em.description = f"**{cog.qualified_name}**"
 
         if cog.description:
-            em.description += f"\n{cog.description}"
+            em.description += f"\n{cog.description}\n"
 
         more_info = f"{self.arg_help}\n{self.i_cmd(ctx)}"
 
@@ -248,7 +248,7 @@ class ClamHelpCommand(commands.HelpCommand):
         em.description = self.format_command(group)
 
         if filtered:
-            em.description += f"\n\n**Subcommands ({len(filtered)} total):**"
+            em.description += f"\n**Subcommands ({len(filtered)} total):**"
 
         more_info = f"{self.arg_help}\n{self.i_cmd(ctx)}"
 
