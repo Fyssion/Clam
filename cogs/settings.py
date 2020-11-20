@@ -427,7 +427,7 @@ class Settings(commands.Cog):
     @settings.command(name="disable")
     @checks.has_permissions(manage_guild=True)
     async def settings_disable(
-        self, ctx, channel: Optional[discord.TextChannel], command: CommandName
+        self, ctx, channel: Optional[discord.TextChannel], *, command: CommandName
     ):
         """Disable a command in the server or a channel"""
         channel_id = channel.id if channel else None
@@ -450,7 +450,7 @@ class Settings(commands.Cog):
     @settings.command(name="enable")
     @checks.has_permissions(manage_guild=True)
     async def settings_enable(
-        self, ctx, channel: Optional[discord.TextChannel], command: CommandName
+        self, ctx, channel: Optional[discord.TextChannel], *, command: CommandName
     ):
         """Enable a command in the server or a channel"""
         channel_id = channel.id if channel else None
@@ -528,7 +528,7 @@ class Settings(commands.Cog):
     @settings_category.command(name="disable")
     @checks.has_permissions(manage_guild=True)
     async def settings_category_disable(
-        self, ctx, channel: Optional[discord.TextChannel], command: CogName
+        self, ctx, channel: Optional[discord.TextChannel], *, command: CogName
     ):
         """Disable a category in the server or a channel"""
         channel_id = channel.id if channel else None
@@ -551,7 +551,7 @@ class Settings(commands.Cog):
     @settings_category.command(name="enable")
     @checks.has_permissions(manage_guild=True)
     async def settings_cog_enable(
-        self, ctx, channel: Optional[discord.TextChannel], command: CogName
+        self, ctx, channel: Optional[discord.TextChannel], *, command: CogName
     ):
         """Enable a category in the server or a channel"""
         channel_id = channel.id if channel else None
