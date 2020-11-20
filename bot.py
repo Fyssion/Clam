@@ -82,6 +82,7 @@ initial_extensions = [
     "cogs.music",
     "cogs.raidshield",
     # "cogs.reddit",
+    "cogs.settings",
     "cogs.stars",
     "cogs.stats",
     "cogs.tags",
