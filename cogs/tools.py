@@ -625,6 +625,9 @@ class Tools(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):
+        if not message.guild:
+            return
+
         if str(message.author.id) in self.snipe_ignored or str(message.guild.id) in self.snipe_ignored:
             return
 
@@ -636,6 +639,9 @@ class Tools(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
+        if not after.guild:
+            return
+
         if str(after.author.id) in self.snipe_ignored or str(after.guild.id) in self.snipe_ignored:
             return
 
