@@ -129,30 +129,33 @@ class Internet(commands.Cog):
 
         self.wikipedia = mediawiki.MediaWiki()
 
-    async def search_wikipedia(self, ctx, query, *, color=0x6B6B6B):
+    async def search_wikipedia(self, ctx, query, *, color=0x6B6B6B, sentences=2):
         partial = functools.partial(self.wikipedia.search, query)
-        search_results = await self.bot.loop.run_in_executor(None, partial)
+
+        async with ctx.typing():
+            search_results = await self.bot.loop.run_in_executor(None, partial)
 
         if not search_results:
             return await ctx.send(
                 "Question could not be resolved. Try wording it differently?"
             )
 
-        try:
-            partial = functools.partial(self.wikipedia.page, search_results[0])
-            page = await self.bot.loop.run_in_executor(None, partial)
+        async with ctx.typing():
+            try:
+                partial = functools.partial(self.wikipedia.page, search_results[0])
+                page = await self.bot.loop.run_in_executor(None, partial)
 
-        except mediawiki.DisambiguationError as e:
-            partial = functools.partial(self.wikipedia.page, e.options[0])
-            page = await self.bot.loop.run_in_executor(None, partial)
+            except mediawiki.DisambiguationError as e:
+                partial = functools.partial(self.wikipedia.page, e.options[0])
+                page = await self.bot.loop.run_in_executor(None, partial)
 
         title = page.title
         summary = page.content.split("\n\n")[0]
 
-        sentences = summary.split(". ")
+        content_sentences = summary.split(". ")
 
-        if len(sentences) > 4:
-            summary = ". ".join(sentences[:4])
+        if len(content_sentences) > sentences:
+            summary = ". ".join(content_sentences[:sentences])
 
         if len(summary) > 1048:
             summary = summary[:1048] + "..."
