@@ -391,7 +391,7 @@ class Meta(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.emoji = ":gear:"
+        self.emoji = ":robot:"
         self.log = self.bot.log
 
         with open("prefixes.json", "r") as f:
