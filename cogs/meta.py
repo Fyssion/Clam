@@ -591,6 +591,7 @@ class Meta(commands.Cog):
 
     @commands.command(aliases=["diagnose"])
     async def troubleshoot(self, ctx, *, command: CommandConverter):
+        """Troubleshoot any errors with a command"""
         alt_ctx = await copy_context_with(ctx, content=f"{ctx.prefix}{command}")
 
         errors = []
