@@ -358,7 +358,8 @@ class Music(commands.Cog):
             if player.voice and player.voice.channel:
                 connected = sum(1 for m in player.voice.channel.members if not m.bot)
                 deaf = sum(1 for m in player.voice.channel.members if not m.bot and (m.voice.deaf or m.voice.self_deaf))
-                connected = f" {connected} connected ({deaf} deafened)"
+                connected = f" {connected} connected"
+                connected += f" ({deaf} deafened)" if deaf else ""
 
             else:
                 connected = ""
