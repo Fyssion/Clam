@@ -89,7 +89,7 @@ class WolframResultSource(menus.ListPageSource):
 
     def format_page(self, menu, pod):
         em = discord.Embed(color=0xDD1100)
-        em.set_author(name=f"Wolfram result for '{self.query}'")
+        em.set_author(name=f"Wolfram Alpha result for '{self.query}'")
 
         input_pod = self.result["pod"][0]
         em.add_field(
