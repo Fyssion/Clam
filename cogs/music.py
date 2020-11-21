@@ -348,14 +348,22 @@ class Music(commands.Cog):
     @commands.is_owner()
     async def allplayers(self, ctx):
         """View all players"""
-
         players = []
 
         for player in self.players.values():
             guild_name = discord.utils.escape_mentions(player.ctx.guild.name)
-            channel = f"Connected: {player.voice.channel} | " if player.voice else ""
+            channel = f"Voice: {player.voice.channel} | " if player.voice else ""
             channel += f"Bound: {player.text_channel}"
-            players.append(f"**{guild_name}** - `{channel}`")
+
+            if player.voice and player.voice.channel:
+                connected = sum(1 for m in player.voice.channel.members if not m.bot)
+                deaf = sum(1 for m in player.voice.channel.members if m.deaf or m.self_deaf)
+                connected = f" {connected} connected ({deaf} deafened)"
+
+            else:
+                connected = ""
+
+            players.append(f"**{guild_name}** - `{channel}`{connected}")
 
         if not players:
             return await ctx.send("No players")
