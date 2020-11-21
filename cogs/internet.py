@@ -128,7 +128,7 @@ class Internet(commands.Cog):
             result = await self.bot.loop.run_in_executor(None, partial)
 
         if result["@success"] != "true":
-            return await ctx.send("Wolfram Alpha didn't return any data.")
+            return await ctx.send("Query could not be resolved. Try wording it differently?")
 
         menu = MenuPages(WolframResultSource(result, query))
         await menu.start(ctx)
