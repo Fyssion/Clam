@@ -10,6 +10,8 @@ import asyncio
 import inspect
 import functools
 import math
+from jishaku.models import copy_context_with
+from inspect import isawaitable
 
 from .utils.utils import get_lines_of_code
 from .utils import colors
@@ -357,6 +359,18 @@ class ClamHelpCommand(commands.HelpCommand):
             return await self.send_cog_help(cog)
 
 
+class CommandConverter(commands.Converter):
+    async def convert(self, ctx, arg):
+        arg = arg.lower()
+
+        valid_commands = {c.qualified_name: c for c in ctx.bot.walk_commands()}
+
+        if arg not in valid_commands.keys():
+            raise commands.BadArgument(f"Command `{arg}` is not a valid command.")
+
+        return valid_commands.get(arg)
+
+
 class Meta(commands.Cog):
     """Everything to do with the bot itself."""
 
@@ -574,6 +588,67 @@ class Meta(commands.Cog):
             prefixes.append("or when mentioned")
             return ", ".join(prefixes)
         return " ".join(self.bot.prefixes)
+
+    @commands.command(aliases=["diagnose"])
+    async def troubleshoot(self, ctx, *, command: CommandConverter):
+        alt_ctx = await copy_context_with(ctx, content=f"{ctx.prefix}{command}")
+
+        errors = []
+
+        if not command.enabled:
+            errors.append("Command is disabled by bot owner.")
+
+        bot_checks = self.bot._checks
+
+        if bot_checks:
+            for predicate in bot_checks:
+                try:
+                    pred = predicate(alt_ctx)
+                    if isawaitable(pred):
+                        await pred
+                except Exception as e:
+                    errors.append(str(e))
+
+        cog = command.cog
+        if cog is not None:
+            local_check = commands.Cog._get_overridden_method(cog.cog_check)
+            if local_check is not None:
+                try:
+                    ret = await discord.utils.maybe_coroutine(local_check, alt_ctx)
+                    if not ret:
+                        errors.append("The category check has failed.")
+                except Exception as e:
+                    errors.append(str(e))
+
+        predicates = command.checks
+        if predicates:
+            for predicate in predicates:
+                try:
+                    pred = predicate(alt_ctx)
+                    if isawaitable(pred):
+                        await pred
+                except Exception as e:
+                    errors.append(str(e))
+
+        if not errors:
+            return await ctx.send(
+                ctx.tick(
+                    True, "All checks passed for this command. It should run normally!"
+                )
+            )
+
+        # removing duplicates
+        res = []
+        [res.append(e) for e in errors if e not in res] 
+
+        res[0] = ctx.tick(False, res[0])
+        em = discord.Embed(
+            title="Troubleshoot Results",
+            description=f"\n{ctx.tick(False)} ".join(res),
+            color=discord.Color.blue(),
+        )
+
+        await ctx.send(embed=em)
 
     @commands.command(description="Greet me!", aliases=["hello"])
     async def hi(self, ctx):

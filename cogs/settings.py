@@ -244,14 +244,20 @@ class Settings(commands.Cog):
 
     async def bot_check(self, ctx):
         cmd_perms = await self.get_command_permissions(ctx.guild.id)
-        if cmd_perms.is_blocked(ctx) is False:
+
+        blocked = cmd_perms.is_blocked(ctx)
+        if blocked is False:
             return True
 
-        elif cmd_perms.is_blocked(ctx) is True:
-            return False
+        elif blocked is True:
+            raise commands.DisabledCommand("This command has been disabled by the server admins.")
 
         cog_perms = await self.get_cog_permissions(ctx.guild.id)
-        return not cog_perms.is_blocked(ctx)
+
+        if cog_perms.is_blocked(ctx):
+            raise commands.DisabledCommand("This category has been disabled by the server admins.")
+
+        return True
 
     @cache.cache()
     async def is_ignored(
