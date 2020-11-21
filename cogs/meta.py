@@ -141,12 +141,27 @@ class ClamHelpCommand(commands.HelpCommand):
             else:
                 return False
 
+        def private(cog):
+            if hasattr(cog, "private"):
+                if ctx.guild and ctx.guild.id in (454469821376102410, 621123303343652867):
+                    return False
+
+                elif hasattr(cog, "private_user_overrides") and ctx.author.id in cog.private_user_overrides:
+                    return False
+
+                elif ctx.guild and hasattr(cog, "private_guild_overrides") and ctx.guild.id in cog.private_guild_overrides:
+                    return False
+
+                return True
+
+            return False
+
         cog_names = []
         for cog_name in bot.ordered_cogs:
             cog = bot.get_cog(cog_name)
             if (
                 hasattr(cog, "hidden")
-                or hasattr(cog, "private")
+                or private(cog)
                 or cog.qualified_name == "Jishaku"
                 or await blocked(cog.qualified_name)
             ):
