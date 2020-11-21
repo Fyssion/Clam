@@ -7,6 +7,8 @@ import logging
 import os
 import re
 import youtube_dl
+import datetime
+import asyncpg
 
 
 log = logging.getLogger("clam.music.ytdl")
@@ -141,6 +143,7 @@ class Song:
         self.database = True
         self.registered_at = registered_at
         self.last_updated = last_updated
+        self.db_id = record["id"]
 
         return self
 
@@ -168,6 +171,30 @@ class Song:
 
         if not record:
             return await ctx.send(f":x: Could not find a match for `{search}`")
+
+        return cls.from_record(record, ctx)
+
+    @classmethod
+    async def search_song_aliases(cls, ctx, search):
+        query = """SELECT songs.*, song_aliases.expires_at
+                   FROM song_aliases
+                   INNER JOIN songs ON songs.id = song_aliases.song_id
+                   WHERE (song_aliases.user_id=$1 OR song_aliases.user_id IS NULL) AND song_aliases.alias=$2;
+                """
+
+        record = await ctx.db.fetchrow(query, ctx.author.id, search.lower())
+
+        if not record:
+            return None
+
+        expires_at = record.get("expires_at")
+
+        if expires_at and expires_at < datetime.datetime.utcnow():
+            query = """DELETE FROM song_aliases
+                       WHERE (song_aliases.user_id=$1 OR song_aliases.user_id IS NULL) AND song_aliases.alias=$2;
+                    """
+            await ctx.db.execute(query, ctx.author.id, search.lower())
+            return None
 
         return cls.from_record(record, ctx)
 
@@ -216,6 +243,13 @@ class Song:
 
         if song:
             log.info(f"Found song in database: {song.id}")
+            return song
+
+        log.info("Searching song aliases")
+        song = await cls.search_song_aliases(ctx, search)
+
+        if song:
+            log.info(f"Found song alias in database: {song.id}")
             return song
 
         log.info("Song not in database, searching youtube")
@@ -336,9 +370,10 @@ class Song:
                 log.info(f"Song '{extractor}-{song_id}' not in database, inserting")
                 query = """INSERT INTO songs (filename, title, song_id, extractor, info)
                            VALUES ($1, $2, $3, $4, $5::jsonb)
+                           RETURNING songs.id;
                         """
 
-                await ctx.db.execute(
+                song_id = await ctx.db.fetchval(
                     query, filename, info.get("title"), song_id, extractor, info
                 )
 
@@ -346,6 +381,22 @@ class Song:
                 log.info(
                     f"Song '{extractor}-{song_id}' is already in database, skipping insertion"
                 )
+                song_id = song.db_id
+
+            query = """INSERT INTO song_aliases (alias, expires_at, song_id)
+                       VALUES ($1, $2, $3);
+                    """
+
+            expires = datetime.datetime.utcnow() + datetime.timedelta(days=30)
+
+            log.info(f"Inserting song alias '{search.lower()}' into database...")
+            async with ctx.db.acquire() as conn:
+                async with conn.transaction():
+                    try:
+                        await ctx.db.execute(query, search.lower(), expires, song_id)
+
+                    except asyncpg.UniqueViolationError:
+                        log.info("Could not insert song alias, there is already an identical one.")
 
             return cls(
                 ctx,

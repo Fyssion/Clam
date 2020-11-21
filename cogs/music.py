@@ -46,6 +46,22 @@ class SongsTable(db.Table, table_name="songs"):
         return statement + "\n" + sql
 
 
+class SongAliases(db.Table, table_name="song_aliases"):
+    id = db.PrimaryKeyColumn()
+
+    alias = db.Column(db.String)
+    song_id = db.Column(db.ForeignKey("songs", "id"))
+    expires_at = db.Column(db.Datetime)
+
+    user_id = db.Column(db.Integer(big=True))
+
+    @classmethod
+    def create_table(cls, *, exists_ok=True):
+        statement = super().create_table(exists_ok=exists_ok)
+        sql = "CREATE UNIQUE INDEX IF NOT EXISTS song_aliases_uniq_idx ON song_aliases (alias, user_id, song_id);"
+        return statement + "\n" + sql
+
+
 def hover_link(ctx, msg, text="`?`"):
     return (
         f"[{text}](https://www.discordapp.com/"
