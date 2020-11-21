@@ -183,7 +183,7 @@ class Internet(commands.Cog):
         if result["@success"] != "true":
             return await self.search_wikipedia(ctx, question, color=0xDD1100)
 
-        menu = MenuPages(WolframResultSource(result, question))
+        menu = MenuPages(WolframResultSource(result, question), clear_reactions_after=True)
         await menu.start(ctx)
 
     @commands.command(aliases=["wiki"])
