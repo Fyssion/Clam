@@ -701,7 +701,7 @@ class Music(commands.Cog):
 
     @commands.command(
         name="skip",
-        aliases=["next"],
+        aliases=["next", "s"],
     )
     @is_listening()
     async def skip(self, ctx):
