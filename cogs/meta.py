@@ -262,7 +262,7 @@ class ClamHelpCommand(commands.HelpCommand):
         em.description = self.format_command(group)
 
         if filtered:
-            em.description += f"\n**Subcommands ({len(filtered)} total):**"
+            em.description += f"\n\n**Subcommands ({len(filtered)} total):**"
 
         more_info = f"{self.arg_help}\n{self.i_cmd(ctx)}"
 
