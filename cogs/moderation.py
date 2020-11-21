@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 from async_timeout import timeout
 from collections import Counter
 import os.path
+from jishaku.models import copy_context_with
 
 from .utils import db, human_time, checks, cache
 from .utils.emojis import GREEN_TICK, RED_TICK, LOADING
@@ -255,6 +256,29 @@ class Moderation(commands.Cog):
         if isinstance(error, NoMuteRole) or isinstance(error, RoleHierarchyFailure):
             await ctx.send(f"{ctx.tick(False)} {error}")
             ctx.handled = True
+
+    @commands.command(aliases=["su"])
+    @checks.has_permissions(administrator=True)
+    async def runas(self, ctx, target: discord.Member, *, command):
+        """
+        Run a command as someone else.
+        You must have the administrator permission, and you cannot run
+        a command as someone with a higher role than you.
+        """
+        if target.id == self.bot.owner_id:
+            raise commands.BadArgument("You cannot run commands as the owner of the bot.")
+
+        if not role_hierarchy_check(ctx, ctx.author, target):
+            raise commands.BadArgument("You can only run commands as members with roles lower than yours.")
+
+        alt_ctx = await copy_context_with(ctx, author=target, content=ctx.prefix + command)
+
+        if alt_ctx.command is None:
+            if alt_ctx.invoked_with is None:
+                return await ctx.send('This bot has been hard-configured to ignore this user.')
+            return await ctx.send(f'Command "{alt_ctx.invoked_with}" is not found')
+
+        return await self.bot.invoke(alt_ctx)
 
     @cache.cache()
     async def get_guild_settings(self, guild_id):
