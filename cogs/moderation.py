@@ -266,19 +266,30 @@ class Moderation(commands.Cog):
         a command as someone with a higher role than you.
         """
         if target.id == self.bot.owner_id:
-            raise commands.BadArgument("You cannot run commands as the owner of the bot.")
+            raise commands.BadArgument(
+                "You cannot run commands as the owner of the bot."
+            )
 
         if not role_hierarchy_check(ctx, ctx.author, target):
-            raise commands.BadArgument("You can only run commands as members with roles lower than yours.")
+            raise commands.BadArgument(
+                "You can only run commands as members with roles lower than yours."
+            )
 
-        alt_ctx = await copy_context_with(ctx, author=target, content=ctx.prefix + command)
+        alt_ctx = await copy_context_with(
+            ctx, author=target, content=ctx.prefix + command
+        )
 
         if alt_ctx.command is None:
             if alt_ctx.invoked_with is None:
-                return await ctx.send('This bot has been hard-configured to ignore this user.')
+                return await ctx.send(
+                    "This bot has been hard-configured to ignore this user."
+                )
             return await ctx.send(f'Command "{alt_ctx.invoked_with}" is not found')
 
-        return await self.bot.invoke(alt_ctx)
+        if await self.bot.can_run(alt_ctx, call_once=True):
+            await alt_ctx.command.invoke(alt_ctx)
+        else:
+            raise commands.CheckFailure("The global check once functions failed.")
 
     @cache.cache()
     async def get_guild_settings(self, guild_id):
@@ -1130,7 +1141,10 @@ class Moderation(commands.Cog):
             ctx, search, predicate, before=flags["before"], after=flags["after"]
         )
 
-    @purge.command(name="bot", usage="[search=100] <bot> [prefixes...]",)
+    @purge.command(
+        name="bot",
+        usage="[search=100] <bot> [prefixes...]",
+    )
     async def purge_bot(
         self, ctx, search: typing.Optional[int], bot: discord.User, *prefixes
     ):
@@ -1142,6 +1156,7 @@ class Moderation(commands.Cog):
             This will purge message from @BotName and messages
             that start with "?", "!", or "$ ".
         """
+
         async def warn_them(search):
             return await ctx.confirm(
                 f"This action might delete up to {search} messages. Continue?"
