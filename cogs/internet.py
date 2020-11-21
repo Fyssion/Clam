@@ -14,6 +14,7 @@ import json
 import functools
 import io
 import async_cse
+import mediawiki
 from PIL import Image
 from bs4 import BeautifulSoup
 
@@ -91,8 +92,16 @@ class WolframResultSource(menus.ListPageSource):
         em.set_author(name=f"Wolfram result for '{self.query}'")
 
         input_pod = self.result["pod"][0]
-        em.add_field(name=input_pod["@title"], value=self.resolve_subpod_key(input_pod["subpod"], "plaintext"), inline=False)
-        em.add_field(name=pod["@title"], value=self.resolve_subpod_key(pod["subpod"], "plaintext") or "\u200b", inline=False)
+        em.add_field(
+            name=input_pod["@title"],
+            value=self.resolve_subpod_key(input_pod["subpod"], "plaintext"),
+            inline=False,
+        )
+        em.add_field(
+            name=pod["@title"],
+            value=self.resolve_subpod_key(pod["subpod"], "plaintext") or "\u200b",
+            inline=False,
+        )
 
         img = self.resolve_subpod_key(pod["subpod"], "img")
         if img:
@@ -118,7 +127,69 @@ class Internet(commands.Cog):
         self.bot = bot
         self.emoji = ":globe_with_meridians:"
 
-    @commands.command(aliases=["wolframalpha", "question", "q"])
+        self.wikipedia = mediawiki.MediaWiki()
+
+    async def search_wikipedia(self, ctx, query, *, color=0x6B6B6B):
+        partial = functools.partial(self.wikipedia.search, query)
+        search_results = await self.bot.loop.run_in_executor(None, partial)
+
+        if not search_results:
+            return await ctx.send(
+                "Question could not be resolved. Try wording it differently?"
+            )
+
+        try:
+            partial = functools.partial(self.wikipedia.page, search_results[0])
+            page = await self.bot.loop.run_in_executor(None, partial)
+
+        except mediawiki.DisambiguationError as e:
+            partial = functools.partial(self.wikipedia.page, e.options[0])
+            page = await self.bot.loop.run_in_executor(None, partial)
+
+        title = page.title
+        summary = page.content.split("\n\n")[0]
+
+        sentences = summary.split(". ")
+
+        if len(sentences) > 4:
+            summary = ". ".join(sentences[:4])
+
+        if len(summary) > 1048:
+            summary = summary[:1048] + "..."
+
+        description = f"{summary}\n\n[Read more]({page.url})"
+
+        em = discord.Embed(title=title, description=description, color=color, url=page.url)
+        em.set_author(name=f"Wikipedia result for '{query}'")
+
+        await ctx.send(embed=em)
+
+    @commands.command(aliases=["q"])
+    @commands.cooldown(5, 30, commands.BucketType.user)
+    async def question(self, ctx, *, question):
+        """Ask the bot for information
+
+        The bot will query wolfram alpha and then wikipedia
+        if wolfram alpha returns no results.
+        """
+        partial = functools.partial(self.bot.wolfram.query, question)
+
+        async with ctx.typing():
+            result = await self.bot.loop.run_in_executor(None, partial)
+
+        if result["@success"] != "true":
+            return await self.search_wikipedia(ctx, question, color=0xDD1100)
+
+        menu = MenuPages(WolframResultSource(result, question))
+        await menu.start(ctx)
+
+    @commands.command(aliases=["wiki"])
+    @commands.cooldown(5, 30, commands.BucketType.user)
+    async def wikipedia(self, ctx, *, query):
+        """Search Wikipedia for an article"""
+        await self.search_wikipedia(ctx, query)
+
+    @commands.command(aliases=["wolframalpha"])
     @commands.cooldown(5, 30, commands.BucketType.user)
     async def wolfram(self, ctx, *, query):
         """Make a query to Wolfram Alpha and return the result"""
@@ -128,7 +199,9 @@ class Internet(commands.Cog):
             result = await self.bot.loop.run_in_executor(None, partial)
 
         if result["@success"] != "true":
-            return await ctx.send("Query could not be resolved. Try wording it differently?")
+            return await ctx.send(
+                "Query could not be resolved. Try wording it differently?"
+            )
 
         menu = MenuPages(WolframResultSource(result, query))
         await menu.start(ctx)

@@ -18,3 +18,4 @@ lru-dict
 cleverbot.py[async]
 discord-flags<=2.1.1
 wolframalpha
+pymediawiki
