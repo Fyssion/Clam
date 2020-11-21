@@ -74,6 +74,37 @@ class GoogleResultPages(menus.ListPageSource):
         return em
 
 
+class WolframResultSource(menus.ListPageSource):
+    def __init__(self, result, query):
+        super().__init__(list(result["pod"][1:]), per_page=1)
+        self.result = result
+        self.query = query
+
+    def resolve_subpod_key(self, variable, key):
+        if isinstance(variable, list):
+            return variable[0][key]
+        else:
+            return variable[key]
+
+    def format_page(self, menu, pod):
+        em = discord.Embed(color=0xDD1100)
+        em.set_author(name=f"Wolfram result for '{self.query}'")
+
+        input_pod = self.result["pod"][0]
+        em.add_field(name=input_pod["@title"], value=self.resolve_subpod_key(input_pod["subpod"], "plaintext"), inline=False)
+        em.add_field(name=pod["@title"], value=self.resolve_subpod_key(pod["subpod"], "plaintext") or "\u200b", inline=False)
+
+        img = self.resolve_subpod_key(pod["subpod"], "img")
+        if img:
+            em.set_image(url=img["@src"])
+
+        em.set_footer(
+            text=f"{plural(len(self.entries)):pod} | Pod {menu.current_page + 1}/{self.get_max_pages()}"
+        )
+
+        return em
+
+
 class Internet(commands.Cog):
     """Various commands that use the internet.
 
@@ -87,7 +118,24 @@ class Internet(commands.Cog):
         self.bot = bot
         self.emoji = ":globe_with_meridians:"
 
-    @commands.command(description="Preform a google search and display the results")
+    @commands.command(aliases=["wolframalpha", "question", "q"])
+    @commands.cooldown(5, 30, commands.BucketType.user)
+    async def wolfram(self, ctx, *, query):
+        """Make a query to Wolfram Alpha and return the result"""
+        partial = functools.partial(self.bot.wolfram.query, query)
+
+        async with ctx.typing():
+            result = await self.bot.loop.run_in_executor(None, partial)
+
+        if result["@success"] != "true":
+            return await ctx.send("Wolfram Alpha didn't return any data.")
+
+        menu = MenuPages(WolframResultSource(result, query))
+        await menu.start(ctx)
+
+    @commands.command(
+        description="Preform a google search and display the results", aliases=["g"]
+    )
     @commands.cooldown(5, 30, commands.BucketType.user)
     async def google(self, ctx, *, query):
         google_client = self.bot.google_client
@@ -294,7 +342,10 @@ class Internet(commands.Cog):
         partial = functools.partial(self.crop_skin, img)
         face = await self.bot.loop.run_in_executor(None, partial)
 
-        em = discord.Embed(title=name, color=0x70B237,)
+        em = discord.Embed(
+            title=name,
+            color=0x70B237,
+        )
         em.set_thumbnail(url="attachment://face.png")
         em.set_footer(text=f"UUID: {uuid}")
 
@@ -473,7 +524,9 @@ class Internet(commands.Cog):
         owner = data["owner"]
 
         em.set_author(
-            name=owner["login"], url=owner["html_url"], icon_url=owner["avatar_url"],
+            name=owner["login"],
+            url=owner["html_url"],
+            icon_url=owner["avatar_url"],
         )
         em.set_thumbnail(url=owner["avatar_url"])
 
@@ -545,7 +598,9 @@ class Internet(commands.Cog):
         await ctx.send("It has been done.")
 
     @commands.group(
-        name="xkcd", description="Fetch an xdcd comic", invoke_without_command=True,
+        name="xkcd",
+        description="Fetch an xdcd comic",
+        invoke_without_command=True,
     )
     async def _xkcd(self, ctx, number: int = None):
         if not number:
@@ -651,7 +706,9 @@ class Internet(commands.Cog):
                 key = key.replace("discord.ext.commands.", "").replace("discord.", "")
 
             if projname == "telegram.py":
-                key = key.replace("telegrampy.ext.commands.", "").replace("telegrampy.", "")
+                key = key.replace("telegrampy.ext.commands.", "").replace(
+                    "telegrampy.", ""
+                )
 
             result[f"{prefix}{key}"] = os.path.join(url, location)
 
@@ -681,7 +738,7 @@ class Internet(commands.Cog):
             "asyncpg": "https://magicstack.github.io/asyncpg/current",
             "flask": "https://flask.palletsprojects.com/en/1.1.x",
             "sqlalchemy": "https://docs.sqlalchemy.org/en/13",
-            "telegrampy": "https://telegrampy.readthedocs.io/en/latest"
+            "telegrampy": "https://telegrampy.readthedocs.io/en/latest",
         }
 
         if obj is None:
@@ -719,7 +776,8 @@ class Internet(commands.Cog):
         await pages.start(ctx)
 
     @commands.group(
-        aliases=["rtfm", "rtfd"], invoke_without_command=True,
+        aliases=["rtfm", "rtfd"],
+        invoke_without_command=True,
     )
     async def docs(self, ctx, *, obj: str = None):
         """Searches discord.py documentation and returns a list of matching entities.

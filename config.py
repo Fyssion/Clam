@@ -56,6 +56,7 @@ class Config:
         self.google_api_key = self._data["google-api-key"]  # Google api key
         self.database_uri = self._data["database-uri"]  # Postgres database URI
         self.cleverbot_api_key = self._data["cleverbot-api-key"]  # Cleverbot API key
+        self.wolfram_api_key = self._data["wolfram-api-key"]  # wolframalpha api key
 
         # Optional config stuff
         # Run the bot in debug mode or not

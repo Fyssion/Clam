@@ -12,6 +12,7 @@ import collections
 import os
 import os.path
 from cleverbot import async_ as cleverbot
+import wolframalpha
 
 from config import Config
 from cogs.utils import db
@@ -145,6 +146,7 @@ class Clam(commands.Bot):
         self.session = None
         self.highlight_words = []
         self.cleverbot = None
+        self.wolfram = wolframalpha.Client(self.config.wolfram_api_key)
         self.loop.create_task(self.prepare_bot())
 
         # user_id: spam_amount
