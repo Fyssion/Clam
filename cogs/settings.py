@@ -243,6 +243,9 @@ class Settings(commands.Cog):
         return CogPermissions(guild_id, records or [])
 
     async def bot_check(self, ctx):
+        if not ctx.guild:
+            return True
+
         cmd_perms = await self.get_command_permissions(ctx.guild.id)
 
         blocked = cmd_perms.is_blocked(ctx)
@@ -266,6 +269,9 @@ class Settings(commands.Cog):
         """Returns whether a member or channel is ignored in a guild"""
         if member_id in self.bot.blacklist or guild_id in self.bot.blacklist:
             return True
+
+        if member_id == self.bot.owner_id:
+            return False
 
         if check_bypass:
             guild = self.bot.get_guild(guild_id)
