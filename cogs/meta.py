@@ -687,8 +687,8 @@ class Meta(commands.Cog):
         lines = await self.bot.loop.run_in_executor(None, partial)
         await ctx.send(lines)
 
-    @code.command(description="Include comments in the search.")
-    async def comments(self, ctx):
+    @code.command(name="all", description="Include comments and newlines", aliases=["comments"])
+    async def code_all(self, ctx):
         partial = functools.partial(get_lines_of_code, comments=True)
         lines = await self.bot.loop.run_in_executor(None, partial)
         await ctx.send(lines)

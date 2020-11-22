@@ -49,7 +49,7 @@ def get_lines_of_code(comments=False):
                             pass
                         else:
                             total += 1
-    excomments = " (excluding comments)" if not comments else ""
+    excomments = " (including comments and newlines)" if comments else ""
     return f"I am made of {total:,} lines of Python{excomments}, spread across {file_amount:,} files!"
 
 
