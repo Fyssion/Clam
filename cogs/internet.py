@@ -206,7 +206,7 @@ class Internet(commands.Cog):
                 "Query could not be resolved. Try wording it differently?"
             )
 
-        menu = MenuPages(WolframResultSource(result, query))
+        menu = MenuPages(WolframResultSource(result, query), clear_reactions_after=True)
         await menu.start(ctx)
 
     @commands.command(
