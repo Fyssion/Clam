@@ -14,6 +14,7 @@ import youtube_dl
 import datetime
 import importlib
 import enum
+import typing
 
 from .utils import db, ytdl, music_player, colors, human_time
 from .utils.emojis import GREEN_TICK, RED_TICK, LOADING
@@ -357,7 +358,11 @@ class Music(commands.Cog):
 
             if player.voice and player.voice.channel:
                 connected = sum(1 for m in player.voice.channel.members if not m.bot)
-                deaf = sum(1 for m in player.voice.channel.members if not m.bot and (m.voice.deaf or m.voice.self_deaf))
+                deaf = sum(
+                    1
+                    for m in player.voice.channel.members
+                    if not m.bot and (m.voice.deaf or m.voice.self_deaf)
+                )
                 connected = f" {connected} connected"
                 connected += f" ({deaf} deafened)" if deaf else ""
 
@@ -426,7 +431,9 @@ class Music(commands.Cog):
 
             except asyncio.TimeoutError:
                 if not player.closed:
-                    log.info(f"{member.guild}: Bot left voice for 5 seconds, killing player.")
+                    log.info(
+                        f"{member.guild}: Bot left voice for 5 seconds, killing player."
+                    )
                     await player.stop()
                     del self.players[member.guild.id]
 
@@ -713,7 +720,7 @@ class Music(commands.Cog):
             if required != 1:
                 await ctx.send(
                     f"Required votes met `({total}/{required})`. **⏭ Skipping.**"
-                ) 
+                )
 
             if not ctx.player.songs:
                 ctx.player.loop = False
@@ -732,7 +739,7 @@ class Music(commands.Cog):
         if len(ctx.player.songs) < position:
             raise commands.BadArgument(f"The queue has less than {position} song(s).")
 
-        song = ctx.player.songs[position-1]
+        song = ctx.player.songs[position - 1]
 
         for i in range(position - 1):
             current = await ctx.player.songs.get()
@@ -809,7 +816,7 @@ class Music(commands.Cog):
         name="remove",
         description="Removes a song from the queue at a given index.",
         usage="[song #]",
-        aliases=["delete"]
+        aliases=["delete"],
     )
     @is_listening()
     async def queue_remove(self, ctx, index: int):
@@ -994,10 +1001,19 @@ class Music(commands.Cog):
                 if "list=" in query:
                     return await self.fetch_yt_playlist(ctx, query)
 
-            elif "soundcloud" in query:
-                pass
+        skip_resolve = False
 
-        await ctx.send(f"**:mag: Searching** `{query}`")
+        original = query
+
+        if location_type is LocationType.soundcloud:
+            query = f"scsearch:{query}"
+            skip_resolve = True
+
+        elif location_type is LocationType.youtube:
+            query = f"ytsearch:{query}"
+            skip_resolve = True
+
+        await ctx.send(f"**:mag: Searching** `{original}`")
 
         async with ctx.typing():
             try:
@@ -1007,7 +1023,9 @@ class Music(commands.Cog):
                             ctx, query, loop=self.bot.loop
                         )
                     else:
-                        song = await ytdl.Song.get_song(ctx, query, loop=self.bot.loop)
+                        song = await ytdl.Song.get_song(
+                            ctx, query, loop=self.bot.loop, skip_resolve=skip_resolve
+                        )
 
             except ytdl.YTDLError as e:
                 print(e)
@@ -1183,52 +1201,13 @@ class Music(commands.Cog):
 
         await self.hastebin_playlist(ctx, url)
 
-    @commands.command(
-        name="play",
-        aliases=["p", "yt"],
-        usage="[song]",
-    )
-    async def play(self, ctx, *, search=None):
-        """Search for a song and play it
-
-        You can specify where to search for the song with `source: search`
-        Defaults to Youtube.
-
-        Sources:
-          - `youtube` `yt` - Search Youtube
-          ~~- `soundcloud` sc` - Search Soundcloud~~song
-          - `database` `db` - Search the bot's database
-          - `bin` - Give a bin URL (similar to `playbin` command)
-
-        Examples:
-         ~~- `soundcloud: a song here` - Searches Soundcloud~~
-          - `search here` - Searches Youtube
-          - `db: a song` - Searches the database
-        """
-        if not ctx.player:
-            player = self.create_player(ctx)
-            ctx.player = player
-
-        if (
-            not search
-            and ctx.player.is_playing
-            and ctx.player.voice.is_paused()
-            and ctx.author.guild_permissions.manage_guild
-        ):
-            ctx.player.resume()
-            return await ctx.send(
-                f"**:arrow_forward: Resuming** `{ctx.player.current.title}`"
-            )
-
-        if not search:
-            return await ctx.send("Please specify a song to play/search for.")
-
+    def parse_search(self, search):
         type_regex = re.compile(r"(\w+):\s?(.+)")
 
         location_types = {
             LocationType.youtube: ["youtube", "yt"],
             LocationType.db: ["database", "db"],
-            # LocationType.soundcloud: ["soundcloud", "sc"],
+            LocationType.soundcloud: ["soundcloud", "sc"],
             LocationType.bin: ["bin"],
         }
 
@@ -1255,7 +1234,119 @@ class Music(commands.Cog):
             if not location_type:
                 query = search
 
+        return query, location_type
+
+    @commands.command(
+        name="play",
+        aliases=["p", "yt"],
+        usage="[song]",
+    )
+    async def play(self, ctx, *, search=None):
+        """Play a song
+
+        You can specify where to search for the song with `source: search`
+        Defaults to Youtube.
+
+        Sources:
+          - `youtube` `yt` - Search Youtube
+          - `soundcloud` `sc` - Search Soundcloud
+          - `database` `db` - Search the bot's database
+          - `bin` - Give a bin URL (similar to `playbin` command)
+
+        Examples:
+         - `soundcloud: a song here` - Searches Soundcloud
+          - `search here` - Searches Youtube
+          - `db: a song` - Searches the database
+        """
+        if not ctx.player:
+            player = self.create_player(ctx)
+            ctx.player = player
+
+        if (
+            not search
+            and ctx.player.is_playing
+            and ctx.player.voice.is_paused()
+            and ctx.author.guild_permissions.manage_guild
+        ):
+            ctx.player.resume()
+            return await ctx.send(
+                f"**:arrow_forward: Resuming** `{ctx.player.current.title}`"
+            )
+
+        if not search:
+            return await ctx.send("Please specify a song to play/search for.")
+
+        query, location_type = self.parse_search(search)
+
         await self.play_song(ctx, location_type, query)
+
+    @commands.command()
+    async def search(self, ctx, limit: typing.Optional[int], *, search):
+        """Search Youtube or Soundcloud and select a song to play
+
+        You can specify where to search for the song with `source: search`
+        Defaults to Youtube.
+
+        Sources:
+          - `youtube` `yt` - Search Youtube
+          - `soundcloud` `sc` - Search Soundcloud
+
+        Examples:
+         - `soundcloud: a song here` - Searches Soundcloud
+          - `search here` - Searches Youtube
+        """
+        if not ctx.player:
+            player = self.create_player(ctx)
+            ctx.player = player
+
+        if not ctx.player.voice:
+            await ctx.invoke(self.join)
+
+        limit = limit or 3
+
+        if limit < 2:
+            raise commands.BadArgument("You must search for at least 2 songs.")
+
+        if limit > 6:
+            raise commands.BadArgument("You cannot search for more than 6 songs.")
+
+        query, location_type = self.parse_search(search)
+
+        if location_type is LocationType.bin or location_type is LocationType.db:
+            query = search  # don't want these to be available
+
+        original = query
+
+        if location_type is LocationType.soundcloud:
+            query = f"scsearch{limit}:{query}"
+
+        else:
+            query = f"ytsearch{limit}:{query}"
+
+        await ctx.send(f"**:mag: Searching** `{original}`")
+
+        try:
+            song = await ytdl.Song.search_ytdl(ctx, query)
+
+        except ytdl.YTDLError as e:
+            print(e)
+            await ctx.send(
+                f"An error occurred while processing this request: ```py {str(e)}```"
+            )
+
+        else:
+            if not song:
+                return
+
+            await ctx.player.songs.put(song)
+
+            if ctx.player.is_playing:
+                await ctx.send(f"**\N{PAGE FACING UP} Enqueued** {str(song)}")
+
+            elif not ctx.player._notify:
+                await ctx.send(
+                    f"**\N{MULTIPLE MUSICAL NOTES} Now playing** `{song.title}`"
+                )
 
     @commands.command(
         name="ytdl", description="Test YTDL to see if it works", hidden=True
@@ -1308,6 +1399,7 @@ class Music(commands.Cog):
     @join.before_invoke
     @play.before_invoke
     @playbin.before_invoke
+    @search.before_invoke
     async def ensure_player_channel(self, ctx):
         if not ctx.author.voice or not ctx.author.voice.channel:
             raise NotListeningError("You are not connected to a voice channel.")

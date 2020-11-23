@@ -1,4 +1,4 @@
-from discord.ext import commands
+from discord.ext import commands, menus
 import discord
 
 import asyncio
@@ -10,6 +10,16 @@ import youtube_dl
 import datetime
 import asyncpg
 
+from cogs.utils.emojis import (
+    WAY_BACK,
+    BACK,
+    FORWARD,
+    WAY_FOWARD,
+    STOP,
+    GREEN_TICK,
+    RED_TICK,
+)
+
 
 log = logging.getLogger("clam.music.ytdl")
 
@@ -20,6 +30,154 @@ youtube_dl.utils.bug_reports_message = lambda: ""
 
 class YTDLError(commands.CommandError):
     pass
+
+
+class SongSelector(menus.Menu):
+    class _Source(menus.ListPageSource):
+        def __init__(self, songs):
+            super().__init__(songs, per_page=1)
+
+        def format_page(self, menu, song):
+            em = discord.Embed(
+                title="Select a song to continue",
+                description=f"```css\n{song.get('title')}\n```",
+                color=discord.Color.green(),
+            )
+
+            em.add_field(
+                name="Duration",
+                value=Song.timestamp_duration(int(song.get("duration"))),
+            )
+            em.add_field(
+                name="Uploader",
+                value=f"[{song.get('uploader')}]({song.get('uploader_url')})",
+            )
+            em.add_field(name="URL", value=f"[Click]({song.get('webpage_url')})")
+            em.set_thumbnail(url=song.get("thumbnail"))
+
+            em.set_footer(text=f"Song {menu.current_page+1}/{self.get_max_pages()}")
+
+            return em
+
+    def __init__(self, songs, **kwargs):
+        self.songs = songs
+        kwargs.setdefault("delete_message_after", True)
+        kwargs.setdefault("timeout", 180)  # 3m
+        self._source = self._Source(songs)
+        self.current_page = 0
+        self.selected_page = None
+        super().__init__(**kwargs)
+
+    async def prompt(self, ctx):
+        await self.start(ctx, wait=True)
+        return (
+            self.songs[self.selected_page] if self.selected_page is not None else None
+        )
+
+    @property
+    def source(self):
+        """:class:`PageSource`: The source where the data comes from."""
+        return self._source
+
+    async def change_source(self, source):
+        """|coro|
+        Changes the :class:`PageSource` to a different one at runtime.
+        Once the change has been set, the menu is moved to the first
+        page of the new source if it was started. This effectively
+        changes the :attr:`current_page` to 0.
+        Raises
+        --------
+        TypeError
+            A :class:`PageSource` was not passed.
+        """
+
+        if not isinstance(source, menus.PageSource):
+            raise TypeError(
+                "Expected {0!r} not {1.__class__!r}.".format(menus.PageSource, source)
+            )
+
+        self._source = source
+        self.current_page = 0
+        if self.message is not None:
+            await source._prepare_once()
+            await self.show_page(0)
+
+    def should_add_reactions(self):
+        return self._source.is_paginating()
+
+    async def _get_kwargs_from_page(self, page):
+        value = await discord.utils.maybe_coroutine(
+            self._source.format_page, self, page
+        )
+        if isinstance(value, dict):
+            return value
+        elif isinstance(value, str):
+            return {"content": value, "embed": None}
+        elif isinstance(value, discord.Embed):
+            return {"embed": value, "content": None}
+
+    async def show_page(self, page_number):
+        page = await self._source.get_page(page_number)
+        self.current_page = page_number
+        kwargs = await self._get_kwargs_from_page(page)
+        await self.message.edit(**kwargs)
+
+    async def send_initial_message(self, ctx, channel):
+        """|coro|
+        The default implementation of :meth:`Menu.send_initial_message`
+        for the interactive pagination session.
+        This implementation shows the first page of the source.
+        """
+        page = await self._source.get_page(0)
+        kwargs = await self._get_kwargs_from_page(page)
+        return await channel.send(**kwargs)
+
+    async def start(self, ctx, *, channel=None, wait=False):
+        await self._source._prepare_once()
+        await super().start(ctx, channel=channel, wait=wait)
+
+    async def show_checked_page(self, page_number):
+        max_pages = self._source.get_max_pages()
+        try:
+            if max_pages is None:
+                # If it doesn't give maximum pages, it cannot be checked
+                await self.show_page(page_number)
+            elif max_pages > page_number >= 0:
+                await self.show_page(page_number)
+        except IndexError:
+            # An error happened that can be handled, so ignore it.
+            pass
+
+    async def show_current_page(self):
+        if self._source.paginating:
+            await self.show_page(self.current_page)
+
+    def _skip_next_and_previous(self):
+        max_pages = self._source.get_max_pages()
+        if max_pages is None:
+            return True
+        return max_pages <= 1
+
+    @menus.button(GREEN_TICK, position=menus.First(0))
+    async def select_pages(self, payload):
+        """select the current page"""
+        self.selected_page = self.current_page
+        self.stop()
+
+    @menus.button(BACK, position=menus.First(1), skip_if=_skip_next_and_previous)
+    async def go_to_previous_page(self, payload):
+        """go to the previous page"""
+        await self.show_checked_page(self.current_page - 1)
+
+    @menus.button(FORWARD, position=menus.Last(0), skip_if=_skip_next_and_previous)
+    async def go_to_next_page(self, payload):
+        """go to the next page"""
+        await self.show_checked_page(self.current_page + 1)
+
+    @menus.button(RED_TICK, position=menus.Last(2))
+    async def stop_pages(self, payload):
+        """stops the pagination session."""
+        self.stop()
 
 
 class Song:
@@ -224,35 +382,8 @@ class Song:
         return None
 
     @classmethod
-    async def get_song(
-        cls,
-        ctx: commands.Context,
-        search: str,
-        *,
-        loop: asyncio.BaseEventLoop = None,
-        send_errors=True,
-    ):
-        loop = loop or asyncio.get_event_loop()
-
-        log.info(f"Searching for '{search}'")
-
-        song_id = cls.parse_youtube_id(search)
-
-        log.info(f"Searching database for id: {song_id or search}")
-        song = await cls.fetch_from_database(ctx, song_id or search)
-
-        if song:
-            log.info(f"Found song in database: {song.id}")
-            return song
-
-        log.info("Searching song aliases")
-        song = await cls.search_song_aliases(ctx, search)
-
-        if song:
-            log.info(f"Found song alias in database: {song.id}")
-            return song
-
-        log.info("Song not in database, searching youtube")
+    async def resolve_webpage_url(cls, ctx, search, *, send_errors=True):
+        loop = ctx.bot.loop
 
         partial = functools.partial(
             cls.ytdl.extract_info, search, download=False, process=False
@@ -328,6 +459,55 @@ class Song:
             log.info("Downloading song...")
             download = True
 
+        return webpage_url, download
+
+    @classmethod
+    async def get_song(
+        cls,
+        ctx: commands.Context,
+        search: str,
+        *,
+        loop: asyncio.BaseEventLoop = None,
+        send_errors=True,
+        skip_resolve=False,
+    ):
+        loop = loop or asyncio.get_event_loop()
+
+        log.info(f"Searching for '{search}'")
+
+        song_id = cls.parse_youtube_id(search)
+
+        song_id = song_id or search
+
+        log.info(f"Searching database for id: {song_id}")
+        song = await cls.fetch_from_database(ctx, song_id)
+
+        if song:
+            log.info(f"Found song in database: {song.id}")
+            return song
+
+        log.info("Searching song aliases")
+        song = await cls.search_song_aliases(ctx, search)
+
+        if song:
+            log.info(f"Found song alias in database: {song.id}")
+            return song
+
+        log.info("Song not in database, searching youtube")
+
+        if not skip_resolve:
+            result = await cls.resolve_webpage_url(
+                ctx, search, send_errors=send_errors
+            )
+            if not result:
+                return
+
+            webpage_url, download = result
+
+        else:
+            webpage_url = search
+            download = True
+
         partial = functools.partial(
             cls.ytdl.extract_info, webpage_url, download=download
         )
@@ -396,7 +576,9 @@ class Song:
                         await ctx.db.execute(query, search.lower(), expires, song_id)
 
                     except asyncpg.UniqueViolationError:
-                        log.info("Could not insert song alias, there is already an identical one.")
+                        log.info(
+                            "Could not insert song alias, there is already an identical one."
+                        )
 
             return cls(
                 ctx,
@@ -406,7 +588,12 @@ class Song:
 
     @classmethod
     async def get_playlist(
-        cls, ctx: commands.Context, search: str, progress_message, *, loop: asyncio.BaseEventLoop = None
+        cls,
+        ctx: commands.Context,
+        search: str,
+        progress_message,
+        *,
+        loop: asyncio.BaseEventLoop = None,
     ):
         loop = loop or asyncio.get_event_loop()
 
@@ -520,6 +707,30 @@ class Song:
             progress_message.change_label(1, emoji=ctx.tick(True))
 
         return playlist, counter
+
+    @classmethod
+    async def search_ytdl(cls, ctx, search):
+        loop = ctx.bot.loop
+
+        async with ctx.typing():
+            partial = functools.partial(cls.ytdl.extract_info, search, download=False)
+            info = await loop.run_in_executor(None, partial)
+
+        if not info or not info["entries"]:
+            await ctx.send("No results found.")
+            return
+
+        pages = SongSelector(info["entries"])
+        entry = await pages.prompt(ctx)
+
+        if not entry:
+            await ctx.send("Aborted.")
+            return
+
+        async with ctx.typing():
+            song = await cls.get_song(ctx, entry["webpage_url"])
+
+        return song
 
     @staticmethod
     def parse_duration(duration: int):
