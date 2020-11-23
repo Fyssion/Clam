@@ -970,10 +970,10 @@ class Tools(commands.Cog):
 
     @commands.group(
         description="Search for things in a server.",
-        aliases=["find"],
+        aliases=["membersearch"],
         invoke_without_command=True,
     )
-    async def search(self, ctx):
+    async def usersearch(self, ctx):
         await ctx.send_help(ctx.command)
 
     def compile_list(self, list):
@@ -989,7 +989,7 @@ class Tools(commands.Cog):
         msg += "\n```"
         return msg
 
-    @search.command(
+    @usersearch.command(
         name="username",
         description="Search server for a specified username",
         aliases=["user", "name"],
@@ -1007,7 +1007,7 @@ class Tools(commands.Cog):
             # return await ctx.send(self.compile_list(matches))
         await ctx.send("No matches found.")
 
-    @search.command(
+    @usersearch.command(
         name="nickname",
         description="Search server for a specified nickname",
         aliases=["nick"],
@@ -1025,7 +1025,7 @@ class Tools(commands.Cog):
             return await pages.start(ctx)
         await ctx.send("No matches found.")
 
-    @search.command(
+    @usersearch.command(
         name="discriminator",
         description="Search server for a specified descrininator",
         aliases=["number", "discrim", "dis", "num"],
