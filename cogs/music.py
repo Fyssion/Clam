@@ -885,8 +885,6 @@ class Music(commands.Cog):
     async def loop_queue(self, ctx):
         if not ctx.player.is_playing and not ctx.player.loop_queue:
             return await ctx.send("Nothing being played at the moment.")
-        if len(ctx.player.songs) == 0 and not ctx.player.loop_queue:
-            return await ctx.send("The queue is empty. Nothing to loop!")
 
         ctx.player.loop_queue = not ctx.player.loop_queue
         ctx.player.loop = False
@@ -897,6 +895,7 @@ class Music(commands.Cog):
             await ctx.send("**:repeat: :x: No longer looping queue**")
 
     @commands.command(description="Start the current song over from the beginning")
+    @is_dj()
     async def startover(self, ctx):
         if not ctx.player.is_playing:
             return await ctx.send("Nothing is being played at the moment.")
@@ -911,7 +910,9 @@ class Music(commands.Cog):
 
         ctx.player.startover = True
 
-        ctx.player.songs._queue.appendleft(song)
+        if not ctx.player.loop and not ctx.player.loop_queue:
+            ctx.player.songs._queue.appendleft(song)
+
         ctx.player.skip()
 
         await ctx.send("**⏪ Starting song over**")
