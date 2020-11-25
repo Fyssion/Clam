@@ -18,7 +18,8 @@ import typing
 
 from .utils import db, ytdl, music_player, colors, human_time
 from .utils.emojis import GREEN_TICK, RED_TICK, LOADING
-from cogs.utils.menus import UpdatingMessage
+from .utils.menus import UpdatingMessage
+from .utils.human_time import plural
 
 
 log = logging.getLogger("clam.music")
@@ -265,9 +266,35 @@ class Music(commands.Cog):
             await ctx.send(str(error))
             ctx.handled = True
 
-    async def stop_all_players(self):
+    async def stop_all_players(self, *, save_queues=True):
         for player in self.players.values():
+            # Get all songs in the queue
+            if len(player.songs) > 0:
+                songs = player.songs.to_list()
+                songs = [s.url for s in songs]
+                songs.insert(0, player.current.url)
+            elif player.current:
+                songs = [player.current.url]
+            else:
+                songs = None
+
             await player.stop()
+
+            # Save the queue to mystbin
+            if songs:
+                url = await self.post("\n".join(songs))
+                if url is None:
+                    return await player.text_channel.send(
+                        "**Sorry! All music players have been stopped due to bot maintenance.**"
+                        "\nUnfortunately, there was an error while automatically your saving queue. "
+                        "Sorry about that :("
+                    )
+
+                prefix = self.bot.guild_prefix(player.ctx.guild)
+                await player.text_channel.send(
+                    "**Sorry! All music players have been stopped due to bot maintenance.**\n"
+                    f"Good news, **I saved your queue!**\nTo resume where you left off, use: `{prefix}playbin {url}`"
+                )
 
         self.bot.players.clear()
         self.players = self.bot.players
@@ -327,7 +354,7 @@ class Music(commands.Cog):
     async def stopall(self, ctx):
         """Stop all players"""
 
-        confirm = await ctx.confirm("Are you sure you want to stop all players?")
+        confirm = await ctx.confirm(f"Are you sure you want to stop all {plural(len(self.bot.players)):player}?")
         if confirm:
             await self.stop_all_players()
             await ctx.send("Stopped all players.")
@@ -484,14 +511,17 @@ class Music(commands.Cog):
                 url = await self.post("\n".join(songs))
                 if url is None:
                     return await player.text_channel.send(
-                        "There was an error while automatically your saving queue. Sorry."
+                        "**The bot automatically left the channel due to inactivity.**"
+                        "\nUnfortunately, there was an error while automatically your saving queue. "
+                        "Sorry about that :("
                     )
 
                 prefix = self.bot.guild_prefix(member.guild)
                 await player.text_channel.send(
-                    "**I saved your queue!**\n"
-                    f"To resume where you left off, use: {prefix}playbin {url}"
+                    "**I automatically left the channel due to inactivity.**\n"
+                    f"Good news, **I saved your queue!**\nTo resume where you left off, use: `{prefix}playbin {url}`"
                 )
+
         player.resume()
 
     async def votes(self, ctx, cmd: str, func):
