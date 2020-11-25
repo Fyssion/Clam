@@ -4,6 +4,7 @@ import asyncio
 import functools
 import io
 import typing
+import logging
 from collections import defaultdict, Counter
 
 import discord
@@ -19,6 +20,9 @@ from .utils.utils import get_lines_of_code, TabularData
 from .utils import db, colors, human_time
 from .utils.emojis import TEXT_CHANNEL, VOICE_CHANNEL
 from .utils.menus import MenuPages
+
+
+log = logging.getLogger("clam.stats")
 
 
 class Commands(db.Table):
@@ -79,7 +83,7 @@ class Stats(commands.Cog):
             await self.bot.pool.execute(query, self._data_batch)
             total = len(self._data_batch)
             if total > 1:
-                self.log.info("Registered %s commands to the database.", total)
+                log.info("Registered %s commands to the database.", total)
             self._data_batch.clear()
 
     def cog_unload(self):
@@ -105,7 +109,7 @@ class Stats(commands.Cog):
             destination = f"#{message.channel} ({message.guild})"
             guild_id = ctx.guild.id
 
-        self.log.info(
+        log.info(
             f"{message.created_at}: {message.author} in {destination}: {message.content}"
         )
         async with self._batch_lock:
