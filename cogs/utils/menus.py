@@ -9,6 +9,13 @@ from .tabulate import tabulate
 
 
 class MessageLabel:
+    """A label to pass into UpdatingMessage
+
+    This takes an emoji and some text, and will render out like this:
+    (left: MessageLabel instance, right: render result)
+      - MessageLabel<emoji='✅', text='Compute x'>     : '✅ Compute x'
+      - MessageLabel<emoji='❌', text='Compute other'> : '❌ Compute other'
+    """
     __slots__ = ("emoji", "text")
 
     def __init__(self, emoji, text):
@@ -16,10 +23,29 @@ class MessageLabel:
         self.text = text
 
     def __repr__(self):
-        return f"MessageLablel<emoji='{self.emoji}', text='{self.text}'>"
+        return f"MessageLabel<emoji='{self.emoji}', text='{self.text}'>"
 
 
 class UpdatingMessage:
+    """A simple updating status message
+
+    This message displays a list of MessageLabel(s) and
+    is automatically updated it every 3 seconds.
+
+    This message can only be an embed as of writing.
+
+    If it has been more than 3 seconds without an update,
+    the message will be updated when there is a change
+    (instead of every 3 seconds).
+
+    Parameters
+        -----------
+        embed: Optional[:class:`discord.Embed`]
+            The starting embed for the message.
+        labels: Optional[List[:class:`MessageLabel`]]
+            A list of labels to initialize instance with.
+            You can add more labels with :meth:`add_label`
+    """
     def __init__(self, *, embed=None, labels=None):
         self.context = None
 
@@ -35,6 +61,7 @@ class UpdatingMessage:
 
     @property
     def closed(self):
+        """Returns whether the message has been closed (is no longer updating)"""
         return self._closed
 
     def render_embed(self):
@@ -87,6 +114,7 @@ class UpdatingMessage:
         self.changes += 1
 
     async def start(self, ctx):
+        """Start the updating message. This creates the updater task."""
         self.context = ctx
 
         em = self.render_embed()
@@ -95,6 +123,7 @@ class UpdatingMessage:
         self._updater_task = ctx.bot.loop.create_task(self.updater_loop())
 
     async def stop(self):
+        """Stop the updating message. This performs a final edit before closing."""
         await self.message.edit(embed=self.render_embed())
         self._closed = True
 
