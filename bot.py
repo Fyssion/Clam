@@ -386,12 +386,13 @@ class Clam(commands.Bot):
         await self.pool.close()
         await self.google_client.close()
         await self.cleverbot.close()
-        if not self.session.closed:
-            await self.session.close()
 
         music = self.get_cog("Music")
         if music:
             await music.stop_all_players()
+
+        if not self.session.closed:
+            await self.session.close()
 
         await super().close()
 
