@@ -609,7 +609,6 @@ class Admin(commands.Cog):
     async def logout_command(self, ctx):
         self.log.info("Logging out of Discord.")
         await ctx.send("Logging out :wave:")
-        await self.bot.session.close()
         await self.bot.logout()
 
     @commands.group(
