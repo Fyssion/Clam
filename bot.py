@@ -50,9 +50,9 @@ def get_prefix(bot, message):
         if str(message.guild.id) in bot.guild_prefixes.keys():
             prefixes = bot.guild_prefixes[str(message.guild.id)]
 
-    # Add ! to prefixes in DMs for easier use
+    # Add ! and ? to prefixes in DMs for easier use
     elif isinstance(message.channel, discord.DMChannel):
-        prefixes.append("!")
+        prefixes.extend(["!", "?"])
 
     return commands.when_mentioned_or(*prefixes)(bot, message)
 
@@ -64,6 +64,10 @@ def dev_prefix(bot, message):
     if not isinstance(message.channel, discord.DMChannel):
         if str(message.guild.id) in bot.guild_prefixes.keys():
             prefixes = bot.guild_prefixes[str(message.guild.id)]
+
+    # Add ! and ? to prefixes in DMs for easier use
+    elif isinstance(message.channel, discord.DMChannel):
+        prefixes.extend(["!", "?"])
 
     return prefixes
 
