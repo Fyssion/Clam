@@ -1,4 +1,4 @@
-from discord.ext import commands, menus
+from discord.ext import commands, menus, flags
 import discord
 
 import asyncio
@@ -1467,17 +1467,35 @@ class Music(commands.Cog):
         pages = ctx.pages(songs, per_page=10, title=f"Results for '{song}'")
         await pages.start(ctx)
 
-    @musicdb.command(name="delete", aliases=["remove"])
+    @flags.add_flag("--delete-file", action="store_true")
+    @musicdb.command(name="delete", aliases=["remove"], cls=flags.FlagCommand)
     @commands.is_owner()
-    async def musicdb_delete(self, ctx, song_id: int):
+    async def musicdb_delete(self, ctx, song_id: int, **flags):
         """Delete a song from the database"""
-        query = """DELETE FROM songs WHERE id=$1 RETURNING songs.title;"""
-        title = await ctx.db.fetchrow(query, song_id)
+        query = (
+            """DELETE FROM songs WHERE id=$1 RETURNING songs.title, songs.filename;"""
+        )
+        record = await ctx.db.fetchrow(query, song_id)
 
-        if not title:
+        if not record:
             return await ctx.send(f"No song with the id of `{song_id}`")
 
-        await ctx.send(f"Deleted song `{title}`")
+        title, filename = record
+
+        if flags["delete_file"]:
+            try:
+                os.remove(filename)
+                human_friendly = f" and removed file `{filename}`"
+            except Exception as e:
+                human_friendly = (
+                    f", but failed to delete file `{filename}`\n"
+                    f"```py\n{str(e)}\n```"
+                )
+
+        else:
+            human_friendly = ""
+
+        await ctx.send(f"Deleted song `{title}`{human_friendly}")
 
     async def get_song_info(self, ctx, old_info):
         webpage_url = old_info["webpage_url"]
