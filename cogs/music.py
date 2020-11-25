@@ -143,6 +143,12 @@ class BinFetchingError(Exception):
     pass
 
 
+class CannotJoinVoice(commands.CommandError):
+    def __init__(self, message):
+        super().__init__(f"{RED_TICK} {message}")
+        self.message = message
+
+
 class NoPlayerError(commands.CommandError):
     def __init__(self):
         super().__init__(
@@ -252,6 +258,7 @@ class Music(commands.Cog):
             ytdl.YTDLError,
             NoPlayerError,
             NotListeningError,
+            CannotJoinVoice,
         )
 
         if isinstance(error, overridden_errors):
@@ -543,6 +550,21 @@ class Music(commands.Cog):
 
         destination = ctx.author.voice.channel
         ctx.player.text_channel = ctx.channel
+
+        v_emote = "<:voice_channel:665577300552843294>"
+        t_emote = "<:text_channel:661798072384225307>"
+
+        if (
+            destination.user_limit
+            and (ctx.player.voice and ctx.player.voice.channel != destination)
+            and not ctx.guild.me.guild_permissions.administrator
+            and len(destination.members) >= destination.user_limit
+        ):
+            raise CannotJoinVoice(
+                f"**I can't join** {v_emote}`{destination}` because **it is full!** "
+                f"({len(destination.members)}/{destination.user_limit} members)"
+            )
+
         if ctx.player.voice:
             await ctx.player.voice.move_to(destination)
 
@@ -550,11 +572,11 @@ class Music(commands.Cog):
             ctx.player.voice = await destination.connect()
             await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
 
-        v_emote = "<:voice_channel:665577300552843294>"
-        t_emote = "<:text_channel:661798072384225307>"
-
         await ctx.send(
-            f"**Connected to ** {v_emote}`{destination}` and **bound to** {t_emote}`{ctx.channel}`"
+            ctx.tick(
+                True,
+                f"**Connected to ** {v_emote}`{destination}` and **bound to** {t_emote}`{ctx.channel}`",
+            )
         )
 
     @commands.command(
@@ -574,16 +596,32 @@ class Music(commands.Cog):
 
         destination = channel or ctx.author.voice.channel
         ctx.player.text_channel = ctx.channel
+
+        v_emote = "<:voice_channel:665577300552843294>"
+        t_emote = "<:text_channel:661798072384225307>"
+
+        if (
+            destination.user_limit
+            and (ctx.player.voice and ctx.player.voice.channel != destination)
+            and not ctx.guild.me.guild_permissions.administrator
+            and len(destination.members) >= destination.user_limit
+        ):
+            raise CannotJoinVoice(
+                f"**I can't join** {v_emote}`{destination}` because **it is full!** "
+                f"({len(destination.members)}/{destination.user_limit} members)"
+            )
+
         if ctx.player.voice:
             await ctx.player.voice.move_to(destination)
         else:
             ctx.player.voice = await destination.connect()
             await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
 
-        v_emote = "<:voice_channel:665577300552843294>"
-        t_emote = "<:text_channel:661798072384225307>"
         await ctx.send(
-            f"**Connected to ** {v_emote}`{destination}` and **bound to** {t_emote}`{ctx.channel}`"
+            ctx.tick(
+                True,
+                f"**Connected to ** {v_emote}`{destination}` and **bound to** {t_emote}`{ctx.channel}`",
+            )
         )
 
     async def post(self, content, url="https://mystb.in"):
