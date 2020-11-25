@@ -382,8 +382,7 @@ class Clam(commands.Bot):
         if not self.session.closed and self.config.status_hook:
             await self.status_hook.send("Disconnected from Discord")
 
-    async def logout(self):
-        await super().logout()
+    async def close(self):
         await self.pool.close()
         await self.google_client.close()
         await self.cleverbot.close()
@@ -393,6 +392,8 @@ class Clam(commands.Bot):
         music = self.get_cog("Music")
         if music:
             await music.stop_all_players()
+
+        await super().close()
 
     def run(self):
         super().run(self.config.bot_token)
