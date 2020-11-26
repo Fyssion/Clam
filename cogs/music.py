@@ -280,7 +280,7 @@ class Music(commands.Cog):
 
             await player.stop()
 
-            # Save the queue to mystbin
+            # Save the queue to clambin
             if songs:
                 url = await self.post("\n".join(songs))
                 if url is None:
@@ -672,7 +672,7 @@ class Music(commands.Cog):
             )
         )
 
-    async def post(self, content, url="https://mystb.in"):
+    async def post(self, content, url="https://paste.clambot.xyz"):
         async with self.bot.session.post(
             f"{url}/documents",
             data=content.encode("utf-8"),
@@ -1137,7 +1137,7 @@ class Music(commands.Cog):
                         f"**\N{MULTIPLE MUSICAL NOTES} Now playing** `{song.title}`"
                     )
 
-    async def get_haste(self, url="https://mystb.in"):
+    async def get_haste(self, url="https://paste.clambot.xyz"):
         parsed = urlparse(url)
         newpath = "/raw" + parsed.path
         url = parsed.scheme + "://" + parsed.netloc + newpath
