@@ -383,12 +383,22 @@ class Music(commands.Cog):
     @commands.is_owner()
     async def allplayers(self, ctx):
         """View all players"""
+        status_mapping = {
+            music_player.PlayerStatus.PLAYING: "🎶",
+            music_player.PlayerStatus.PAUSED: "⏸️",
+            music_player.PlayerStatus.WAITING: "🕐",
+            music_player.PlayerStatus.CLOSED: "💤",
+        }
+
+        v_emote = "<:voice_channel:665577300552843294>"
+        t_emote = "<:text_channel:661798072384225307>"
+
         players = []
 
         for player in self.players.values():
             guild_name = discord.utils.escape_mentions(player.ctx.guild.name)
-            channel = f"Voice: {player.voice.channel} | " if player.voice else ""
-            channel += f"Bound: {player.text_channel}"
+            channel = f"{v_emote}`{player.voice.channel}`" if player.voice else ""
+            channel += f"{t_emote}`{player.text_channel}`"
 
             if player.voice and player.voice.channel:
                 connected = sum(1 for m in player.voice.channel.members if not m.bot)
@@ -403,7 +413,15 @@ class Music(commands.Cog):
             else:
                 connected = ""
 
-            players.append(f"**{guild_name}** - `{channel}`{connected}")
+            if player.voice:
+                num = player.voice.average_latency * 1000
+                latency = f" `{num:.2f} ms`"
+
+            else:
+                latency = ""
+
+            status = status_mapping.get(player.status, "❔")
+            players.append(f"{status} **{guild_name}** - {channel}{connected}{latency}")
 
         if not players:
             return await ctx.send("No players")

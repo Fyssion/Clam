@@ -8,6 +8,7 @@ import logging
 import random
 import traceback
 import sys
+import enum
 
 from . import stopwatch
 from .ytdl import Song
@@ -49,6 +50,13 @@ class SongQueue(asyncio.Queue):
         return output
 
 
+class PlayerStatus(enum.Enum):
+    PLAYING = 0
+    PAUSED = 1
+    WAITING = 2
+    CLOSED = 3
+
+
 class Player:
     def __init__(self, bot: commands.Bot, ctx: commands.Context):
         log.info(f"{ctx.guild}: Creating player...")
@@ -64,8 +72,10 @@ class Player:
         self.duration = stopwatch.StopWatch()
         self.closed = False
         self.startover = False
-        self._notify = False
 
+        self.status = PlayerStatus.WAITING
+
+        self._notify = False
         self._loop = False
         self._loop_queue = False
         self._volume = 0.5
@@ -177,6 +187,7 @@ class Player:
                     await self.songs.put(self.current)
 
                 if not self.loop:
+                    self.status = PlayerStatus.WAITING
                     try:
                         async with timeout(180):  # 3 minutes
                             log.info(f"{ctx.guild}: Getting a song from the queue...")
@@ -196,6 +207,9 @@ class Player:
 
                 # Start our stopwatch for keeping track of position
                 self.duration.start()
+
+                # Set status to playing
+                self.status = PlayerStatus.PLAYING
 
                 query = "UPDATE songs SET plays = plays + 1 WHERE song_id=$1 AND extractor=$2;"
                 await self.bot.pool.execute(query, self.current.id, self.current.extractor)
@@ -236,6 +250,7 @@ class Player:
 
     async def stop(self):
         self.closed = True
+        self.status = PlayerStatus.CLOSED
 
         if self.voice:
             log.info(f"{self.ctx.guild}: Stopping and disconnecting from voice")
@@ -250,9 +265,11 @@ class Player:
             log.info(f"{self.ctx.guild}: Pausing...")
             self.voice.pause()
             self.duration.pause()
+            self.status = PlayerStatus.PAUSED
 
     def resume(self):
         if self.is_playing and self.voice.is_paused():
             log.info(f"{self.ctx.guild}: Resuming...")
             self.voice.resume()
             self.duration.unpause()
+            self.status = PlayerStatus.PLAYING
