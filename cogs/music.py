@@ -354,7 +354,9 @@ class Music(commands.Cog):
     async def stopall(self, ctx):
         """Stop all players"""
 
-        confirm = await ctx.confirm(f"Are you sure you want to stop all {plural(len(self.bot.players)):player}?")
+        confirm = await ctx.confirm(
+            f"Are you sure you want to stop all {plural(len(self.bot.players)):player}?"
+        )
         if confirm:
             await self.stop_all_players()
             await ctx.send("Stopped all players.")
@@ -843,7 +845,7 @@ class Music(commands.Cog):
         invoke_without_command=True,
     )
     async def queue(self, ctx):
-        """Shows the player's queue. You can optionally select the page."""
+        """View the player's queue"""
         pages = menus.MenuPages(
             source=QueuePages(ctx.player),
             clear_reactions_after=True,
@@ -851,23 +853,34 @@ class Music(commands.Cog):
         return await pages.start(ctx)
 
     @queue.command(
-        name="save", description="Save the queue to a bin!", aliases=["upload"]
+        name="save", description="Save the queue to a bin", aliases=["upload"]
     )
     @commands.cooldown(1, 10)
     async def queue_save(self, ctx):
-        if len(ctx.player.songs) == 0:
-            return await ctx.send("Queue is empty.")
+        if len(ctx.player.songs) > 0:
+            songs = ctx.player.songs.to_list()
+            songs = [s.url for s in songs]
+            songs.insert(0, ctx.player.current.url)
 
-        songs = ctx.player.songs.to_list()
-        songs = [s.url for s in songs]
-        songs.insert(0, ctx.player.current.url)
+        elif ctx.player.current:
+            songs = [ctx.player.current.url]
+
+        else:
+            songs = None
+
+        if not songs:
+            return await ctx.send("There are no songs to save.")
 
         url = await self.post("\n".join(songs))
 
         if url is None:
             return await ctx.send("Sorry, I couldn't save your queue.")
 
-        await ctx.send(f"**Current queue: {url}**")
+        await ctx.send(
+            f"**Saved queue:** {url}\n"
+            "Hint: you can use this link with the `playbin` command, like so:\n"
+            f"`{ctx.prefix}playbin {url}`"
+        )
 
     @queue.command(name="clear")
     async def queue_clear(self, ctx):
@@ -1275,7 +1288,7 @@ class Music(commands.Cog):
 
     @commands.command(aliases=["pb"])
     async def playbin(self, ctx, *, url):
-        """Play a song from a bin"""
+        """Load songs from a pastebin"""
         if not ctx.player:
             player = self.create_player(ctx)
             ctx.player = player
