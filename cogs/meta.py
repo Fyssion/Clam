@@ -4,6 +4,7 @@ from discord.ext import commands, menus
 from string import Formatter
 import traceback
 import os
+import os.path
 import json
 import sys
 import asyncio
@@ -255,6 +256,11 @@ class ClamHelpCommand(commands.HelpCommand):
         else:
             em.description = f"**{cog.qualified_name}**"
 
+        cog_name = cog.__class__.__name__
+        if os.path.isfile(f"assets/cogs/{cog_name}.png"):
+            url = f"https://raw.githubusercontent.com/Fyssion/Clam/main/assets/cogs/{cog_name}.png"
+            em.set_thumbnail(url=url)
+
         if cog.description:
             em.description += f"\n{cog.description}\n"
 
@@ -276,6 +282,11 @@ class ClamHelpCommand(commands.HelpCommand):
 
         em.description = self.format_command(group)
 
+        cog_name = group.cog.__class__.__name__
+        if os.path.isfile(f"assets/cogs/{cog_name}.png"):
+            url = f"https://raw.githubusercontent.com/Fyssion/Clam/main/assets/cogs/{cog_name}.png"
+            em.set_thumbnail(url=url)
+
         if filtered:
             em.description += f"\n\n**Subcommands ({len(filtered)} total):**"
 
@@ -293,6 +304,11 @@ class ClamHelpCommand(commands.HelpCommand):
         em = self.get_base_embed()
 
         em.set_footer(text=em.Empty)
+
+        cog_name = command.cog.__class__.__name__
+        if os.path.isfile(f"assets/cogs/{cog_name}.png"):
+            url = f"https://raw.githubusercontent.com/Fyssion/Clam/main/assets/cogs/{cog_name}.png"
+            em.set_thumbnail(url=url)
 
         em.description = self.format_command(command)
 
