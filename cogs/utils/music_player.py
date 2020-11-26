@@ -195,7 +195,9 @@ class Player:
                     except asyncio.TimeoutError:
                         log.info(f"{ctx.guild}: Timed out while waiting for song. Stopping...")
                         self.bot.loop.create_task(self.stop())
-                        del ctx.bot.players[ctx.guild.id]
+
+                        if ctx.guild.id in ctx.bot.players.keys():
+                            del ctx.bot.players[ctx.guild.id]
                         return
 
                 self.current.volume = self._volume
