@@ -401,5 +401,9 @@ class Clam(commands.Bot):
 
 
 if __name__ == "__main__":
+    launcher_log = logging.getLogger("clam.launcher")
+
+    launcher_log.info("Starting...")
     bot = Clam()
     bot.run()
+    launcher_log.info("All done")
