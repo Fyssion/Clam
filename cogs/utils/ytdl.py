@@ -416,7 +416,10 @@ class Song:
                     "Couldn't find anything that matches `{}`".format(search)
                 )
 
-        webpage_url = process_info["webpage_url"]
+        webpage_url = process_info.get("webpage_url")
+
+        if not webpage_url:
+            return search, True
 
         log.info(f"Found URL for '{webpage_url}'")
 
