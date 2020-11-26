@@ -1017,8 +1017,10 @@ class Music(commands.Cog):
         await ctx.send("**⏪ Starting song over**")
 
     async def fetch_yt_playlist(self, ctx, url):
+        yt_emoji = "<:youtube:781633321255567361>"
+
         em = discord.Embed(
-            title="<:youtube:667536366447493120> Fetching YouTube playlist",
+            title=f"{yt_emoji} Fetching YouTube playlist",
             color=0xFF0000,
         )
         em.set_footer(text="This may take awhile.")
@@ -1077,7 +1079,7 @@ class Music(commands.Cog):
             await progress_message.stop()
 
             em.description = description
-            await ctx.send(embed=em)
+            await ctx.send(f"{yt_emoji} **Finished loading Youtube playlist**", embed=em)
 
     URLS = re.compile(
         r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
@@ -1150,7 +1152,7 @@ class Music(commands.Cog):
                         f"**\N{MULTIPLE MUSICAL NOTES} Now playing** `{song.title}`"
                     )
 
-    async def get_haste(self, url="https://paste.clambot.xyz"):
+    async def get_paste(self, url="https://paste.clambot.xyz"):
         parsed = urlparse(url)
         newpath = "/raw" + parsed.path
         url = parsed.scheme + "://" + parsed.netloc + newpath
@@ -1162,7 +1164,7 @@ class Music(commands.Cog):
                 ) as resp:
                     if resp.status != 200:
                         raise BinFetchingError(
-                            f"Could not fetch bin: Error {resp.status}"
+                            f"Could not fetch site: Error {resp.status}"
                         )
 
                     f = await resp.read()
@@ -1170,24 +1172,24 @@ class Music(commands.Cog):
                     return f
 
         except asyncio.TimeoutError:
-            raise TimeoutError("Timed out while fetching from bin.")
+            raise TimeoutError("Timed out while fetching from site.")
 
-    async def hastebin_playlist(self, ctx, search):
+    async def pastebin_playlist(self, ctx, search):
         bin_log.info(f"Fetching from bin: '{search}'")
 
         em = discord.Embed(
-            title="\N{GLOBE WITH MERIDIANS} Fetching from bin",
+            title="\N{GLOBE WITH MERIDIANS} Fetching from pastebin",
             color=discord.Color.blue(),
         )
         em.set_footer(text="This may take some time.")
         progress_message = UpdatingMessage(embed=em)
-        progress_message.add_label(LOADING, "Fetch from bin")
+        progress_message.add_label(LOADING, "Fetch from pastebin")
         progress_message.add_label(LOADING, "Find and enqueue songs")
 
         await progress_message.start(ctx)
 
         try:
-            output = await self.get_haste(search)
+            output = await self.get_paste(search)
 
         except BinFetchingError as e:
             progress_message.change_label(0, emoji=ctx.tick(False))
@@ -1199,7 +1201,7 @@ class Music(commands.Cog):
             progress_message.change_label(0, emoji=ctx.tick(False))
             progress_message.change_label(1, emoji=ctx.tick(False))
             await progress_message.stop()
-            return await ctx.send("Bin returned an error: `Document not found.`")
+            return await ctx.send("Site returned an error: `Document not found.`")
 
         if output == "404: Not Found":
             progress_message.change_label(0, emoji=ctx.tick(False))
@@ -1209,14 +1211,14 @@ class Music(commands.Cog):
 
         if len(self.YT_URLS.findall(output)) == 0:
             await ctx.send(
-                ":warning: There are no YouTube URLs in this bin. "
+                ":warning: There are no YouTube URLs in this pastebin. "
                 "Are you sure this is the correct site?\n**Continuing download...**"
             )
 
         videos = output.splitlines()
         if len(videos) > 50:
             confirm = await ctx.confirm(
-                "I found more than 50 lines in this hastebin. Continue?"
+                "I found more than 50 lines in this pastebin. Continue?"
             )
             if not confirm:
                 bin_log.info("User denied bin. Cancelling...")
@@ -1283,7 +1285,7 @@ class Music(commands.Cog):
 
         em.description = description
         await ctx.send(
-            ctx.tick(True, "**Finished downloading songs from bin**"), embed=em
+            ctx.tick(True, "**Finished loading songs from pastebin**"), embed=em
         )
 
     @commands.command(aliases=["pb"])
@@ -1299,7 +1301,7 @@ class Music(commands.Cog):
         if not self.URLS.match(url):
             raise commands.BadArgument("You must provide a valid URL.")
 
-        await self.hastebin_playlist(ctx, url)
+        await self.pastebin_playlist(ctx, url)
 
     def parse_search(self, search):
         type_regex = re.compile(r"(\w+):\s?(.+)")
@@ -1308,7 +1310,7 @@ class Music(commands.Cog):
             LocationType.youtube: ["youtube", "yt"],
             LocationType.db: ["database", "db"],
             LocationType.soundcloud: ["soundcloud", "sc"],
-            LocationType.bin: ["bin"],
+            LocationType.bin: ["pastebin", "paste", "bin"],
         }
 
         valid_types = []
@@ -1351,7 +1353,7 @@ class Music(commands.Cog):
           - `youtube` `yt` - Search Youtube
           - `soundcloud` `sc` - Search Soundcloud
           - `database` `db` - Search the bot's database
-          - `bin` - Give a bin URL (similar to `playbin` command)
+          - `pastebin` `paste` `bin` - Give a pastebin URL (shortcut to `playbin` command)
 
         Examples:
          - `soundcloud: a song here` - Searches Soundcloud
