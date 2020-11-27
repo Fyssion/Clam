@@ -144,13 +144,23 @@ class ClamHelpCommand(commands.HelpCommand):
 
         def private(cog):
             if hasattr(cog, "private"):
-                if ctx.guild and ctx.guild.id in (454469821376102410, 621123303343652867):
+                if ctx.guild and ctx.guild.id in (
+                    454469821376102410,
+                    621123303343652867,
+                ):
                     return False
 
-                elif hasattr(cog, "private_user_overrides") and ctx.author.id in cog.private_user_overrides:
+                elif (
+                    hasattr(cog, "private_user_overrides")
+                    and ctx.author.id in cog.private_user_overrides
+                ):
                     return False
 
-                elif ctx.guild and hasattr(cog, "private_guild_overrides") and ctx.guild.id in cog.private_guild_overrides:
+                elif (
+                    ctx.guild
+                    and hasattr(cog, "private_guild_overrides")
+                    and ctx.guild.id in cog.private_guild_overrides
+                ):
                     return False
 
                 return True
@@ -661,7 +671,7 @@ class Meta(commands.Cog):
 
         # removing duplicates
         res = []
-        [res.append(e) for e in errors if e not in res] 
+        [res.append(e) for e in errors if e not in res]
 
         res[0] = ctx.tick(False, res[0])
         em = discord.Embed(
@@ -693,7 +703,9 @@ class Meta(commands.Cog):
         lines = await self.bot.loop.run_in_executor(None, partial)
         await ctx.send(lines)
 
-    @code.command(name="all", description="Include comments and newlines", aliases=["comments"])
+    @code.command(
+        name="all", description="Include comments and newlines", aliases=["comments"]
+    )
     async def code_all(self, ctx):
         partial = functools.partial(get_lines_of_code, comments=True)
         lines = await self.bot.loop.run_in_executor(None, partial)
@@ -924,6 +936,7 @@ class Meta(commands.Cog):
         by periods, e.g. tag.create for the create subcommand of the tag
         command or by spaces.
         """
+
         source_url = "https://github.com/Fyssion/Clam"
         branch = "main"
         if command is None:
@@ -953,8 +966,20 @@ class Meta(commands.Cog):
             source_url = "https://github.com/Rapptz/discord.py"
             branch = "master"
 
+        if "Fyssion/Clam" in source_url:
+            license_notice = (
+                "Please note that most of this code is subject to the [MPL-2.0 license.](https://www.mozilla.org/en-US/MPL/2.0)\n"
+                "This means you are required to license any copied or modified source code under MPL-2.0.\n"
+                "For move info, visit <https://www.mozilla.org/en-US/MPL/2.0/FAQ>"
+            )
+
+            license_notice_embed = discord.Embed(description=license_notice, color=0x2f3136)
+
+        else:
+            license_notice_embed = None
+
         final_url = f"<{source_url}/blob/{branch}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}>"
-        await ctx.send(final_url)
+        await ctx.send(final_url, embed=license_notice_embed)
 
     @commands.command(name="backup_reload")
     @commands.is_owner()
