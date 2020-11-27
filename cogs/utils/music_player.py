@@ -79,7 +79,7 @@ class Player:
         self._loop = False
         self._loop_queue = False
         self._volume = 0.5
-        self._votes = {"skip": set(), "shuffle": set(), "remove": set()}
+        self._votes = {}
 
         log.info(f"{ctx.guild}: Starting player loop...")
         self.audio_player = bot.loop.create_task(self.player_loop())
@@ -193,7 +193,9 @@ class Player:
                             log.info(f"{ctx.guild}: Getting a song from the queue...")
                             self.current = await self.songs.get()
                     except asyncio.TimeoutError:
-                        log.info(f"{ctx.guild}: Timed out while waiting for song. Stopping...")
+                        log.info(
+                            f"{ctx.guild}: Timed out while waiting for song. Stopping..."
+                        )
                         self.bot.loop.create_task(self.stop())
 
                         if ctx.guild.id in ctx.bot.players.keys():
@@ -214,15 +216,18 @@ class Player:
                 self.status = PlayerStatus.PLAYING
 
                 query = "UPDATE songs SET plays = plays + 1 WHERE song_id=$1 AND extractor=$2;"
-                await self.bot.pool.execute(query, self.current.id, self.current.extractor)
+                await self.bot.pool.execute(
+                    query, self.current.id, self.current.extractor
+                )
 
                 if not self.loop and self.notify and not self.startover:
-                    await self.text_channel.send(f"**:notes: Now playing** `{self.current.title}`")
+                    await self.text_channel.send(
+                        f"**:notes: Now playing** `{self.current.title}`"
+                    )
 
                 self.startover = False
 
-                for vote, value in self._votes.items():
-                    self._votes[vote].clear()
+                self._votes.clear()
 
                 await self.next.wait()
 
@@ -245,8 +250,6 @@ class Player:
         self.next.set()
 
     def skip(self):
-        self._votes["skip"].clear()
-
         if self.is_playing:
             self.voice.stop()
 

@@ -163,16 +163,29 @@ class NotListeningError(commands.CommandError):
         self.message = message
 
 
-def is_dj():
+def is_dj(*, only_member_check=False):
     def predicate(ctx):
         author = ctx.author
         upper = discord.utils.get(ctx.guild.roles, name="DJ")
         lower = discord.utils.get(ctx.guild.roles, name="dj")
+
+        player = ctx.cog.get_player(ctx)
+
+        if player and player.voice and player.voice.channel:
+            members = [m for m in player.voice.channel.members if not m.bot]
+
+        else:
+            members = []
+
+        is_only_member = len(members) == 1 and ctx.author in members
+
         return (
             author.guild_permissions.manage_guild
             or upper in author.roles
             or lower in author.roles
             or author.id == ctx.bot.owner_id
+            or only_member_check
+            and is_only_member
         )
 
     return commands.check(predicate)
@@ -567,12 +580,16 @@ class Music(commands.Cog):
 
         else:
             is_only_user = False
-            required_votes = round(length * 0.75)  # 75% of members must skip
+            required_votes = round(length * 0.75)  # 75% of members must vote
 
         if is_requester or has_perms or is_only_user or is_dj or is_owner:
             await func(1, 1)
+            return
 
-        elif voter.id not in ctx.player._votes[cmd]:
+        if cmd not in ctx.player._votes.keys():
+            ctx.player._votes[cmd] = set()
+
+        if voter.id not in ctx.player._votes[cmd]:
             ctx.player._votes[cmd].add(voter.id)
             total_votes = len(ctx.player._votes[cmd])
 
@@ -715,7 +732,7 @@ class Music(commands.Cog):
             return ":sound:"
 
     @commands.command(name="volume")
-    @is_dj()
+    @is_dj(only_member_check=True)
     async def volume(self, ctx, *, volume: int = None):
         """Sets the volume of the player. Must be between 1 and 100."""
         if not volume:
@@ -822,22 +839,28 @@ class Music(commands.Cog):
         await self.votes(ctx, "skip", skip_song)
 
     @commands.command(usage="[position]")
-    @is_dj()
     async def skipto(self, ctx, *, position: int):
+        """Skip to a song in the queue"""
         if len(ctx.player.songs) < position:
             raise commands.BadArgument(f"The queue has less than {position} song(s).")
 
-        song = ctx.player.songs[position - 1]
+        async def skipto_song(total, required):
+            song = ctx.player.songs[position - 1]
 
-        for i in range(position - 1):
-            current = await ctx.player.songs.get()
+            for i in range(position - 1):
+                current = await ctx.player.songs.get()
 
-            if ctx.player.loop_queue:
-                await ctx.player.songs.put(current)
+                if ctx.player.loop_queue:
+                    await ctx.player.songs.put(current)
 
-        ctx.player.skip()
+            ctx.player.skip()
 
-        await ctx.send(f"**⏩ Skipped to** `{song}`")
+            votes = (
+                f"Required votes met `({total}/{required})`.\n" if required != 1 else ""
+            )
+            await ctx.send(f"{votes}**⏩ Skipped to** `{song}`")
+
+        await self.votes(ctx, "skipto", skipto_song)
 
     @commands.group(
         name="queue",
@@ -959,24 +982,30 @@ class Music(commands.Cog):
     )
     async def loop(self, ctx):
         """Loop a single song. To loop the queue use loop queue"""
-        # return await ctx.send(":warning: :( Sorry, this feature is \
-        # currently under maintenance. Check back later.")
-
         if not ctx.player.is_playing and not ctx.player.loop:
             return await ctx.send("Nothing is being played at the moment.")
 
-        # Inverse boolean value to loop and unloop.
-        ctx.player.loop = not ctx.player.loop
-        ctx.player.loop_queue = False
-        if ctx.player.loop:
-            await ctx.send(
-                "**:repeat_one: Now looping** " f"`{ctx.player.current.title}`"
+        async def loop_song(total, required):
+            # Inverse boolean value to loop and unloop.
+            ctx.player.loop = not ctx.player.loop
+            ctx.player.loop_queue = False
+
+            votes = (
+                f"Required votes met `({total}/{required})`.\n" if required != 1 else ""
             )
-        else:
-            await ctx.send(
-                "**:repeat_one: :x: No longer looping** "
-                f"`{ctx.player.current.title}`"
-            )
+
+            if ctx.player.loop:
+                await ctx.send(
+                    f"{votes}**:repeat_one: Now looping** "
+                    f"`{ctx.player.current.title}`"
+                )
+            else:
+                await ctx.send(
+                    f"{votes}**:repeat_one: :x: No longer looping** "
+                    f"`{ctx.player.current.title}`"
+                )
+
+        await self.votes(ctx, "loop", loop_song)
 
     @loop.command(
         name="queue", description="Loop the entire queue.", aliases=["playlist"]
@@ -985,36 +1014,48 @@ class Music(commands.Cog):
         if not ctx.player.is_playing and not ctx.player.loop_queue:
             return await ctx.send("Nothing being played at the moment.")
 
-        ctx.player.loop_queue = not ctx.player.loop_queue
-        ctx.player.loop = False
+        async def do_loop_queue(total, required):
+            ctx.player.loop_queue = not ctx.player.loop_queue
+            ctx.player.loop = False
 
-        if ctx.player.loop_queue:
-            await ctx.send("**:repeat: Now looping queue**")
-        else:
-            await ctx.send("**:repeat: :x: No longer looping queue**")
+            votes = (
+                f"Required votes met `({total}/{required})`.\n" if required != 1 else ""
+            )
+
+            if ctx.player.loop_queue:
+                await ctx.send(f"{votes}**:repeat: Now looping queue**")
+            else:
+                await ctx.send(f"{votes}**:repeat: :x: No longer looping queue**")
+
+        await self.votes(ctx, "loop queue", do_loop_queue)
 
     @commands.command(description="Start the current song over from the beginning")
-    @is_dj()
     async def startover(self, ctx):
         if not ctx.player.is_playing:
             return await ctx.send("Nothing is being played at the moment.")
 
-        current = ctx.player.current
+        async def startover_song(total, required):
+            current = ctx.player.current
 
-        song = ytdl.Song(
-            ctx,
-            data=current.data,
-            filename=current.filename,
-        )
+            song = ytdl.Song(
+                ctx,
+                data=current.data,
+                filename=current.filename,
+            )
 
-        ctx.player.startover = True
+            ctx.player.startover = True
 
-        if not ctx.player.loop and not ctx.player.loop_queue:
-            ctx.player.songs._queue.appendleft(song)
+            if not ctx.player.loop and not ctx.player.loop_queue:
+                ctx.player.songs._queue.appendleft(song)
 
-        ctx.player.skip()
+            ctx.player.skip()
 
-        await ctx.send("**⏪ Starting song over**")
+            votes = (
+                f"Required votes met `({total}/{required})`.\n" if required != 1 else ""
+            )
+            await ctx.send(f"{votes}**⏪ Starting song over**")
+
+        await self.votes(ctx, "startover", startover_song)
 
     async def fetch_yt_playlist(self, ctx, url):
         yt_emoji = "<:youtube:781633321255567361>"
@@ -1079,7 +1120,9 @@ class Music(commands.Cog):
             await progress_message.stop()
 
             em.description = description
-            await ctx.send(f"{yt_emoji} **Finished loading Youtube playlist**", embed=em)
+            await ctx.send(
+                f"{yt_emoji} **Finished loading Youtube playlist**", embed=em
+            )
 
     URLS = re.compile(
         r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
