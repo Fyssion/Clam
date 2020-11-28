@@ -100,7 +100,7 @@ class QueuePages(menus.ListPageSource):
             queue.append(f"**Now Playing:**\n{self.format_song(player.current)}\n")
 
         if ctx.player.songs:
-            queue.append(f"**{len(ctx.player.songs)} Song(s) Up Next:**")
+            queue.append(f"**{plural(len(ctx.player.songs)):Song} Up Next:**")
 
             for i, song in enumerate(entries, start=offset):
                 queue.append(f"`{i+1}.` {self.format_song(song)}")
@@ -129,7 +129,8 @@ class QueuePages(menus.ListPageSource):
             else "\n\n"
         )
         em.description += f"{duration}To see more about what's currently playing, use `{ctx.prefix}now`"
-        em.set_footer(text=f"Page {menu.current_page+1} of {max_pages or 1}")
+        songs = f"{plural(len(ctx.player.songs)):Song} | " if ctx.player.songs else ""
+        em.set_footer(text=f"{songs}Page {menu.current_page+1} of {max_pages or 1}")
         return em
 
 
@@ -147,6 +148,12 @@ class BinFetchingError(Exception):
 class CannotJoinVoice(commands.CommandError):
     def __init__(self, message):
         super().__init__(f"{RED_TICK} {message}")
+        self.message = message
+
+
+class AlreadyActivePlayer(commands.CommandError):
+    def __init__(self, message):
+        super().__init__(message)
         self.message = message
 
 
@@ -250,6 +257,10 @@ class Music(commands.Cog):
         return self.players.get(ctx.guild.id)
 
     def create_player(self, ctx):
+        old_player = self.get_player(ctx)
+        if old_player is not None and not old_player.closed:
+            raise AlreadyActivePlayer("There is already an active player.")
+
         player = music_player.Player(self.bot, ctx)
         self.players[ctx.guild.id] = player
         ctx.player = player
@@ -273,6 +284,7 @@ class Music(commands.Cog):
             NoPlayerError,
             NotListeningError,
             CannotJoinVoice,
+            AlreadyActivePlayer
         )
 
         if isinstance(error, overridden_errors):
@@ -489,7 +501,6 @@ class Music(commands.Cog):
             return
 
         def check(m, b, a):
-            print(m, m.guild, m == self.bot.user and a.channel)
             return m == self.bot.user and a.channel
 
         if before.channel and not after.channel:
