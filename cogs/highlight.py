@@ -131,25 +131,14 @@ class Highlight(commands.Cog):
 
         if highlight:
             # Bold the word in the highlighted message
-            position = 0
-            content = list(content)
 
-            for i, letter in enumerate(content):
-                if letter.lower() == highlight[position]:
+            words = []
 
-                    if position == len(highlight) - 1:
-                        content.insert(i - len(highlight) + 1, "**")
-                        content.insert(i + 2, "**")
+            for word in content.split(" "):
+                hl = re.compile(r"((?:\W+)?(?:{0})[{0}]*(?:\W+|(?:'|\")?s)?$)".format(highlight), re.I)
+                words.append(hl.sub(r"**\1**", word))
 
-                        position = 0
-
-                    else:
-                        position += 1
-
-                else:
-                    position = 0
-
-            content = "".join(content)
+            content = " ".join(words)
 
         sent = message.created_at.strftime(time_formatting)
         timezone = message.created_at.strftime("%Z")
@@ -363,17 +352,11 @@ class Highlight(commands.Cog):
         already_seen = []
 
         for highlight in self.bot.highlight_words:
-            for word in message.content.lower().split(" "):
-                match = re.search(highlight, word)
+            hl = re.compile(r"(?:\W+)?(?:{0})[{0}]*(?:\W+|('|\")?s)?$".format(highlight), re.I)
+            for word in message.content.lower().split():
+                match = hl.match(word)
 
                 if not match:
-                    continue
-
-                span = match.span()
-
-                start_index = span[0]
-
-                if start_index > 0:
                     continue
 
                 seen = await self.highlight_words(message, highlight, already_seen)
