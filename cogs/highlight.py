@@ -135,8 +135,8 @@ class Highlight(commands.Cog):
             words = []
 
             for word in content.split(" "):
-                hl = re.compile(r"((?:\W+)?(?:{0})[{0}]*(?:\W+|(?:'|\")?s)?$)".format(highlight), re.I)
-                words.append(hl.sub(r"**\1**", word))
+                hl = re.compile(r"(\W+)?((?:{0})[{0}]*)(?:(\W+)|((?:'|\")?s))?($)".format(highlight), re.I)
+                words.append(hl.sub(r"\1**\2\4**\3\5", word))
 
             content = " ".join(words)
 
