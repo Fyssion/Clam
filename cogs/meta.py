@@ -470,6 +470,8 @@ class Meta(commands.Cog):
         )
         self.bot.error_cache.append(error)
 
+        origianl = error.origianl
+
         em = discord.Embed(
             title=":warning: Unexpected Error",
             color=discord.Color.gold(),
@@ -477,7 +479,7 @@ class Meta(commands.Cog):
 
         description = (
             "An unexpected error has occured:"
-            f"```py\n{error}```\n"
+            f"```py\n{origianl}```\n"
             "The developer has been notified."
             "\nConfused? Join my [support server.](https://www.discord.gg/wfCGTrp)"
         )
@@ -503,7 +505,7 @@ class Meta(commands.Cog):
             kwargs = [str(a) for a in ctx.kwargs]
             extra_info += f"\nKwargs: `{', '.join(kwargs)}`"
 
-        extra_info += f"\n\nAn unexpected error has occured: ```py\n{error}```\n"
+        extra_info += f"\n\nAn unexpected error has occured: ```py\n{origianl}```\n"
         em.description = extra_info
 
         await ctx.console.send(embed=em)
