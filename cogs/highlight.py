@@ -134,8 +134,9 @@ class Highlight(commands.Cog):
 
             words = []
 
+            escaped = re.escape(highlight)
+            hl = re.compile(r"(\W+)?((?:{0})[{0}]*)(?:(\W+)|((?:'|\")?s))?($)".format(escaped), re.I)
             for word in content.split(" "):
-                hl = re.compile(r"(\W+)?((?:{0})[{0}]*)(?:(\W+)|((?:'|\")?s))?($)".format(highlight), re.I)
                 words.append(hl.sub(r"\1**\2\4**\3\5", word))
 
             content = " ".join(words)
@@ -352,7 +353,8 @@ class Highlight(commands.Cog):
         already_seen = []
 
         for highlight in self.bot.highlight_words:
-            hl = re.compile(r"(?:\W+)?(?:{0})[{0}]*(?:\W+|('|\")?s)?$".format(highlight), re.I)
+            escaped = re.escape(highlight)
+            hl = re.compile(r"(?:\W+)?(?:{0})[{0}]*(?:\W+|('|\")?s)?$".format(escaped), re.I)
             for word in message.content.lower().split():
                 match = hl.match(word)
 
