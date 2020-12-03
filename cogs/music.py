@@ -617,28 +617,39 @@ class Music(commands.Cog):
             await ctx.send(f"You have already voted to {cmd}.")
 
     async def connect(self, ctx, destination):
-        if ctx.player.voice:
-            await ctx.player.voice.move_to(destination)
-            await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
+        log.info(f"{ctx.guild}: Connecting to {destination}...")
 
-        elif ctx.guild.voice_client:
-            await ctx.guild.voice_client.move_to(destination)
-            ctx.player.voice = ctx.guild.voice_client
-            await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
+        try:
+            if ctx.player.voice:
+                log.info(f"{ctx.guild}: Player found and is already in a voice channel, moving to {destination}...")
+                await ctx.player.voice.move_to(destination)
+                await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
 
-        else:
-            try:
+            elif ctx.guild.voice_client:
+                log.info(f"{ctx.guild}: Player not found but bot is already in a voice channel, moving to {destination}...")
+                await ctx.guild.voice_client.move_to(destination)
+                ctx.player.voice = ctx.guild.voice_client
+                await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
+
+            else:
+                log.info(f"{ctx.guild}: Bot not in voice channel, attempting to connect to {destination}...")
                 ctx.player.voice = await destination.connect()
                 await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
 
-            except discord.ClientException:
-                if ctx.guild.me.guild_permissions.move_members:
-                    await ctx.guild.me.move_to(destination)
-                    await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
-                    return
+        except discord.ClientException:
+            log.info(f"{ctx.guild}: Connection attempt to {destination} failed")
+            if ctx.guild.me.guild_permissions.move_members:
+                log.info(f"{ctx.guild}: I have permissions to move myself, attemping to do move to {destination}")
+                await ctx.guild.me.move_to(destination)
+                await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
+                log.info(f"{ctx.guild}: Looks like I moved to {destination} successfully")
+                return
 
-                await ctx.send("Failed to connect to voice. Try re-running the command. If that fails, contact Fyssion.")
-                return False
+            log.info(f"{ctx.guild}: I don't have permissions to move myself, sending fail message...")
+            await ctx.send("Failed to connect to voice. Try re-running the command. If that fails, contact Fyssion.")
+            return False
+
+        log.info(f"{ctx.guild}: Looks like I connected to {destination} successfully")
 
     @commands.command(
         name="join",
