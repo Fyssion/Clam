@@ -495,7 +495,13 @@ class Tags(commands.Cog):
             return await ctx.send_help(ctx.command)
 
         tag = await TagConverter().convert(ctx, name)
-        await ctx.send(tag.content)
+
+        ref = ctx.message.reference
+        reference = None
+        if ref and isinstance(ref.resolved, discord.Message):
+            reference = ref.resolved.to_reference()
+
+        await ctx.send(tag.content, reference=reference)
 
         query = "UPDATE tags SET uses = uses + 1 WHERE name=$1 AND guild_id=$2;"
         await ctx.db.execute(query, tag.name, ctx.guild.id)
