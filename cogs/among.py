@@ -1,7 +1,6 @@
 from discord.ext import commands
 import discord
 
-import datetime
 import asyncpg
 
 from .utils import db, human_time, cache
@@ -53,7 +52,7 @@ class AmongGame:
 
 
 class AmongUs(commands.Cog, name="Among Us"):
-    """Commands that make Among Us more fun"""
+    """Commands that make Among Us easier to play"""
 
     def __init__(self, bot):
         self.bot = bot
@@ -79,7 +78,7 @@ class AmongUs(commands.Cog, name="Among Us"):
         return AmongGame.from_record(record)
 
     @commands.group(
-        description="A set of commands that make Among Us more fun",
+        description="A set of commands that make Among Us easier to play",
         aliases=["amongus"],
         invoke_without_command=True,
     )
