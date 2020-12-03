@@ -616,6 +616,30 @@ class Music(commands.Cog):
         else:
             await ctx.send(f"You have already voted to {cmd}.")
 
+    async def connect(self, ctx, destination):
+        if ctx.player.voice:
+            await ctx.player.voice.move_to(destination)
+            await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
+
+        elif ctx.guild.voice_client:
+            await ctx.guild.voice_client.move_to(destination)
+            ctx.player.voice = ctx.guild.voice_client
+            await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
+
+        else:
+            try:
+                ctx.player.voice = await destination.connect()
+                await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
+
+            except discord.ClientException:
+                if ctx.guild.me.guild_permissions.move_members:
+                    await ctx.guild.me.move_to(destination)
+                    await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
+                    return
+
+                await ctx.send("Failed to connect to voice. Try re-running the command. If that fails, contact Fyssion.")
+                return False
+
     @commands.command(
         name="join",
         aliases=["connect"],
@@ -643,12 +667,9 @@ class Music(commands.Cog):
                 f"({len(destination.members)}/{destination.user_limit} members)"
             )
 
-        if ctx.player.voice:
-            await ctx.player.voice.move_to(destination)
-
-        else:
-            ctx.player.voice = await destination.connect()
-            await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
+        result = await self.connect(ctx, destination)
+        if result is False:
+            return
 
         await ctx.send(
             ctx.tick(
@@ -689,11 +710,9 @@ class Music(commands.Cog):
                 f"({len(destination.members)}/{destination.user_limit} members)"
             )
 
-        if ctx.player.voice:
-            await ctx.player.voice.move_to(destination)
-        else:
-            ctx.player.voice = await destination.connect()
-            await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
+        result = await self.connect(ctx, destination)
+        if result is False:
+            return
 
         await ctx.send(
             ctx.tick(
