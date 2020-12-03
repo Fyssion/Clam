@@ -1108,7 +1108,7 @@ class Music(commands.Cog):
 
             ctx.player.startover = True
 
-            if not ctx.player.loop and (ctx.player.loop_queue and len(ctx.player.songs) == 1):
+            if not ctx.player.loop and not (ctx.player.loop_queue and len(ctx.player.songs) == 1):
                 ctx.player.songs._queue.appendleft(song)
 
             ctx.player.skip()
