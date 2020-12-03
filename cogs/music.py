@@ -616,8 +616,30 @@ class Music(commands.Cog):
         else:
             await ctx.send(f"You have already voted to {cmd}.")
 
+    def is_bot_borked(self, guild):
+        if not guild.voice_client:
+            return False
+
+        # loop through channels to see if bot is in any.
+        # if it is, we aren't borked. if it isn't we are borked
+        # and I think we need to tamper with internals
+
+        for channel in guild.voice_channels:
+            if guild.me in channel.members:
+                return False
+
+        # if we're here that means that dpy has a VoiceClient
+        # registered, but the bot isn't actually connected anywhere.
+        # YIKES
+        return True
+
     async def connect(self, ctx, destination):
         log.info(f"{ctx.guild}: Connecting to {destination}...")
+
+        if self.is_bot_borked(ctx.guild):
+            log.info(f"{ctx.guild}: Bot is borked! Trying to reset internal voice client dict....")
+            # scary!
+            self.bot._connection._voice_clients.pop(ctx.guild.id)
 
         try:
             if ctx.player.voice:
