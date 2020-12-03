@@ -531,7 +531,7 @@ class Music(commands.Cog):
         members = [m for m in player.voice.channel.members if not m.bot]
 
         def check(mem, bf, af):
-            if not mem.bot and af.channel and af.channel == player.voice.channel:
+            if not mem.bot and af and af.channel and af.channel == player.voice.channel:
                 return True
             return False
 

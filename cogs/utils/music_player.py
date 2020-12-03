@@ -198,7 +198,7 @@ class Player:
                         )
                         await self.stop()
 
-                        if ctx.guild.id in ctx.bot.players.keys():
+                        if ctx.guild.id in ctx.bot.players.keys() and ctx.bot.players[ctx.guild.id] is self:
                             del ctx.bot.players[ctx.guild.id]
                         return
 
