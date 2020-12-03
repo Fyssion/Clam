@@ -2,23 +2,54 @@ from discord.ext import commands
 import discord
 
 import datetime
+import asyncpg
 
-from .utils import human_time
-
-
-class AmongUsGame:
-    pass
+from .utils import db, human_time, cache
 
 
-class AmongUsCode:
-    def __init__(self, code, region, author):
-        self.code = code
-        self.region = region
-        self.author = author
-        self.set_at = datetime.datetime.utcnow()
+class AmongGameTable(db.Table, table_name="among_games"):
+    id = db.Column(db.Integer(big=True), primary_key=True)
+
+    code = db.Column(db.String)
+    code_region = db.Column(db.String)
+    code_author = db.Column(db.Integer(big=True))
+    code_set_at = db.Column(db.Datetime, default="now() at time zone 'utc'")
+
+    @classmethod
+    def create_table(cls, *, exists_ok=True):
+        statement = super().create_table(exists_ok=exists_ok)
+        sql = "CREATE UNIQUE INDEX IF NOT EXISTS among_uniq_idx ON among_games (UPPER(code), UPPER(code_region));"
+        return statement + "\n" + sql
+
+
+class AmongCode:
+    @classmethod
+    def from_record(cls, record):
+        self = cls()
+
+        self.code = record["code"]
+        self.region = record["code_region"]
+        self.author = record["code_author"]
+        self.set_at = record["code_set_at"]
+
+        return self
 
     def __str__(self):
         return self.code
+
+
+class AmongGame:
+    @classmethod
+    def from_record(cls, record):
+        self = cls()
+
+        self.id = record["id"]
+        if record["code"] is not None:
+            self.code = AmongCode.from_record(record)
+        else:
+            self.code = None
+
+        return self
 
 
 class AmongUs(commands.Cog, name="Among Us"):
@@ -34,20 +65,18 @@ class AmongUs(commands.Cog, name="Among Us"):
 
         self.among_games = bot.among_games
 
-        if not hasattr(bot, "among_codes"):
-            # guild_id: AmongUsCode
-            bot.among_codes = {}
+    @cache.cache()
+    async def get_game(self, guild_id):
+        query = """SELECT * FROM among_games
+                   WHERE id=$1;
+                """
 
-        self.among_codes = bot.among_codes
+        record = await self.bot.pool.fetchrow(query, guild_id)
 
-    def get_code(self, guild_id):
-        return self.among_codes.get(guild_id)
+        if not record:
+            return None
 
-    def get_game(self, guild_id):
-        return self.among_games.get(guild_id)
-
-    async def before_invoke(self, ctx):
-        ctx.game = self.get_game(ctx.guild.id)
+        return AmongGame.from_record(record)
 
     @commands.group(
         description="A set of commands that make Among Us more fun",
@@ -63,39 +92,50 @@ class AmongUs(commands.Cog, name="Among Us"):
 
         To set a code, use `among code set`
         """
-        code = self.get_code(ctx.guild.id)
+        game = await self.get_game(ctx.guild.id)
 
-        if not code:
+        if not game or not game.code:
             return await ctx.send("A code has not been set for this server.")
+
+        code = game.code
+        author = self.bot.get_user(code.author)
+        formatted = str(author) if author else "[unknown user]"
 
         await ctx.send(
             f"Among Us code: `{code}` (region: `{code.region}`)\n"
-            f"Set by `{code.author}` {human_time.human_timedelta(code.set_at, accuracy=1)}."
+            f"Set by `{formatted}` {human_time.human_timedelta(code.set_at, accuracy=1)}."
         )
 
     @among_code.command(
         name="set", description="Set the current code for Among Us", aliases=["create"]
     )
     async def among_code_set(self, ctx, code, *, region="North America"):
-        old_code = self.get_code(ctx.guild.id)
+        query = """INSERT INTO among_games (id, code, code_region, code_author, code_set_at)
+                   VALUES ($1, $2, $3, $4, (now() at time zone 'utc')) ON CONFLICT (id) DO UPDATE SET
+                        code=EXCLUDED.code,
+                        code_region=EXCLUDED.code_region,
+                        code_author=EXCLUDED.code_author,
+                        code_set_at=EXCLUDED.code_set_at;
+                """
 
-        if (
-            old_code
-            and old_code.code.upper() == code.upper()
-            and old_code.region == region
-        ):
-            return await ctx.send(
-                ctx.tick(
-                    False,
-                    (
-                        "That code and region have already been set by "
-                        f"`{old_code.author}` {human_time.human_timedelta(old_code.set_at, accuracy=1)}.\n"
-                        f"You can clear the current code with `{ctx.guild_prefix}among code clear`"
-                    ),
-                )
-            )
+        async with ctx.db.acquire() as conn:
+            async with conn.transaction():
+                try:
+                    await ctx.db.execute(query, ctx.guild.id, code.upper(), region, ctx.author.id)
+                except asyncpg.UniqueViolationError:
+                    game = await self.get_game(ctx.guild.id)
+                    code = game.code
+                    author = self.bot.get_user(code.author)
+                    formatted = str(author) if author else "[unknown user]"
+                    return await ctx.send(
+                        (
+                            f"{ctx.tick(False)} That code and region have already been set by "
+                            f"`{formatted}` {human_time.human_timedelta(code.set_at, accuracy=1)}.\n"
+                            f"You can clear the current code with `{ctx.guild_prefix}among code clear`"
+                        ),
+                    )
 
-        self.among_codes[ctx.guild.id] = AmongUsCode(code.upper(), region, ctx.author)
+        self.get_game.invalidate(self, ctx.guild.id)
 
         await ctx.send(
             ctx.tick(
@@ -109,12 +149,22 @@ class AmongUs(commands.Cog, name="Among Us"):
         aliases=["reset"],
     )
     async def among_code_clear(self, ctx):
-        old_code = self.get_code(ctx.guild.id)
+        query = """INSERT INTO among_games (id, code, code_region, code_author, code_set_at)
+                   VALUES ($1, NULL, NULL, NULL, NULL) ON CONFLICT (id) DO UPDATE SET
+                        code=EXCLUDED.code,
+                        code_region=EXCLUDED.code_region,
+                        code_author=EXCLUDED.code_author,
+                        code_set_at=EXCLUDED.code_set_at;
+                """
 
-        if not old_code:
-            return await ctx.send("A code has not been set for this server.")
+        async with ctx.db.acquire() as conn:
+            async with conn.transaction():
+                try:
+                    await ctx.db.execute(query, ctx.guild.id)
+                except asyncpg.UniqueViolationError:
+                    return await ctx.send(ctx.tick(False, "A code has not been set for this server."))
 
-        self.among_codes.pop(ctx.guild.id)
+        self.get_game.invalidate(self, ctx.guild.id)
 
         await ctx.send(ctx.tick(True, "Cleared code."))
 
