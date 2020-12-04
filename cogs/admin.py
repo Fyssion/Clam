@@ -481,7 +481,7 @@ class Admin(commands.Cog):
                 try:
                     actual_module = sys.modules[module]
                 except KeyError:
-                    statuses.append((ctx.tick(None), module))
+                    statuses.append(f"\N{SLEEPING SYMBOL} {module}")
                 else:
                     try:
                         importlib.reload(actual_module)
