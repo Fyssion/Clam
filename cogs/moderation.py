@@ -1,4 +1,4 @@
-from discord.ext import commands, flags
+from discord.ext import commands, flags, tasks
 from discord.flags import BaseFlags, fill_with_flags, flag_value
 import discord
 
@@ -11,14 +11,29 @@ import asyncio
 import re
 from urllib.parse import urlparse
 from async_timeout import timeout
-from collections import Counter
+from collections import Counter, defaultdict
+import enum
 import os.path
 from jishaku.models import copy_context_with
+import asyncpg
+import logging
 
 from .utils import db, human_time, checks, cache
 from .utils.emojis import GREEN_TICK, RED_TICK, LOADING
 from .utils.checks import has_manage_guild
 from .utils.utils import is_int
+
+
+log = logging.getLogger("clam.mod")
+
+
+class RaidMode(enum.Enum):
+    off = 0
+    on = 1
+    strict = 2
+
+    def __str__(self):
+        return self.name
 
 
 class GuildSettingsTable(db.Table, table_name="guild_settings"):
@@ -42,8 +57,18 @@ class GuildSettings:
         self.id = record["id"]
         self.mute_role_id = record["mute_role_id"]
         self.muted_members = record["muted_members"] or []
+        self.raid_mode = record["raid_mode"]
+        self.id = record["id"]
+        self.broadcast_channel_id = record["broadcast_channel"]
+        self.mention_count = record["mention_count"]
+        self.safe_mention_channel_ids = set(record["safe_mention_channel_ids"] or [])
 
         return self
+
+    @property
+    def broadcast_channel(self):
+        guild = self.bot.get_guild(self.id)
+        return guild and guild.get_channel(self.broadcast_channel_id)
 
     @property
     def mute_role(self):
@@ -179,6 +204,90 @@ class BannedUser(commands.Converter):
         raise commands.BadArgument(f'Banned user "{arg}" not found.')
 
 
+# Spam detector
+
+# TODO: add this to d.py maybe
+class CooldownByContent(commands.CooldownMapping):
+    def _bucket_key(self, message):
+        return (message.channel.id, message.content)
+
+
+class SpamChecker:
+    """This spam checker does a few things.
+
+    1) It checks if a user has spammed more than 10 times in 12 seconds
+    2) It checks if the content has been spammed 15 times in 17 seconds.
+    3) It checks if new users have spammed 30 times in 35 seconds.
+    4) It checks if "fast joiners" have spammed 10 times in 12 seconds.
+
+    The second case is meant to catch alternating spam bots while the first one
+    just catches regular singular spam bots.
+
+    From experience these values aren't reached unless someone is actively spamming.
+    """
+
+    def __init__(self):
+        self.by_content = CooldownByContent.from_cooldown(
+            15, 17.0, commands.BucketType.member
+        )
+        self.by_user = commands.CooldownMapping.from_cooldown(
+            10, 12.0, commands.BucketType.user
+        )
+        self.last_join = None
+        self.new_user = commands.CooldownMapping.from_cooldown(
+            30, 35.0, commands.BucketType.channel
+        )
+
+        # user_id flag mapping (for about 30 minutes)
+        self.fast_joiners = cache.ExpiringCache(seconds=1800.0)
+        self.hit_and_run = commands.CooldownMapping.from_cooldown(
+            10, 12, commands.BucketType.channel
+        )
+
+    def is_new(self, member):
+        now = datetime.datetime.utcnow()
+        seven_days_ago = now - datetime.timedelta(days=7)
+        ninety_days_ago = now - datetime.timedelta(days=90)
+        return member.created_at > ninety_days_ago and member.joined_at > seven_days_ago
+
+    def is_spamming(self, message):
+        if message.guild is None:
+            return False
+
+        current = message.created_at.replace(tzinfo=datetime.timezone.utc).timestamp()
+
+        if message.author.id in self.fast_joiners:
+            bucket = self.hit_and_run.get_bucket(message)
+            if bucket.update_rate_limit(current):
+                return True
+
+        if self.is_new(message.author):
+            new_bucket = self.new_user.get_bucket(message)
+            if new_bucket.update_rate_limit(current):
+                return True
+
+        user_bucket = self.by_user.get_bucket(message)
+        if user_bucket.update_rate_limit(current):
+            return True
+
+        content_bucket = self.by_content.get_bucket(message)
+        if content_bucket.update_rate_limit(current):
+            return True
+
+        return False
+
+    def is_fast_join(self, member):
+        joined = member.joined_at or datetime.datetime.utcnow()
+        if self.last_join is None:
+            self.last_join = joined
+            return False
+        is_fast = (joined - self.last_join).total_seconds() <= 2.0
+        self.last_join = joined
+        if is_fast:
+            self.fast_joiners[member.id] = True
+        return is_fast
+
+
 class NoMuteRole(commands.CommandError):
     def __init__(self):
         super().__init__("A mute role for this server has not been set up.")
@@ -232,7 +341,7 @@ class Moderation(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.emoji = ":police_car:"
-        self.log = self.bot.log
+        self.log = log
 
         if not os.path.isfile("log_channels.json"):
             self.log.info("log_channels.json not found, creating...")
@@ -252,9 +361,45 @@ class Moderation(commands.Cog):
 
         self.ver_messages = {}
 
+        # Raid shield stuff
+
+        # guild_id: SpamChecker
+        self._spam_check = defaultdict(SpamChecker)
+
+        # guild_id: List[(member_id, insertion)]
+        # A batch of data for bulk inserting mute role changes
+        # True - insert, False - remove
+        self._data_batch = defaultdict(list)
+        self._batch_lock = asyncio.Lock(loop=bot.loop)
+        self._disable_lock = asyncio.Lock(loop=bot.loop)
+        self.batch_updates.add_exception_type(asyncpg.PostgresConnectionError)
+        self.batch_updates.start()
+
+        # (guild_id, channel_id): List[str]
+        # A batch list of message content for message
+        self.message_batches = defaultdict(list)
+        self._batch_message_lock = asyncio.Lock(loop=bot.loop)
+        self.bulk_send_messages.start()
+
+    def cog_unload(self):
+        self.batch_updates.stop()
+        self.bulk_send_messages.stop()
+
     async def cog_command_error(self, ctx, error):
         if isinstance(error, NoMuteRole) or isinstance(error, RoleHierarchyFailure):
             await ctx.send(f"{ctx.tick(False)} {error}")
+            ctx.handled = True
+
+        elif isinstance(error, commands.CommandInvokeError):
+            original = error.original
+            if isinstance(original, discord.Forbidden):
+                await ctx.send("I do not have permission to execute this action.")
+            elif isinstance(original, discord.NotFound):
+                await ctx.send(f"This entity does not exist: {original.text}")
+            elif isinstance(original, discord.HTTPException):
+                await ctx.send(
+                    "Somehow, an unexpected error occurred. Try again later?"
+                )
             ctx.handled = True
 
     @commands.command(aliases=["su"])
@@ -1479,6 +1624,417 @@ class Moderation(commands.Cog):
             messages.extend(f"- **{author}**: {count}" for author, count in spammers)
 
         await ctx.send("\n".join(messages), delete_after=10)
+
+    async def bulk_insert(self):
+        query = """UPDATE guild_settings
+                   SET muted_members = x.result_array
+                   FROM jsonb_to_recordset($1::jsonb) AS
+                   x(id BIGINT, result_array BIGINT[])
+                   WHERE guild_settings.id = x.guild_id;
+                """
+
+        if not self._data_batch:
+            return
+
+        final_data = []
+        for guild_id, data in self._data_batch.items():
+            # If it's touched this function then chances are that this has hit cache before
+            # so it's not actually doing a query, hopefully.
+            config = await self.get_guild_settings(guild_id)
+            as_set = config.muted_members
+            for member_id, insertion in data:
+                func = as_set.add if insertion else as_set.discard
+                func(member_id)
+
+            final_data.append({"guild_id": guild_id, "result_array": list(as_set)})
+            self.get_guild_settings.invalidate(self, guild_id)
+
+        await self.bot.pool.execute(query, final_data)
+        self._data_batch.clear()
+
+    @tasks.loop(seconds=15.0)
+    async def batch_updates(self):
+        async with self._batch_lock:
+            await self.bulk_insert()
+
+    @tasks.loop(seconds=10.0)
+    async def bulk_send_messages(self):
+        async with self._batch_message_lock:
+            for ((guild_id, channel_id), messages) in self.message_batches.items():
+                guild = self.bot.get_guild(guild_id)
+                channel = guild and guild.get_channel(channel_id)
+                if channel is None:
+                    continue
+
+                paginator = commands.Paginator(suffix="", prefix="")
+                for message in messages:
+                    paginator.add_line(message)
+
+                for page in paginator.pages:
+                    try:
+                        await channel.send(page)
+                    except discord.HTTPException:
+                        pass
+
+            self.message_batches.clear()
+
+    async def check_raid(self, config, guild_id, member, message):
+        if config.raid_mode != RaidMode.strict.value:
+            return
+
+        checker = self._spam_check[guild_id]
+        if not checker.is_spamming(message):
+            return
+
+        try:
+            await member.ban(reason="Auto-ban from spam (strict raid mode ban)")
+        except discord.HTTPException:
+            log.info(
+                f"[Raid Mode] Failed to ban {member} (ID: {member.id}) from server {member.guild} via strict mode."
+            )
+        else:
+            log.info(
+                f"[Raid Mode] Banned {member} (ID: {member.id}) from server {member.guild} via strict mode."
+            )
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        author = message.author
+        if author.id in (self.bot.user.id, self.bot.owner_id):
+            return
+
+        if message.guild is None:
+            return
+
+        if not isinstance(author, discord.Member):
+            return
+
+        if author.bot:
+            return
+
+        # we're going to ignore members with roles
+        if len(author.roles) > 1:
+            return
+
+        guild_id = message.guild.id
+        config = await self.get_guild_settings(guild_id)
+        if config is None:
+            return
+
+        # check for raid mode stuff
+        await self.check_raid(config, guild_id, author, message)
+
+        # auto-ban tracking for mention spams begin here
+        if len(message.mentions) <= 3:
+            return
+
+        if not config.mention_count:
+            return
+
+        # check if it meets the thresholds required
+        mention_count = sum(not m.bot and m.id != author.id for m in message.mentions)
+        if mention_count < config.mention_count:
+            return
+
+        if message.channel.id in config.safe_mention_channel_ids:
+            return
+
+        try:
+            await author.ban(reason=f"Spamming mentions ({mention_count} mentions)")
+        except Exception as e:
+            log.info(
+                f"Failed to autoban member {author} (ID: {author.id}) in guild ID {guild_id}"
+            )
+        else:
+            to_send = f"Banned {author} (ID: {author.id}) for spamming {mention_count} mentions."
+            async with self._batch_message_lock:
+                self.message_batches[(guild_id, message.channel.id)].append(to_send)
+
+            # log.info(
+            #     f"Member {author} (ID: {author.id}) has been autobanned from guild ID {guild_id}"
+            # )
+            log.info(
+                f"[MentionSpam] Banned {author} (ID: {author.id}) from server {author.guild} for spamming {mention_count} mentions.")
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member):
+        guild_id = member.guild.id
+        config = await self.get_guild_settings(guild_id)
+        if config is None:
+            return
+
+        if not config.raid_mode:
+            return
+
+        now = datetime.datetime.utcnow()
+
+        is_new = member.created_at > (now - datetime.timedelta(days=7))
+        checker = self._spam_check[guild_id]
+
+        # Do the broadcasted message to the channel
+        title = "Member Joined"
+        if checker.is_fast_join(member):
+            colour = 0xDD5F53  # red
+            if is_new:
+                title = "Member Joined (Very New Member)"
+        else:
+            colour = 0x53DDA4  # green
+
+            if is_new:
+                colour = 0xDDA453  # yellow
+                title = "Member Joined (Very New Member)"
+
+        e = discord.Embed(title=title, colour=colour)
+        e.timestamp = now
+        e.set_author(name=str(member), icon_url=member.avatar_url)
+        e.add_field(name="ID", value=member.id)
+        e.add_field(name="Joined", value=member.joined_at)
+        e.add_field(
+            name="Created",
+            value=human_time.human_timedelta(member.created_at),
+            inline=False,
+        )
+
+        if config.broadcast_channel:
+            try:
+                await config.broadcast_channel.send(embed=e)
+            except discord.Forbidden:
+                async with self._disable_lock:
+                    await self.disable_raid_mode(guild_id)
+
+    @commands.group(aliases=["raids"], invoke_without_command=True)
+    @checks.has_permissions(manage_guild=True)
+    async def raid(self, ctx):
+        """Controls raid mode on the server.
+
+        Calling this command with no arguments will show the current raid
+        mode information.
+
+        You must have Manage Server permissions to use this command or
+        its subcommands.
+        """
+
+        query = "SELECT raid_mode, broadcast_channel FROM guild_settings WHERE id=$1;"
+
+        row = await ctx.db.fetchrow(query, ctx.guild.id)
+        if row is None:
+            fmt = "Raid Mode: off\nBroadcast Channel: None"
+        else:
+            ch = f"<#{row[1]}>" if row[1] else None
+            mode = RaidMode(row[0]) if row[0] is not None else RaidMode.off
+            fmt = f"Raid Mode: {mode}\nBroadcast Channel: {ch}"
+
+        await ctx.send(fmt)
+
+    @raid.command(name="on", aliases=["enable", "enabled"])
+    @checks.has_permissions(manage_guild=True)
+    async def raid_on(self, ctx, *, channel: discord.TextChannel = None):
+        """Enables basic raid mode on the server.
+
+        When enabled, server verification level is set to table flip
+        levels and allows the bot to broadcast new members joining
+        to a specified channel.
+
+        If no channel is given, then the bot will broadcast join
+        messages on the channel this command was used in.
+        """
+
+        channel = channel or ctx.channel
+
+        try:
+            await ctx.guild.edit(verification_level=discord.VerificationLevel.high)
+        except discord.HTTPException:
+            await ctx.send("\N{WARNING SIGN} Could not set verification level.")
+
+        query = """INSERT INTO guild_settings (id, raid_mode, broadcast_channel)
+                   VALUES ($1, $2, $3) ON CONFLICT (id)
+                   DO UPDATE SET
+                        raid_mode = EXCLUDED.raid_mode,
+                        broadcast_channel = EXCLUDED.broadcast_channel;
+                """
+
+        await ctx.db.execute(query, ctx.guild.id, RaidMode.on.value, channel.id)
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
+        await ctx.send(
+            f"Raid mode enabled. Broadcasting join messages to {channel.mention}."
+        )
+
+    async def disable_raid_mode(self, guild_id):
+        query = """INSERT INTO guild_settings (id, raid_mode, broadcast_channel)
+                   VALUES ($1, $2, NULL) ON CONFLICT (id)
+                   DO UPDATE SET
+                        raid_mode = EXCLUDED.raid_mode,
+                        broadcast_channel = NULL;
+                """
+
+        await self.bot.pool.execute(query, guild_id, RaidMode.off.value)
+        self._spam_check.pop(guild_id, None)
+        self.get_guild_settings.invalidate(self, guild_id)
+
+    @raid.command(name="off", aliases=["disable", "disabled"])
+    @checks.has_permissions(manage_guild=True)
+    async def raid_off(self, ctx):
+        """Disables raid mode on the server.
+
+        When disabled, the server verification levels are set
+        back to Low levels and the bot will stop broadcasting
+        join messages.
+        """
+
+        try:
+            await ctx.guild.edit(verification_level=discord.VerificationLevel.low)
+        except discord.HTTPException:
+            await ctx.send("\N{WARNING SIGN} Could not set verification level.")
+
+        await self.disable_raid_mode(ctx.guild.id)
+        await ctx.send("Raid mode disabled. No longer broadcasting join messages.")
+
+    @raid.command(name="strict")
+    @checks.has_permissions(manage_guild=True)
+    async def raid_strict(self, ctx, *, channel: discord.TextChannel = None):
+        """Enables strict raid mode on the server.
+
+        Strict mode is similar to regular enabled raid mode, with the added
+        benefit of auto-banning members that are spamming. The threshold for
+        spamming depends on a per-content basis and also on a per-user basis
+        of 15 messages per 17 seconds.
+
+        If this is considered too strict, it is recommended to fall back to regular
+        raid mode.
+        """
+        channel = channel or ctx.channel
+
+        perms = ctx.me.guild_permissions
+        if not (perms.kick_members and perms.ban_members):
+            return await ctx.send(
+                "\N{NO ENTRY SIGN} I do not have permissions to kick and ban members."
+            )
+
+        try:
+            await ctx.guild.edit(verification_level=discord.VerificationLevel.high)
+        except discord.HTTPException:
+            await ctx.send("\N{WARNING SIGN} Could not set verification level.")
+
+        query = """INSERT INTO guild_settings (id, raid_mode, broadcast_channel)
+                   VALUES ($1, $2, $3) ON CONFLICT (id)
+                   DO UPDATE SET
+                        raid_mode = EXCLUDED.raid_mode,
+                        broadcast_channel = EXCLUDED.broadcast_channel;
+                """
+
+        await ctx.db.execute(query, ctx.guild.id, RaidMode.strict.value, channel.id)
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
+        await ctx.send(
+            f"Raid mode enabled strictly. Broadcasting join messages to {channel.mention}."
+        )
+
+    @commands.group(invoke_without_command=True)
+    @commands.guild_only()
+    @checks.has_permissions(ban_members=True)
+    async def mentionspam(self, ctx, count: int = None):
+        """Enables auto-banning accounts that spam mentions.
+
+        If a message contains `count` or more mentions then the
+        bot will automatically attempt to auto-ban the member.
+        The `count` must be greater than 3. If the `count` is 0
+        then this is disabled.
+
+        This only applies for user mentions. Everyone or Role
+        mentions are not included.
+
+        To use this command you must have the Ban Members permission.
+        """
+
+        if count is None:
+            query = """SELECT mention_count, COALESCE(safe_mention_channel_ids, '{}') AS channel_ids
+                       FROM guild_settings
+                       WHERE id=$1;
+                    """
+
+            row = await ctx.db.fetchrow(query, ctx.guild.id)
+            if row is None or not row["mention_count"]:
+                return await ctx.send(
+                    "This server has not set up mention spam banning."
+                )
+
+            ignores = ", ".join(f"<#{e}>" for e in row["channel_ids"]) or "None"
+            return await ctx.send(
+                f'- Threshold: {row["mention_count"]} mentions\n- Ignored Channels: {ignores}'
+            )
+
+        if count == 0:
+            query = """UPDATE guild_settings SET mention_count = NULL WHERE id=$1;"""
+            await ctx.db.execute(query, ctx.guild.id)
+            self.get_guild_settings.invalidate(self, ctx.guild.id)
+            return await ctx.send("Auto-banning members has been disabled.")
+
+        if count <= 3:
+            await ctx.send(
+                "\N{NO ENTRY SIGN} Auto-ban threshold must be greater than three."
+            )
+            return
+
+        query = """INSERT INTO guild_settings (id, mention_count, safe_mention_channel_ids)
+                   VALUES ($1, $2, '{}')
+                   ON CONFLICT (id) DO UPDATE SET
+                       mention_count = $2;
+                """
+        await ctx.db.execute(query, ctx.guild.id, count)
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
+        await ctx.send(
+            f"Now auto-banning members that mention more than {count} users."
+        )
+
+    @mentionspam.command(name="ignore", aliases=["bypass"])
+    @commands.guild_only()
+    @checks.has_permissions(ban_members=True)
+    async def mentionspam_ignore(self, ctx, *channels: discord.TextChannel):
+        """Specifies what channels ignore mentionspam auto-bans.
+
+        If a channel is given then that channel will no longer be protected
+        by auto-banning from mention spammers.
+
+        To use this command you must have the Ban Members permission.
+        """
+
+        query = """UPDATE guild_settings
+                   SET safe_mention_channel_ids =
+                       ARRAY(SELECT DISTINCT * FROM unnest(COALESCE(safe_mention_channel_ids, '{}') || $2::bigint[]))
+                   WHERE id = $1;
+                """
+
+        if len(channels) == 0:
+            return await ctx.send("Missing channels to ignore.")
+
+        channel_ids = [c.id for c in channels]
+        await ctx.db.execute(query, ctx.guild.id, channel_ids)
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
+        await ctx.send(
+            f'Mentions are now ignored on {", ".join(c.mention for c in channels)}.'
+        )
+
+    @mentionspam.command(name="unignore", aliases=["protect"])
+    @commands.guild_only()
+    @checks.has_permissions(ban_members=True)
+    async def mentionspam_unignore(self, ctx, *channels: discord.TextChannel):
+        """Specifies what channels to take off the ignore list.
+
+        To use this command you must have the Ban Members permission.
+        """
+
+        if len(channels) == 0:
+            return await ctx.send("Missing channels to protect.")
+
+        query = """UPDATE guild_settings
+                   SET safe_mention_channel_ids =
+                       ARRAY(SELECT element FROM unnest(safe_mention_channel_ids) AS element
+                             WHERE NOT(element = ANY($2::bigint[])))
+                   WHERE id = $1;
+                """
+
+        await ctx.db.execute(query, ctx.guild.id, [c.id for c in channels])
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
+        await ctx.send("Updated mentionspam ignore list.")
 
     @commands.group(
         name="log",
