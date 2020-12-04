@@ -115,7 +115,7 @@ class Clam(commands.Bot):
 
         super().__init__(
             command_prefix=command_prefix,
-            description="A multi-purpose Discord bot. Likes to hide in it's shell.",
+            description="A multi-purpose Discord bot. Likes to hide in its shell.",
             owner_id=224513210471022592,
             case_insensitive=True,
             intents=intents,

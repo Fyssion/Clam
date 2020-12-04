@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/github/license/Fyssion/Clam)](https://github.com/Fyssion/Clam/blob/main/LICENSE)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-My personal Discord bot. Likes to hide in it's shell.
+My personal Discord bot. Likes to hide in its shell.
 
 Please don't run it yourself.
 Source code is only provided for transparency.
