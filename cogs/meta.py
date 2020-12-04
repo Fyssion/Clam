@@ -524,7 +524,10 @@ class Meta(commands.Cog):
                 "raw_reaction_add", check=check, timeout=180  # 3 min
             )
         except asyncio.TimeoutError:
-            await message.remove_reaction(info_emoji, self.bot.user)
+            try:
+                await message.remove_reaction(info_emoji, self.bot.user)
+            except discord.NotFound:
+                pass
             return
 
         try:
