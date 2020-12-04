@@ -5,6 +5,7 @@ import functools
 import io
 import typing
 import logging
+import pkg_resources
 from collections import defaultdict, Counter
 
 import discord
@@ -579,7 +580,9 @@ class Stats(commands.Cog):
         return "\n".join(self.format_commit(c) for c in commits)
 
     @commands.command(
-        name="about", description="Display info about the bot", aliases=["info"],
+        name="about",
+        description="Display info about the bot",
+        aliases=["info"],
     )
     async def about(self, ctx):
         revisions = self.get_latest_commits()
@@ -589,8 +592,9 @@ class Stats(commands.Cog):
             color=colors.PRIMARY,
         )
 
+        version = pkg_resources.get_distribution("discord.py").version
         em.set_footer(
-            text=f"Made with \N{HEAVY BLACK HEART} using discord.py v{discord.__version__}"
+            text=f"Made with \N{HEAVY BLACK HEART} using discord.py v{version}"
         )
 
         em.set_thumbnail(url=self.bot.user.avatar_url)
@@ -637,7 +641,8 @@ class Stats(commands.Cog):
         await ctx.send(embed=em)
 
     @commands.command(
-        description="Get the latest changes for the bot", aliases=["changes", "latest", "news"]
+        description="Get the latest changes for the bot",
+        aliases=["changes", "latest", "news"],
     )
     async def changelog(self, ctx):
         async with ctx.typing():
@@ -659,7 +664,9 @@ class Stats(commands.Cog):
         await ctx.send(f"My latency is {latency}ms.")
 
     @commands.command(
-        name="uptime", description="Get the bot's uptime", aliases=["up"],
+        name="uptime",
+        description="Get the bot's uptime",
+        aliases=["up"],
     )
     async def uptime(self, ctx):
         up = datetime.now() - self.bot.startup_time
@@ -798,9 +805,9 @@ class Stats(commands.Cog):
         render = table.render()
 
         embed = discord.Embed(title="Summary", colour=discord.Colour.green())
-        embed.set_footer(
-            text="Since"
-        ).timestamp = datetime.utcnow() - timedelta(days=days)
+        embed.set_footer(text="Since").timestamp = datetime.utcnow() - timedelta(
+            days=days
+        )
 
         top_ten = "\n".join(f"{command}: {uses}" for command, uses in records[:10])
         bottom_ten = "\n".join(f"{command}: {uses}" for command, uses in records[-10:])
@@ -896,7 +903,11 @@ class Stats(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
-        em = discord.Embed(title="Joined Guild", color=discord.Color.green(), timestamp=guild.created_at)
+        em = discord.Embed(
+            title="Joined Guild",
+            color=discord.Color.green(),
+            timestamp=guild.created_at,
+        )
         em.set_thumbnail(url=guild.icon_url)
         em.set_footer(text="Created")
 
@@ -909,7 +920,9 @@ class Stats(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
-        em = discord.Embed(title="Left Guild", color=discord.Color.red(), timestamp=guild.created_at)
+        em = discord.Embed(
+            title="Left Guild", color=discord.Color.red(), timestamp=guild.created_at
+        )
         em.set_thumbnail(url=guild.icon_url)
         em.set_footer(text="Created")
 
@@ -939,7 +952,10 @@ class Stats(commands.Cog):
           `--json`  Save socketstats to a json file for use programmatically
         """
         if flags["json"]:
-            stats = {"uptime": datetime.timestamp(self.bot.startup_time), "total": sum(self.bot.socket_stats.values())}
+            stats = {
+                "uptime": datetime.timestamp(self.bot.startup_time),
+                "total": sum(self.bot.socket_stats.values()),
+            }
             stats.update(self.bot.socket_stats)
 
             output = io.BytesIO()
@@ -960,7 +976,12 @@ class Stats(commands.Cog):
             the_stats_sorted = sorted(self.bot.socket_stats.keys())
 
         else:
-            the_stats_sorted = {k: v for k, v in reversed(sorted(self.bot.socket_stats.items(), key=lambda item: item[1]))}
+            the_stats_sorted = {
+                k: v
+                for k, v in reversed(
+                    sorted(self.bot.socket_stats.items(), key=lambda item: item[1])
+                )
+            }
 
         for name in the_stats_sorted:
             sorted_stats[name] = self.bot.socket_stats[name]
