@@ -22,6 +22,7 @@ from .utils import db, human_time, checks, cache
 from .utils.emojis import GREEN_TICK, RED_TICK, LOADING
 from .utils.checks import has_manage_guild
 from .utils.utils import is_int
+from .utils.flags import NoUsageFlagGroup
 
 
 log = logging.getLogger("clam.mod")
@@ -1189,7 +1190,7 @@ class Moderation(commands.Cog):
     @flags.add_flag("--reactions", action="store_true")
     @flags.add_flag("--or", action="store_true")
     @flags.add_flag("--not", action="store_true")
-    @flags.group(usage="[search=100]", invoke_without_command=True)
+    @commands.group(usage="[search=100]", invoke_without_command=True, cls=NoUsageFlagGroup)
     @checks.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
     async def purge(self, ctx, search: typing.Optional[int] = None, **flags):

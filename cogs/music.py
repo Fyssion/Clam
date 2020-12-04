@@ -20,6 +20,7 @@ from .utils import db, ytdl, music_player, colors, human_time
 from .utils.emojis import GREEN_TICK, RED_TICK, LOADING
 from .utils.menus import UpdatingMessage
 from .utils.human_time import plural
+from .utils.flags import NoUsageFlagCommand
 
 
 log = logging.getLogger("clam.music")
@@ -1675,7 +1676,7 @@ class Music(commands.Cog):
         await pages.start(ctx)
 
     @flags.add_flag("--delete-file", action="store_true")
-    @musicdb.command(name="delete", aliases=["remove"], cls=flags.FlagCommand)
+    @musicdb.command(name="delete", aliases=["remove"], cls=NoUsageFlagCommand)
     @commands.is_owner()
     async def musicdb_delete(self, ctx, song_id: int, **flags):
         """Delete a song from the database"""

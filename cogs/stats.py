@@ -21,6 +21,7 @@ from .utils.utils import get_lines_of_code, TabularData
 from .utils import db, colors, human_time
 from .utils.emojis import TEXT_CHANNEL, VOICE_CHANNEL
 from .utils.menus import MenuPages
+from .utils.flags import NoUsageFlagCommand
 
 
 log = logging.getLogger("clam.stats")
@@ -941,8 +942,9 @@ class Stats(commands.Cog):
 
     @flags.add_flag("--sort", "-s", default="count")
     @flags.add_flag("--json", action="store_true")
-    @flags.command(
+    @commands.command(
         aliases=["socket", "websocket"],
+        cls=NoUsageFlagCommand
     )
     async def socketstats(self, ctx, **flags):
         """View websocket stats
