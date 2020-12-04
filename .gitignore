@@ -13,3 +13,4 @@ env/*
 clam.log
 cache/
 venv/*
+!assets/emoji_map*.json
