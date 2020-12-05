@@ -575,27 +575,27 @@ class Fun(commands.Cog):
         return f"|{bar}|"
 
     @commands.command(aliases=["timebars"])
-    async def timebar(self, ctx, timezone: int = 0):
+    async def timebar(self, ctx, utc_offset: int = 0):
         """Display a progress bar for various portions of time."""
 
         def format_portion(when, percentage_bar, percent):
             return f"{when}: `|{percentage_bar}|` ({percent:.2f}%)"
 
-        if timezone < -12 or timezone > 12:
+        if utc_offset < -12 or utc_offset > 12:
             raise commands.BadArgument("Timezone must be within -12-12.")
 
         utc_now = d.utcnow().replace(tzinfo=tz.UTC)
 
-        if utc_now.hour + timezone > 24:
-            hour = utc_now.hour - (24 - timezone)
+        if utc_now.hour + utc_offset > 24:
+            hour = utc_now.hour - (24 - utc_offset)
             utc_now = utc_now.replace(day=utc_now.day + 1, hour=hour)
 
-        elif utc_now.hour + timezone < 1:
-            hour = utc_now.hour + (24 + timezone)
+        elif utc_now.hour + utc_offset < 1:
+            hour = utc_now.hour + (24 + utc_offset)
             utc_now = utc_now.replace(day=utc_now.day - 1, hour=hour)
 
         else:
-            utc_now = utc_now.replace(hour=utc_now.hour + timezone)
+            utc_now = utc_now.replace(hour=utc_now.hour + utc_offset)
 
         percentages = []
 
