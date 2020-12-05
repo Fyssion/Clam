@@ -509,6 +509,9 @@ class Music(commands.Cog):
                 await self.bot.wait_for("voice_state_update", check=check, timeout=5)
 
             except asyncio.TimeoutError:
+                if player.voice and player.voice.is_playing:
+                    return
+
                 if not player.closed:
                     log.info(
                         f"{member.guild}: Bot left voice for 5 seconds, killing player."
