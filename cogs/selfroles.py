@@ -124,8 +124,8 @@ class ReactionroleEmojiConverter(commands.Converter):
 
 
 class ReactionroleMenu(menus.Menu):
-    def __init__(self, content=None, **kwargs):
-        self.content = content
+    def __init__(self, embed=None, **kwargs):
+        self.embed = embed
         super().__init__(**kwargs)
 
     def reaction_check(self, payload):
@@ -135,7 +135,7 @@ class ReactionroleMenu(menus.Menu):
         return payload.emoji in self.buttons
 
     async def send_initial_message(self, ctx, channel):
-        return await channel.send(self.content)
+        return await channel.send(embed=self.embed)
 
 
 class PromptResponse(enum.Enum):
@@ -405,11 +405,11 @@ class Selfroles(commands.Cog):
             if member.bot:
                 return
 
-            if new_role in member.roles:
+            if payload.event_type == "REACTION_REMOVE" and new_role in member.roles:
                 await member.remove_roles(new_role, reason="Reactionrole removal")
                 log.info(f"{guild}: Removed '{role}' role from {member}")
 
-            else:
+            elif payload.event_type == "REACTION_ADD":
                 await member.add_roles(new_role, reason="Reactionrole addition")
                 log.info(f"{guild}: Added '{role}' role to {member}")
 
@@ -419,18 +419,46 @@ class Selfroles(commands.Cog):
 
     async def create_reactionrole_menu(self, ctx, emojis_and_roles):
         menu = ReactionroleMenu(timeout=None)
-        content = (
+        description = (
             "Press a reaction to get the associated role!\n"
-            "Press the reaction again to remove the role.\n\n**Roles:**\n"
+            "Press the reaction again to remove the role.\n\n"
         )
         options = []
 
-        for emoji, role in emojis_and_roles:
-            options.append(f"{emoji} | {role}")
+        query = """SELECT role_id, description
+                   FROM selfroles
+                   WHERE guild_id=$1;
+                """
+        records = await ctx.db.fetch(query, ctx.guild.id)
+
+        def format_role(name, description):
+            if description:
+                return f"{name} - {description}"
+            return name
+
+        for i, (emoji, role) in enumerate(emojis_and_roles):
+            role_desc = None
+            for role_id, desc in records:
+                if role.id == role_id:
+                    role_desc = desc
+                    break
+
+            options.append(f"{emoji} | {format_role(role.name, role_desc)}")
             menu.add_button(self.create_button(ctx, emoji, role))
 
-        content += "\n".join(options)
-        menu.content = content
+        description += "\n".join(options)
+        em = discord.Embed(
+            title="Reaction Roles", description=description, color=colors.PRIMARY
+        )
+        footer_text = (
+            "If you cannot see the reactions, try reloading with CTRL+R.\n"
+            "If nothing happens when you click a reaction, try clicking it again."
+        )
+        warning_url = (
+            "https://raw.githubusercontent.com/Fyssion/Clam/main/assets/warning.png"
+        )
+        em.set_footer(text=footer_text, icon_url=warning_url)
+        menu.embed = em
 
         await menu.start(ctx)
         return menu
@@ -444,18 +472,26 @@ class Selfroles(commands.Cog):
         for record in records:
             guild = self.bot.get_guild(record["guild_id"])
             if not guild:
-                self.bot.loop.create_task(self.remove_guild_reactionroles(record["guild_id"]))
+                self.bot.loop.create_task(
+                    self.remove_guild_reactionroles(record["guild_id"])
+                )
                 continue
 
             channel = guild.get_channel(record["channel_id"])
             if not channel:
-                self.bot.loop.create_task(self.remove_channel_reactionroles(record["channel_id"]))
+                self.bot.loop.create_task(
+                    self.remove_channel_reactionroles(record["channel_id"])
+                )
                 continue
 
             try:
                 message = await channel.fetch_message(record["message_id"])
             except discord.NotFound:
-                self.bot.loop.create_task(self.remove_reactionroles(record["channel_id"], record["message_id"]))
+                self.bot.loop.create_task(
+                    self.remove_reactionroles(
+                        record["channel_id"], record["message_id"]
+                    )
+                )
                 continue
             except Exception:
                 continue
@@ -579,9 +615,16 @@ class Selfroles(commands.Cog):
                 """
 
         emojis_and_roles = [(e, r.id) for e, r in emojis_and_roles]
-        await ctx.db.execute(query, ctx.guild.id, channel.id, menu.message.id, emojis_and_roles)
+        await ctx.db.execute(
+            query, ctx.guild.id, channel.id, menu.message.id, emojis_and_roles
+        )
 
-        await ctx.send(ctx.tick(True, "Successfully created your reactionrole menu. To delete it, just delete the message."))
+        await ctx.send(
+            ctx.tick(
+                True,
+                "Successfully created your reactionrole menu. To delete it, just delete the message.",
+            )
+        )
 
 
 def setup(bot):
