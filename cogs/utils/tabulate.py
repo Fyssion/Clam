@@ -1,4 +1,4 @@
-def tabulate(data, *, as_list=False, codeblock=False, language="prolog"):
+def tabulate(data, *, as_list=False, codeblock=False, language="prolog", middle_block=" :: "):
     """Create a pretty codeblock table
 
     Uses hljs's prolog syntax highlighting
@@ -34,7 +34,7 @@ def tabulate(data, *, as_list=False, codeblock=False, language="prolog"):
         # Add on extra spaces if needed
         to_add = "".join(" " for i in range(longest_name - len(name)))
 
-        table.append(f"{name}{to_add} :: {value}")
+        table.append(f"{name}{to_add}{middle_block}{value}")
 
     if as_list:
         return table
