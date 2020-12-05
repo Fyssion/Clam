@@ -304,6 +304,35 @@ class Selfroles(commands.Cog):
         await self.insert_selfrole(ctx, role, description)
         await ctx.send(ctx.tick(True, f"Bound new selfrole to `{role.name}`"))
 
+    @selfrole.command(name="edit", aliases=["update"])
+    @checks.has_permissions(manage_roles=True)
+    async def selfrole_edit(
+        self, ctx, role: discord.Role, *, description: SelfRoleDescription = None
+    ):
+        """Edit an existing selfrole's description.
+
+        Wrap the role name in quotes if it contains spaces.
+
+        You must have the manage roles permission to use this command.
+        """
+        query = """UPDATE selfroles
+                   SET description=$1
+                   WHERE guild_id=$2 AND role_id=$3
+                   RETURNING selfroles.id;
+                """
+        selfrole_id = await ctx.db.fetchval(query, description, ctx.guild.id, role.id)
+
+        if not selfrole_id:
+            return await ctx.send("Failed to edit selfrole. Are you sure it exists?")
+
+        if description:
+            message = f"Edited `{role.name}`"
+
+        else:
+            message = f"Removed description for `{role.name}`"
+
+        await ctx.send(ctx.tick(True, message))
+
     @selfrole.command(name="unbind")
     @checks.has_permissions(manage_roles=True)
     async def selfrole_unbind(self, ctx, *, role: discord.Role):
