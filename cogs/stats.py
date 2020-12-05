@@ -649,9 +649,19 @@ class Stats(commands.Cog):
         async with ctx.typing():
             revisions = self.get_latest_commits(10)
 
+        async with ctx.typing():
+            repo = git.Repo(".")
+            count = repo.git.rev_list("--count", "HEAD")
+
+        description = (
+            f"Each change is a [git commit.](https://git-scm.com/docs/git-commit)\n"
+            f"{revisions}\n"
+            f"[...view all {count} commits](https://github.com/Fyssion/Clam/commits/main)"
+        )
+
         em = discord.Embed(
             title="Latest changes",
-            description=f"{revisions}\n[...view all changes](https://github.com/Fyssion/Clam/commits/main)",
+            description=description,
             color=colors.PRIMARY,
         )
         await ctx.send(embed=em)
@@ -942,10 +952,7 @@ class Stats(commands.Cog):
 
     @flags.add_flag("--sort", "-s", default="count")
     @flags.add_flag("--json", action="store_true")
-    @commands.command(
-        aliases=["socket", "websocket"],
-        cls=NoUsageFlagCommand
-    )
+    @commands.command(aliases=["socket", "websocket"], cls=NoUsageFlagCommand)
     async def socketstats(self, ctx, **flags):
         """View websocket stats
 
