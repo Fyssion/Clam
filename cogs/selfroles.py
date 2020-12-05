@@ -602,6 +602,10 @@ class Selfroles(commands.Cog):
             emojis_and_roles.append(result)
             await ctx.send(ctx.tick(True, "Added role"), delete_after=5.0)
 
+            if len(emojis_and_roles) >= 20:
+                await ctx.send("Maximum amount of reactions reached (20). Creating reactionrole menu...")
+                break
+
         alt_ctx = await copy_context_with(ctx, channel=channel)
         menu = await self.create_reactionrole_menu(alt_ctx, emojis_and_roles)
 
