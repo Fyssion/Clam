@@ -10,12 +10,15 @@ import importlib
 import asyncio
 import collections
 import humanize
+import calendar
+from dateutil import tz
 from cleverbot import async_ as cleverbot
 
 from .utils import colors, human_time, fuzzy
 from .utils.utils import is_int, quote
 from .utils.menus import MenuPages
 from .utils.human_time import plural
+from .utils.tabulate import tabulate
 
 # from .utils.utils import thesaurize
 
@@ -271,7 +274,8 @@ class Fun(commands.Cog):
         descriptions = self.format_emojis(matches)
 
         menu = MenuPages(
-            source=EmojiResultSource(descriptions, matches, f"Results for '{query}'"), clear_reactions_after=True
+            source=EmojiResultSource(descriptions, matches, f"Results for '{query}'"),
+            clear_reactions_after=True,
         )
         await menu.start(ctx)
 
@@ -293,7 +297,8 @@ class Fun(commands.Cog):
         descriptions = self.format_emojis(emojis)
 
         menu = MenuPages(
-            source=EmojiResultSource(descriptions, emojis, title), clear_reactions_after=True
+            source=EmojiResultSource(descriptions, emojis, title),
+            clear_reactions_after=True,
         )
         await menu.start(ctx)
 
@@ -562,6 +567,87 @@ class Fun(commands.Cog):
 
         name = discord.utils.escape_mentions(name)
         await ctx.send(f"{emoji} **{name}** is typing...")
+
+    def generate_percentage_bar(self, filled_blocks):
+        bar = "".join(
+            (["\N{FULL BLOCK}"] * filled_blocks) + (["."] * (20 - filled_blocks))
+        )
+        return f"|{bar}|"
+
+    @commands.command(aliases=["timebars"])
+    async def timebar(self, ctx):
+        """Display a progress bar for various portions of time."""
+
+        def format_portion(when, percentage_bar, percent):
+            return f"{when}: `|{percentage_bar}|` ({percent:.2f}%)"
+
+        utc_now = d.utcnow().replace(tzinfo=tz.UTC)
+
+        percentages = []
+
+        # Day percentage bar
+        current_day = utc_now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        days_in_month = calendar.monthrange(utc_now.year, utc_now.month)[1]
+        if current_day.day == days_in_month:
+            next_day = current_day.replace(month=current_day.month + 1, day=1)
+        else:
+            next_day = current_day.replace(day=current_day.day + 1)
+
+        current_seconds = (utc_now - current_day).total_seconds()
+        total_seconds = (next_day - current_day).total_seconds()
+
+        day_percentage = current_seconds / total_seconds
+        filled_blocks = int(day_percentage * 20)
+        percentage_bar = self.generate_percentage_bar(filled_blocks)
+        day_percent = day_percentage * 100
+
+        percentages.append(
+            (utc_now.strftime("%A"), f"{percentage_bar} ({day_percent:.2f}%)")
+        )
+
+        # Month percentage bar
+        current_month = utc_now.replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0
+        )
+
+        if current_month.month == 12:
+            next_month = current_month.replace(year=current_month.year + 1, month=1)
+        else:
+            next_month = current_month.replace(month=current_month.month + 1)
+
+        current_seconds = (utc_now - current_month).total_seconds()
+        total_seconds = (next_month - current_month).total_seconds()
+
+        month_percentage = current_seconds / total_seconds
+        filled_blocks = int(month_percentage * 20)
+        percentage_bar = self.generate_percentage_bar(filled_blocks)
+        month_percent = month_percentage * 100
+
+        percentages.append(
+            (utc_now.strftime("%B"), f"{percentage_bar} ({month_percent:.2f}%)")
+        )
+
+        # Year percentage bar
+        current_year = utc_now.replace(
+            month=1, day=1, hour=0, minute=0, second=0, microsecond=0
+        )
+        next_year = current_year.replace(year=current_year.year + 1)
+
+        current_seconds = (utc_now - current_year).total_seconds()
+        total_seconds = (next_year - current_year).total_seconds()
+
+        year_percentage = current_seconds / total_seconds
+        filled_blocks = int(year_percentage * 20)
+        percentage_bar = self.generate_percentage_bar(filled_blocks)
+        year_percent = year_percentage * 100
+
+        percentages.append(
+            (str(current_year.year), f"{percentage_bar} ({year_percent:.2f}%)")
+        )
+
+        codeblock = tabulate(percentages, codeblock=True, language="asciidoc")
+        await ctx.send(f"Time Progress Bars\n{codeblock}")
 
     # async def do_thethaurize(self, sentence):
     #     words = sentence.split(" ")
