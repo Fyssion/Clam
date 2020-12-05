@@ -151,7 +151,7 @@ class Selfroles(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.emoji = "<:selfroles:784533393538154597>"
+        self.emoji = "\N{LABEL}"
 
         self.active_menus = []
         self.bot.loop.create_task(self.start_reactionrole_menus())
