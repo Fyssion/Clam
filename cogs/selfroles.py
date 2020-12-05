@@ -454,10 +454,7 @@ class Selfroles(commands.Cog):
             "If you cannot see the reactions, try reloading with CTRL+R.\n"
             "If nothing happens when you click a reaction, try clicking it again."
         )
-        warning_url = (
-            "https://raw.githubusercontent.com/Fyssion/Clam/main/assets/warning.png"
-        )
-        em.set_footer(text=footer_text, icon_url=warning_url)
+        em.set_footer(text=footer_text)
         menu.embed = em
 
         await menu.start(ctx)
