@@ -588,14 +588,38 @@ class Fun(commands.Cog):
 
         if utc_now.hour + utc_offset > 24:
             hour = utc_now.hour - (24 - utc_offset)
-            utc_now = utc_now.replace(day=utc_now.day + 1, hour=hour)
+            day = utc_now.day + 1
+            month = utc_now.month
+            year = utc_now.year
+
+            days_in_month = calendar.monthrange(utc_now.year, utc_now.month)[1]
+            if day > days_in_month:
+                month = utc_now.month + 1
+                if month > 12:
+                    month = 1
+                    year += 1
+                day = 1
 
         elif utc_now.hour + utc_offset < 1:
             hour = utc_now.hour + (24 + utc_offset)
-            utc_now = utc_now.replace(day=utc_now.day - 1, hour=hour)
+            day = utc_now.day - 1
+            month = utc_now.month
+            year = utc_now.year
+
+            if day < 1:
+                month = utc_now.month - 1
+
+                if month < 1:
+                    year -= 1
+                day = calendar.monthrange(year, month)[1]
 
         else:
-            utc_now = utc_now.replace(hour=utc_now.hour + utc_offset)
+            hour = utc_now.hour + utc_offset
+            day = utc_now.day
+            month = utc_now.month
+            year = utc_now.year
+
+        utc_now = utc_now.replace(year=year, month=month, day=day, hour=hour)
 
         percentages = []
 
@@ -604,7 +628,13 @@ class Fun(commands.Cog):
 
         days_in_month = calendar.monthrange(utc_now.year, utc_now.month)[1]
         if current_day.day == days_in_month:
-            next_day = current_day.replace(month=current_day.month + 1, day=1)
+            month = current_day.month + 1
+            year = current_day.year
+            if month > 12:
+                month = 1
+                year = current_day.year + 1
+
+            next_day = current_day.replace(year=year, month=month, day=1)
         else:
             next_day = current_day.replace(day=current_day.day + 1)
 
