@@ -494,6 +494,7 @@ class Selfroles(commands.Cog):
                 return PromptResponse.TIMED_OUT
 
             if message.content == f"{ctx.prefix}abort":
+                await ctx.send("Aborted.")
                 return PromptResponse.CANCELLED
 
             if not converter:
@@ -559,7 +560,7 @@ class Selfroles(commands.Cog):
                     await ctx.send("You didn't provide any emojis or roles. Aborting.")
                     return
 
-                await ctx.send("Alright! Moving on...")
+                await ctx.send("Alright! Creating reactionrole menu...")
                 break
 
             if isinstance(result, PromptResponse):
