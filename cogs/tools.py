@@ -291,6 +291,7 @@ class Tools(commands.Cog):
     ]
 
     @commands.command()
+    @commands.guild_only()
     async def poll(self, ctx, name=None, *args):
         """Create a poll through DMs
 
@@ -406,6 +407,7 @@ class Tools(commands.Cog):
         await ctx.author.send(ctx.tick(True, "Poll sent!"))
 
     @commands.command()
+    @commands.guild_only()
     async def quickpoll(self, ctx, title=None, *options):
         """A quicker version of the poll command
 
