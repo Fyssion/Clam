@@ -14,6 +14,7 @@ import asyncpg
 import humanize
 import git
 import psutil
+import os
 import itertools
 import json
 
@@ -1006,6 +1007,124 @@ class Stats(commands.Cog):
         description = f"Total socket events observed: {total} ({cpm:.2f}/minute)"
         pages = ctx.table_pages(data, title="Websocket Stats", description=description)
         await pages.start(ctx)
+
+    # https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/stats.py#L642-L740
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def bothealth(self, ctx):
+        """Various bot health monitoring tools."""
+
+        # This uses a lot of private methods because there is no
+        # clean way of doing this otherwise.
+
+        HEALTHY = discord.Colour(value=0x43B581)
+        UNHEALTHY = discord.Colour(value=0xF04947)
+        WARNING = discord.Colour(value=0xF09E47)
+        total_warnings = 0
+
+        embed = discord.Embed(title="Bot Health Report", colour=HEALTHY)
+
+        # Check the connection pool health.
+        pool = self.bot.pool
+        total_waiting = len(pool._queue._getters)
+        current_generation = pool._generation
+
+        description = [
+            f"Total `Pool.acquire` Waiters: {total_waiting}",
+            f"Current Pool Generation: {current_generation}",
+            f"Connections In Use: {len(pool._holders) - pool._queue.qsize()}",
+        ]
+
+        questionable_connections = 0
+        connection_value = []
+        for index, holder in enumerate(pool._holders, start=1):
+            generation = holder._generation
+            in_use = holder._in_use is not None
+            is_closed = holder._con is None or holder._con.is_closed()
+            display = f"gen={holder._generation} in_use={in_use} closed={is_closed}"
+            questionable_connections += any((in_use, generation != current_generation))
+            connection_value.append(f"<Holder i={index} {display}>")
+
+        joined_value = "\n".join(connection_value)
+        embed.add_field(
+            name="Connections", value=f"```py\n{joined_value}\n```", inline=False
+        )
+
+        spam_control = self.bot._cd 
+        being_spammed = [
+            str(key) for key, value in spam_control._cache.items() if value._tokens == 0
+        ]
+
+        description.append(
+            f'Current Spammers: {", ".join(being_spammed) if being_spammed else "None"}'
+        )
+        description.append(f"Questionable Connections: {questionable_connections}")
+
+        total_warnings += questionable_connections
+        if being_spammed:
+            embed.colour = WARNING
+            total_warnings += 1
+
+        try:
+            task_retriever = asyncio.Task.all_tasks
+        except AttributeError:
+            # future proofing for 3.9 I guess
+            task_retriever = asyncio.all_tasks
+        else:
+            all_tasks = task_retriever(loop=self.bot.loop)
+
+        event_tasks = [
+            t for t in all_tasks if "Client._run_event" in repr(t) and not t.done()
+        ]
+
+        cogs_directory = os.path.dirname(__file__)
+        tasks_directory = os.path.join("discord", "ext", "tasks", "__init__.py")
+        inner_tasks = [
+            t
+            for t in all_tasks
+            if cogs_directory in repr(t) or tasks_directory in repr(t)
+        ]
+
+        bad_inner_tasks = ", ".join(
+            hex(id(t)) for t in inner_tasks if t.done() and t._exception is not None
+        )
+        total_warnings += bool(bad_inner_tasks)
+        embed.add_field(
+            name="Inner Tasks",
+            value=f'Total: {len(inner_tasks)}\nFailed: {bad_inner_tasks or "None"}',
+        )
+        embed.add_field(
+            name="Events Waiting", value=f"Total: {len(event_tasks)}", inline=False
+        )
+
+        command_waiters = len(self._data_batch)
+        is_locked = self._batch_lock.locked()
+        description.append(
+            f"Commands Waiting: {command_waiters}, Batch Locked: {is_locked}"
+        )
+
+        proc = psutil.Process()
+        memory_usage = proc.memory_full_info().uss / 1024 ** 2
+        cpu_usage = psutil.cpu_percent()
+        embed.add_field(
+            name="Process",
+            value=f"{memory_usage:.2f} MiB\n{cpu_usage:.2f}% CPU",
+            inline=False,
+        )
+
+        global_rate_limit = not self.bot.http._global_over.is_set()
+        description.append(f"Global Rate Limit: {global_rate_limit}")
+
+        if command_waiters >= 8:
+            total_warnings += 1
+            embed.colour = WARNING
+
+        if global_rate_limit or total_warnings >= 9:
+            embed.colour = UNHEALTHY
+
+        embed.set_footer(text=f"{total_warnings} warning(s)")
+        embed.description = "\n".join(description)
+        await ctx.send(embed=embed)
 
 
 def setup(bot):
