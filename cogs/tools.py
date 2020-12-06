@@ -298,10 +298,12 @@ class Tools(commands.Cog):
         """
         try:
             await ctx.author.send("Welcome to the interactive poll maker")
+            self.bot.loop.create_task(ctx.message.add_reaction("\N{INCOMING ENVELOPE}"))
 
         except discord.Forbidden:
             raise commands.BadArgument(
-                "You must allow me to send you DMs. Poll creation cancelled."
+                "You must allow me to send you DMs. Poll creation cancelled. "
+                f"Use `{ctx.prefix}quickpoll` as an alternative."
             )
 
         title = await self.prompt(ctx, "What is the title of the poll?")
