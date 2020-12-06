@@ -109,8 +109,12 @@ class SearchPages(menus.ListPageSource):
         return msg
 
 
-DeletedMessage = collections.namedtuple("DeletedMessage", ("message", "id", "channel", "deleted_at"))
-EditedMessage = collections.namedtuple("EditedMessage", ("before", "after", "id", "channel", "edited_at"))
+DeletedMessage = collections.namedtuple(
+    "DeletedMessage", ("message", "id", "channel", "deleted_at")
+)
+EditedMessage = collections.namedtuple(
+    "EditedMessage", ("before", "after", "id", "channel", "edited_at")
+)
 
 
 class Tools(commands.Cog):
@@ -156,7 +160,9 @@ class Tools(commands.Cog):
         for member in sorted(role.members, key=lambda m: m.name.lower()):
             role_members.append(f"{member} - ID: {member.id}")
 
-        pages = ctx.pages(role_members, per_page=10, title=f"Members with role '{role}'")
+        pages = ctx.pages(
+            role_members, per_page=10, title=f"Members with role '{role}'"
+        )
         await pages.start(ctx)
 
     @commands.command(aliases=["newmembers"])
@@ -515,8 +521,14 @@ class Tools(commands.Cog):
             timestamp=before.created_at,
         )
 
-        em.add_field(name="Before", value=self.format_edit(before) or "*Nothing to display*", inline=False)
-        em.add_field(name="After", value=self.format_edit(after) or "*Nothing to display*")
+        em.add_field(
+            name="Before",
+            value=self.format_edit(before) or "*Nothing to display*",
+            inline=False,
+        )
+        em.add_field(
+            name="After", value=self.format_edit(after) or "*Nothing to display*"
+        )
 
         if after.embeds:
             data = after.embeds[0]
@@ -543,9 +555,7 @@ class Tools(commands.Cog):
                 f"You are opted out of sniped messages. To opt back in, use `{ctx.prefix}snipe optin`"
             )
 
-        sniped = [
-            s for s in self.bot.sniped_messages if s.channel == ctx.channel
-        ]
+        sniped = [s for s in self.bot.sniped_messages if s.channel == ctx.channel]
 
         if not sniped:
             return await ctx.send("I haven't sniped any messages in this channel.")
@@ -672,9 +682,7 @@ class Tools(commands.Cog):
                 f"You are opted out of sniped messages. To opt back in, use `{ctx.prefix}snipe optin`"
             )
 
-        sniped = [
-            s for s in self.bot.sniped_messages if s.channel == ctx.channel
-        ]
+        sniped = [s for s in self.bot.sniped_messages if s.channel == ctx.channel]
 
         if not sniped:
             return await ctx.send("I haven't sniped any messages in this channel.")
@@ -684,13 +692,21 @@ class Tools(commands.Cog):
         for snipe in sniped:
             if isinstance(snipe, DeletedMessage) or hasattr(snipe, "message"):
                 message = snipe.message
-                human_friendly = human_time.human_timedelta(snipe.deleted_at, brief=True, accuracy=1)
-                entries.append(f"\N{WASTEBASKET} {message.author} - {human_friendly} `(ID: {message.id})`")
+                human_friendly = human_time.human_timedelta(
+                    snipe.deleted_at, brief=True, accuracy=1
+                )
+                entries.append(
+                    f"\N{WASTEBASKET} {message.author} - {human_friendly} `(ID: {message.id})`"
+                )
 
             else:
                 message = snipe.before
-                human_friendly = human_time.human_timedelta(snipe.edited_at, brief=True, accuracy=1)
-                entries.append(f"\N{MEMO} {message.author} - {human_friendly} `(ID: {message.id})`")
+                human_friendly = human_time.human_timedelta(
+                    snipe.edited_at, brief=True, accuracy=1
+                )
+                entries.append(
+                    f"\N{MEMO} {message.author} - {human_friendly} `(ID: {message.id})`"
+                )
 
         # entries = [
         #     f"{m.author} - {human_time.human_timedelta(d, brief=True, accuracy=1)} `(ID: {m.id})`"
@@ -727,11 +743,16 @@ class Tools(commands.Cog):
         if not message.guild:
             return
 
-        if str(message.author.id) in self.snipe_ignored or str(message.guild.id) in self.snipe_ignored:
+        if (
+            str(message.author.id) in self.snipe_ignored
+            or str(message.guild.id) in self.snipe_ignored
+        ):
             return
 
         now = d.utcnow()
-        self.bot.sniped_messages.insert(0, DeletedMessage(message, message.id, message.channel, now))
+        self.bot.sniped_messages.insert(
+            0, DeletedMessage(message, message.id, message.channel, now)
+        )
 
         if len(self.bot.sniped_messages) > 1000:
             self.bot.sniped_messages.pop(len(self.bot.sniped_messages) - 1)
@@ -741,14 +762,19 @@ class Tools(commands.Cog):
         if not after.guild:
             return
 
-        if str(after.author.id) in self.snipe_ignored or str(after.guild.id) in self.snipe_ignored:
+        if (
+            str(after.author.id) in self.snipe_ignored
+            or str(after.guild.id) in self.snipe_ignored
+        ):
             return
 
         if before.content == after.content:
             return
 
         now = d.utcnow()
-        self.bot.sniped_messages.insert(0, EditedMessage(before, after, after.id, after.channel, now))
+        self.bot.sniped_messages.insert(
+            0, EditedMessage(before, after, after.id, after.channel, now)
+        )
 
         if len(self.bot.sniped_messages) > 1000:
             self.bot.sniped_messages.pop(len(self.bot.sniped_messages) - 1)
