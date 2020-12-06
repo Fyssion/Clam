@@ -131,6 +131,24 @@ class Tools(commands.Cog):
         with open("snipe_ignored.json", "r") as f:
             self.snipe_ignored = json.load(f)
 
+    @commands.command(aliases=["countreactions"])
+    async def reactioncount(self, ctx, *, message: discord.Message):
+        if not message.reactions:
+            return await ctx.send("This message has no reactions.")
+
+        total = sum(r.count for r in message.reactions)
+
+        human_friendly = []
+        for reaction in message.reactions:
+            percentage = int(reaction.count / total * 100)
+            human_friendly.append(
+                f"{reaction.emoji} `{percentage}%` ({human_time.plural(reaction.count):reaction})"
+            )
+
+        formatted = "\n".join(human_friendly)
+
+        await ctx.send(f"**Reactions ({total} total):**\n{formatted}")
+
     @commands.command(aliases=["inrole"])
     async def hasrole(self, ctx, *, role: discord.Role):
         role_members = []
