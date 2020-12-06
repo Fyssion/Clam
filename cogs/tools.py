@@ -271,10 +271,25 @@ class Tools(commands.Cog):
 
         return message.content
 
-    @commands.command(
-        description="Create a poll through DMs and send it to the current channel"
-    )
-    async def poll(self, ctx):
+    POLL_EMOJIS = [
+        "\N{REGIONAL INDICATOR SYMBOL LETTER A}",
+        "\N{REGIONAL INDICATOR SYMBOL LETTER B}",
+        "\N{REGIONAL INDICATOR SYMBOL LETTER C}",
+        "\N{REGIONAL INDICATOR SYMBOL LETTER D}",
+        "\N{REGIONAL INDICATOR SYMBOL LETTER E}",
+        "\N{REGIONAL INDICATOR SYMBOL LETTER F}",
+        "\N{REGIONAL INDICATOR SYMBOL LETTER G}",
+        "\N{REGIONAL INDICATOR SYMBOL LETTER H}",
+        "\N{REGIONAL INDICATOR SYMBOL LETTER I}",
+        "\N{REGIONAL INDICATOR SYMBOL LETTER J}",
+    ]
+
+    @commands.command()
+    async def poll(self, ctx, name=None, *args):
+        """Create a poll through DMs
+
+        For a quicker version (with less control), use `quickpoll`.
+        """
         try:
             await ctx.author.send("Welcome to the interactive poll maker")
 
@@ -285,25 +300,16 @@ class Tools(commands.Cog):
 
         title = await self.prompt(ctx, "What is the title of the poll?")
 
-        emojis = [
-            "\N{REGIONAL INDICATOR SYMBOL LETTER A}",
-            "\N{REGIONAL INDICATOR SYMBOL LETTER B}",
-            "\N{REGIONAL INDICATOR SYMBOL LETTER C}",
-            "\N{REGIONAL INDICATOR SYMBOL LETTER D}",
-            "\N{REGIONAL INDICATOR SYMBOL LETTER E}",
-            "\N{REGIONAL INDICATOR SYMBOL LETTER F}",
-            "\N{REGIONAL INDICATOR SYMBOL LETTER G}",
-            "\N{REGIONAL INDICATOR SYMBOL LETTER H}",
-            "\N{REGIONAL INDICATOR SYMBOL LETTER I}",
-            "\N{REGIONAL INDICATOR SYMBOL LETTER J}",
-        ]
-
         options = []
 
         await ctx.author.send(
             "Type options for your poll in separate messages.\n"
+            "To accociate an emoji with an option, use this format: `emoji option`.\n"
+            "Emojis must be default emojis, not custom."
             f"When you are done, type `{ctx.prefix}done` to create the poll."
         )
+
+        Option = collections.namedtuple("Option", "emoji text")
 
         def check(ms):
             return ms.author == ctx.author and not ms.guild
@@ -318,7 +324,44 @@ class Tools(commands.Cog):
             if message.content.lower() == f"{ctx.prefix}done":
                 break
 
-            options.append(message.content)
+            content = message.content
+
+            if len(content) < 3:
+                options.append(Option(None, content))
+                await message.add_reaction(ctx.tick(True))
+                continue
+
+            args = content.split(" ")
+
+            if len(args) < 2:
+                options.append(Option(None, content))
+                await message.add_reaction(ctx.tick(True))
+                continue
+
+            emoji = args[0]
+            text = " ".join(args[1:])
+
+            with open("assets/emoji_map.json", "r") as f:
+                emoji_map = json.load(f)
+
+            if emoji in emoji_map.values():
+                options.append(Option(emoji, text))
+                await message.add_reaction(ctx.tick(True))
+                continue
+
+            emoji_regex = re.compile(
+                r"<(?P<animated>a?):(?P<name>[a-zA-Z0-9_]{2,32}):(?P<id>[0-9]{18,22})>"
+            )
+            if emoji_regex.match(emoji):
+                await message.add_reaction("\N{WARNING SIGN}")
+                await ctx.author.send(
+                    "\N{WARNING SIGN} You cannot associate a custom emoji with an option. "
+                    "Only default emojis are accepted.",
+                    delete_after=5.0,
+                )
+                continue
+
+            options.append(Option(None, content))
 
             await message.add_reaction(ctx.tick(True))
 
@@ -327,7 +370,7 @@ class Tools(commands.Cog):
         description = []
 
         for i, option in enumerate(options):
-            description.append(f"{emojis[i]} | {option}")
+            description.append(f"{option.emoji or self.POLL_EMOJIS[i]} | {option.text}")
 
         human_friendly = "\n".join(description)
 
@@ -346,10 +389,48 @@ class Tools(commands.Cog):
         em.set_author(name=name, icon_url=ctx.author.avatar_url)
 
         poll_message = await ctx.send("New Poll", embed=em)
+
+        for i, option in enumerate(options):
+            self.bot.loop.create_task(
+                poll_message.add_reaction(option.emoji or self.POLL_EMOJIS[i])
+            )
+
         await ctx.author.send(ctx.tick(True, "Poll sent!"))
 
-        for i in range(len(options)):
-            await poll_message.add_reaction(emojis[i])
+    @commands.command()
+    async def quickpoll(self, ctx, title=None, *options):
+        """A quicker version of the poll command
+
+        If the the title or an option contains spaces, make sure to wrap it in quotes.
+        """
+        if len(options) < 2:
+            raise commands.BadArgument("You must provide at least 2 options.")
+
+        description = []
+
+        for i, option in enumerate(options):
+            description.append(f"{self.POLL_EMOJIS[i]} | {option}")
+
+        human_friendly = "\n".join(description)
+
+        em = discord.Embed(
+            title=title,
+            description="Vote for an option by clicking the associated reaction."
+            f"\n\n{human_friendly}",
+            color=colors.PRIMARY,
+        )
+
+        if ctx.author.nick:
+            name = f"{ctx.author.nick} ({str(ctx.author)})"
+        else:
+            name = str(ctx.author)
+
+        em.set_author(name=name, icon_url=ctx.author.avatar_url)
+
+        poll_message = await ctx.send("New Poll", embed=em)
+
+        for i, option in enumerate(options):
+            self.bot.loop.create_task(poll_message.add_reaction(self.POLL_EMOJIS[i]))
 
     def is_url_spoiler(self, text, url):
         spoilers = re.findall(r"\|\|(.+?)\|\|", text)
