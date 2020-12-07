@@ -255,7 +255,10 @@ class Tools(commands.Cog):
         em = discord.Embed(title="Babies (newest accounts)", colour=colors.PRIMARY)
 
         for member in members:
-            body = f"Created {human_time.human_timedelta(member.created_at)}\nJoined {human_time.human_timedelta(member.joined_at)}"
+            body = (
+                f"Created {human_time.human_timedelta(member.created_at)}\n"
+                f"Joined {human_time.human_timedelta(member.joined_at)}"
+            )
             em.add_field(name=f"{member} (ID: {member.id})", value=body, inline=False)
 
         await ctx.send(embed=em)
@@ -355,7 +358,10 @@ class Tools(commands.Cog):
 
             if emoji in emoji_map.values():
                 if emoji in [o.emoji for o in options]:
-                    await ctx.author.send(ctx.tick(False, "You have already used that emoji."), delete_after=5.0)
+                    await ctx.author.send(
+                        ctx.tick(False, "You have already used that emoji."),
+                        delete_after=5.0,
+                    )
                     await message.add_reaction(ctx.tick(False))
                     continue
 
@@ -376,7 +382,10 @@ class Tools(commands.Cog):
                 continue
 
             if emoji in [o.emoji for o in options]:
-                await ctx.author.send(ctx.tick(False, "You have already used that emoji."), delete_after=5.0)
+                await ctx.author.send(
+                    ctx.tick(False, "You have already used that emoji."),
+                    delete_after=5.0,
+                )
                 await message.add_reaction(ctx.tick(False))
                 continue
 
