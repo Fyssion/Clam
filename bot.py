@@ -85,7 +85,6 @@ initial_extensions = [
     "cogs.meta",
     "cogs.moderation",
     "cogs.music",
-    # "cogs.reddit",
     "cogs.selfroles",
     "cogs.settings",
     "cogs.stars",
