@@ -300,6 +300,12 @@ class Tools(commands.Cog):
 
         For a quicker version (with less control), use `quickpoll`.
         """
+        timers = self.bot.get_cog("Timers")
+        if not timers:
+            return await ctx.send(
+                "Sorry, this functionality is unavailable right now. Try again later?"
+            )
+
         try:
             await ctx.author.send("Welcome to the interactive poll maker")
             self.bot.loop.create_task(ctx.message.add_reaction("\N{INCOMING ENVELOPE}"))
@@ -404,7 +410,8 @@ class Tools(commands.Cog):
 
         em = discord.Embed(
             title=title,
-            description="Vote for an option by clicking the associated reaction."
+            description="Vote for an option by clicking the associated reaction.\n"
+            f"This poll will close in 24 hours."
             f"\n\n{human_friendly}",
             color=colors.PRIMARY,
         )
@@ -425,6 +432,19 @@ class Tools(commands.Cog):
 
         await ctx.author.send(ctx.tick(True, "Poll sent!"))
 
+        option_map = {o.emoji: o.text for o in options}
+
+        when = d.utcnow() + timedelta(days=1)
+        await timers.create_timer(
+            when,
+            "poll",
+            poll_message.id,
+            ctx.channel.id,
+            ctx.guild.id,
+            ctx.author.id,
+            option_map,
+        )
+
     @commands.command()
     @commands.guild_only()
     async def quickpoll(self, ctx, title=None, *options):
@@ -432,6 +452,12 @@ class Tools(commands.Cog):
 
         If the the title or an option contains spaces, make sure to wrap it in quotes.
         """
+        timers = self.bot.get_cog("Timers")
+        if not timers:
+            return await ctx.send(
+                "Sorry, this functionality is unavailable right now. Try again later?"
+            )
+
         if len(options) < 2:
             raise commands.BadArgument("You must provide at least 2 options.")
 
@@ -444,7 +470,8 @@ class Tools(commands.Cog):
 
         em = discord.Embed(
             title=title,
-            description="Vote for an option by clicking the associated reaction."
+            description="Vote for an option by clicking the associated reaction.\n"
+            f"This poll will close in 24 hours."
             f"\n\n{human_friendly}",
             color=colors.PRIMARY,
         )
@@ -460,6 +487,87 @@ class Tools(commands.Cog):
 
         for i, option in enumerate(options):
             self.bot.loop.create_task(poll_message.add_reaction(self.POLL_EMOJIS[i]))
+
+        option_map = {self.POLL_EMOJIS[i]: o for i, o in enumerate(options)}
+
+        when = d.utcnow() + timedelta(days=1)
+        await timers.create_timer(
+            when,
+            "poll",
+            poll_message.id,
+            ctx.channel.id,
+            ctx.guild.id,
+            ctx.author.id,
+            option_map,
+        )
+
+    @commands.Cog.listener()
+    async def on_poll_timer_complete(self, timer):
+        message_id, channel_id, guild_id, author_id, option_map = timer.args
+
+        guild = self.bot.get_guild(guild_id)
+
+        if not guild:
+            return
+
+        channel = guild.get_channel(channel_id)
+
+        if not channel:
+            return
+
+        try:
+            message = await channel.fetch_message(message_id)
+
+        except discord.HTTPException:
+            return
+
+        if not message.reactions:
+            results = "Reactions have been cleared. No results.\n\n"
+            results += "\n".join(f"{e} | {o} `0%` (0 votes)" for e, o in option_map.items())
+
+        else:
+            total = sum(r.count for r in message.reactions)
+            largest = max(r.count for r in message.reactions)
+
+            human_friendly = []
+            for emoji, option in option_map.items():
+                reaction = discord.utils.find(lambda r: str(r.emoji) == emoji, message.reactions)
+
+                if not reaction:
+                    human_friendly.append(f"{emoji} | {option} `0%` (0 votes)")
+                    continue
+
+                bolded = "**" if reaction.count == largest else ""
+
+                percentage = int(reaction.count / total * 100)
+                human_friendly.append(
+                    f"{bolded}{emoji} | {option} `{percentage}%` ({human_time.plural(reaction.count):vote}){bolded}"
+                )
+
+            results = "\n".join(human_friendly)
+
+        em = message.embeds[0]
+
+        em.color = discord.Color.orange()
+
+        em.description = f"This poll has been closed.\nResults:\n\n{results}"
+
+        await message.edit(embed=em)
+
+        author = self.bot.get_user(author_id)
+
+        if not author:
+            return
+
+        em = discord.Embed(
+            title="Your Poll Results Are In!", color=discord.Color.green()
+        )
+        em.description = (
+            f"Your poll that you created 24 hours ago in {message.guild} has been closed.\n"
+            f"You can [find the results here!]({message.jump_url})"
+        )
+
+        await author.send(embed=em)
 
     def is_url_spoiler(self, text, url):
         spoilers = re.findall(r"\|\|(.+?)\|\|", text)
