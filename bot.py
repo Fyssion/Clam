@@ -205,14 +205,6 @@ class Clam(commands.Bot):
         self._adapter = discord.AsyncWebhookAdapter(self.session)
         self.cleverbot = cleverbot.Cleverbot(self.config.cleverbot_api_key, tweak1=0, tweak2=100, tweak3=100)
 
-        log.info("Preparing highlight cache...")
-        # Cache a list of highlight words for lookup
-        query = "SELECT word FROM highlight_words;"
-        records = await self.pool.fetch(query)
-        self.highlight_words = [r[0] for r in records]
-        # Remove duplicates
-        self.highlight_words = list(dict.fromkeys(self.highlight_words))
-
         log.info("Preparing status hook...")
         if self.config.status_hook:
             self.status_hook = discord.Webhook.from_url(

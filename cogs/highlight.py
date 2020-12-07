@@ -109,6 +109,8 @@ class Highlight(commands.Cog):
         self.bot = bot
         self.emoji = "\N{LOWER LEFT CRAYON}"
 
+        self.bot.loop.create_task(self.prepare_cache())
+
         self._batch_lock = asyncio.Lock(loop=bot.loop)
         self._highlight_data_batch = []
         self.bulk_insert_loop.add_exception_type(asyncpg.PostgresConnectionError)
@@ -116,6 +118,23 @@ class Highlight(commands.Cog):
 
         # channel: {member: task}
         self.typing_users = {}
+
+    async def prepare_cache(self):
+        while True:
+            if hasattr(self.bot, "pool") and self.bot.pool:
+                break
+            await asyncio.sleep(0.2)
+
+        log.info("Preparing highlight cache...")
+
+        # Cache a list of highlight words for lookup
+        query = "SELECT word FROM highlight_words;"
+        records = await self.bot.pool.fetch(query)
+
+        self.bot.highlight_words = [r[0] for r in records]
+
+        # Remove duplicates
+        self.bot.highlight_words = list(dict.fromkeys(self.bot.highlight_words))
 
     async def delete_message_in(self, message, seconds=0.0):
         await asyncio.sleep(seconds)
