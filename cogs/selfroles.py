@@ -628,8 +628,14 @@ class Selfroles(commands.Cog):
             if isinstance(result, PromptResponse):
                 return
 
+            if result[0] in [e for e, r in emojis_and_roles]:
+                await ctx.send(ctx.tick(False, "You have already used that emoji."), delete_after=5.0)
+                await ctx.message.add_reaction(ctx.tick(False))
+                continue
+
             emojis_and_roles.append(result)
             await ctx.send(ctx.tick(True, "Added role"), delete_after=5.0)
+            await ctx.message.add_reaction(ctx.tick(True))
 
             if len(emojis_and_roles) >= 20:
                 await ctx.send("Maximum amount of reactions reached (20). Creating reactionrole menu...")

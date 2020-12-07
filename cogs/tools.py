@@ -354,6 +354,11 @@ class Tools(commands.Cog):
                 emoji_map = json.load(f)
 
             if emoji in emoji_map.values():
+                if emoji in [o.emoji for o in options]:
+                    await ctx.author.send(ctx.tick(False, "You have already used that emoji."), delete_after=5.0)
+                    await message.add_reaction(ctx.tick(False))
+                    continue
+
                 options.append(Option(emoji, text))
                 await message.add_reaction(ctx.tick(True))
                 continue
@@ -368,6 +373,11 @@ class Tools(commands.Cog):
                     "Only default emojis are accepted.",
                     delete_after=5.0,
                 )
+                continue
+
+            if emoji in [o.emoji for o in options]:
+                await ctx.author.send(ctx.tick(False, "You have already used that emoji."), delete_after=5.0)
+                await message.add_reaction(ctx.tick(False))
                 continue
 
             options.append(Option(None, content))
