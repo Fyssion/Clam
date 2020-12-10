@@ -146,7 +146,7 @@ class PromptResponse(enum.Enum):
 class Selfroles(commands.Cog):
     """Assign roles to yourself through command or reaction.
 
-    Mods must create a selfrole or set an existing role as a selfrole.
+    Mods must create selfroles or set existing roles as selfroles.
     """
 
     def __init__(self, bot):
