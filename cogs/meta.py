@@ -564,9 +564,12 @@ class Meta(commands.Cog):
             message = await ctx.send(f"{ctx.tick(False)} {error}")
 
         elif isinstance(error, commands.CommandOnCooldown):
-            message = await ctx.send(
+            await ctx.send(
                 f"{ctx.tick(False)} You are on cooldown. Try again after {int(error.retry_after)} seconds."
             )
+
+        elif isinstance(error, commands.MaxConcurrencyReached):
+            await ctx.send(ctx.tick(False, str(error)))
 
         elif isinstance(error, commands.errors.BotMissingPermissions):
             perms = ""
