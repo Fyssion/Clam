@@ -6,9 +6,11 @@ import asyncpg
 import discord
 import importlib
 import contextlib
+from pathlib import Path
+from logging.handlers import RotatingFileHandler
 
 from config import Config
-from bot import initial_extensions
+from bot import Clam, initial_extensions
 from cogs.utils.db import Table
 
 from pathlib import Path
@@ -18,10 +20,88 @@ import traceback
 
 config = Config("config.yml")
 
+try:
+    import uvloop
+except ImportError:
+    pass
+else:
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
+
+class RemoveNoise(logging.Filter):
+    def __init__(self):
+        super().__init__(name="discord.state")
+
+    def filter(self, record):
+        if record.levelname == "WARNING" and "referencing an unknown" in record.msg:
+            return False
+        return True
+
+
+@contextlib.contextmanager
+def setup_logging():
+    try:
+        # __enter__
+        max_bytes = 32 * 1024 * 1024  # 32 MiB
+        logging.getLogger("discord").setLevel(logging.INFO)
+        logging.getLogger("discord.http").setLevel(logging.WARNING)
+        logging.getLogger("discord.state").addFilter(RemoveNoise())
+        logging.getLogger("clam").setLevel(logging.INFO)
+
+        log = logging.getLogger()
+        log.setLevel(logging.INFO)
+        sh = logging.StreamHandler()
+        handler = RotatingFileHandler(
+            filename="clam.log",
+            encoding="utf-8",
+            mode="w",
+            maxBytes=max_bytes,
+            backupCount=5,
+        )
+        dt_fmt = "%Y-%m-%d %H:%M:%S"
+        fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s", dt_fmt)
+        handler.setFormatter(fmt)
+        sh.setFormatter(fmt)
+        log.addHandler(handler)
+        log.addHandler(sh)
+
+        yield
+    finally:
+        # __exit__
+        handlers = log.handlers[:]
+        for hdlr in handlers:
+            hdlr.close()
+            log.removeHandler(hdlr)
+
+
+def run_bot():
+    loop = asyncio.get_event_loop()
+    log = logging.getLogger()
+    kwargs = {
+        "command_timeout": 60,
+        "max_size": 10,
+        "min_size": 10,
+    }
+    try:
+        pool = loop.run_until_complete(Table.create_pool(config.database_uri, **kwargs))
+    except Exception:
+        click.echo("Could not set up PostgreSQL. Exiting.", file=sys.stderr)
+        log.exception("Could not set up PostgreSQL. Exiting.")
+        return
+
+    bot = Clam()
+    bot.pool = pool
+    bot.run()
+
 
 @click.group(invoke_without_command=True, options_metavar="[options]")
-def main():
-    pass
+@click.pass_context
+def main(ctx):
+    """Launches the bot."""
+    if ctx.invoked_subcommand is None:
+        loop = asyncio.get_event_loop()
+        with setup_logging():
+            run_bot()
 
 
 @main.group(short_help="database stuff", options_metavar="[options]")

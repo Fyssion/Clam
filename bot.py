@@ -20,25 +20,7 @@ from cogs.utils.context import Context
 from cogs.utils.errors import PrivateCog, Blacklisted
 
 
-formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-
-file_logger = logging.getLogger("discord")
-file_logger.setLevel(logging.DEBUG)
-file_handler = logging.FileHandler(filename="clam.log", encoding="utf-8", mode="w")
-file_handler.setFormatter(formatter)
-file_logger.addHandler(file_handler)
-
-sh = logging.StreamHandler()
-sh.setFormatter(formatter)
-
-logger = logging.getLogger("discord")
-logger.setLevel(logging.INFO)
-logger.addHandler(sh)
-
 log = logging.getLogger("clam")
-log.setLevel(logging.INFO)
-log.addHandler(sh)
-log.addHandler(file_handler)
 
 
 def get_prefix(bot, message):
