@@ -367,7 +367,7 @@ class Hangman:
         self.ctx.cog.hangman_games.pop(self.channel.id)  # delete itself
 
     def create_embed(self):
-        desc = f"Guess a letter with `{self.ctx.guild_prefix}hangman guess [letter]`"
+        desc = f"Guess a letter with `{self.ctx.guild_prefix}guess <letter>`"
 
         if self.game_status == "win":
             desc = ":tada: All letters guessed correctly!"
