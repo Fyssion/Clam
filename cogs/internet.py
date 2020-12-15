@@ -487,6 +487,13 @@ class Internet(commands.Cog):
             # print("card node", card_node)
 
             if card_node is None or len(card_node) == 0:
+                card_node = root.xpath(
+                    ".//div[@id='rso']//"
+                    "div[contains(@class, 'vk_c') or @class='card-section' or @class='g mnr-c g-blk' "
+                    "or @class='kp-blk' or @class='RQXSBc' or @class='g obcontainer' or @class='YQaNob']"
+                )
+
+            if card_node is None or len(card_node) == 0:
                 card = None
             else:
                 card = self.parse_google_card(card_node[0])
@@ -498,7 +505,11 @@ class Internet(commands.Cog):
                 if link is not None:
                     # print(etree.tostring(link, pretty_print=True).decode())
                     span = link.find("./h3/div[@class='ellip']/span")
-                    text = span.text if span is not None else link.text
+                    if span is None and link.text is None:
+                        span = link.find("./h3[@class='LC20lb DKV0Md']/span")
+                        text = span.text if span is not None else "???"
+                    else:
+                        text = span.text if span is not None else link.text
                     entries.append((link.get("href"), text))
 
         return card, entries
