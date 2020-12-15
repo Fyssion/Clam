@@ -682,7 +682,7 @@ class Music(commands.Cog):
         aliases=["connect"],
         invoke_without_subcommand=True,
     )
-    @commands.max_concurrency(1, commands.BucketType.guild, wait=True)
+    # @commands.max_concurrency(1, commands.BucketType.guild, wait=True)
     async def join(self, ctx):
         """Joins a voice channel."""
         if not ctx.player:
@@ -722,7 +722,7 @@ class Music(commands.Cog):
             If no channel was specified, it joins your channel.",
     )
     @is_dj()
-    @commands.max_concurrency(1, commands.BucketType.guild, wait=True)
+    # @commands.max_concurrency(1, commands.BucketType.guild, wait=True)
     async def summon(self, ctx, *, channel: discord.VoiceChannel = None):
         if not ctx.player:
             player = self.create_player(ctx)
@@ -1401,7 +1401,7 @@ class Music(commands.Cog):
         )
 
     @commands.command(aliases=["pb"])
-    @commands.max_concurrency(1, commands.BucketType.guild, wait=True)
+    # @commands.max_concurrency(1, commands.BucketType.guild, wait=True)
     async def playbin(self, ctx, *, url):
         """Load songs from a pastebin"""
         if not ctx.player:
@@ -1456,7 +1456,7 @@ class Music(commands.Cog):
         aliases=["p", "yt"],
         usage="[song]",
     )
-    @commands.max_concurrency(1, commands.BucketType.guild, wait=True)
+    # @commands.max_concurrency(1, commands.BucketType.guild, wait=True)
     async def play(self, ctx, *, search=None):
         """Play a song
 
