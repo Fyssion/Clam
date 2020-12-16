@@ -171,6 +171,57 @@ class NotListeningError(commands.CommandError):
         self.message = message
 
 
+class BadSongPosition(commands.BadArgument):
+    def __init__(self):
+        super().__init__('Invalid time provided, try e.g. "90", "1:05", or "3m".')
+
+
+class SongPosition(commands.Converter):
+    async def convert(self, ctx, arg):
+        # we want to be able to convert 3:00 into 180, but also 3m2s into 182
+        # supported formats:
+        # xx:xx:xx  | 3:02 --> 182
+        # xx        | 90   --> 90
+        # ShortTime | 2m   --> 120
+
+        # try this as a blanket
+        try:
+            st = await human_time.ShortTime.convert(ctx, arg)
+        except commands.BadArgument:
+            pass
+        else:
+            delta = st.dt - ctx.message.created_at
+            return int(delta.total_seconds())
+
+        # this must just be in seconds
+        if ":" not in arg:
+            try:
+                position = int(arg)
+            except ValueError:
+                raise BadSongPosition()
+            else:
+                return position
+
+        # if we're here that means the user must've used the x:xx format
+        args = arg.split(":")
+
+        if len(args) > 3:
+            raise BadSongPosition()
+
+        position = 0
+        time_map = [1, 60, 24 * 60]
+
+        for i, arg in enumerate(reversed(args)):
+            try:
+                casted = int(arg)
+            except ValueError:
+                raise BadSongPosition()
+            else:
+                position += casted * time_map[i]
+
+        return position
+
+
 def is_dj(*, only_member_check=False):
     def predicate(ctx):
         author = ctx.author
@@ -820,6 +871,48 @@ class Music(commands.Cog):
         ctx.player.current.source.volume = volume / 100
 
         await ctx.send(f"**{self.get_volume_emoji(volume)} Volume set to:** `{volume}%`")
+
+    @commands.command()
+    @is_dj(only_member_check=True)
+    async def seek(self, ctx, position: SongPosition):
+        """Seek to a position in the current song."""
+
+        if position == 0:
+            return await ctx.invoke(self.startover)
+
+        total_seconds = ctx.player.current.total_seconds
+        if position >= total_seconds:
+            raise commands.BadArgument(f"Position is greater than song length ({position}/{total_seconds}).")
+
+        if position < 0:
+            raise BadSongPosition()
+
+        timestamp = ytdl.Song.timestamp_duration(position)
+
+        current = ctx.player.current
+
+        song = ytdl.Song(
+            ctx,
+            data=current.data,
+            filename=current.filename,
+        )
+
+        song.ffmpeg_options["options"] = f"-ss {timestamp}"
+
+        ctx.player.startover = True
+
+        if not ctx.player.loop and not (ctx.player.loop_queue and len(ctx.player.songs) == 1):
+            ctx.player.songs._queue.appendleft(song)
+
+        ctx.player.skip()
+
+        async def set_duration():
+            await asyncio.sleep(0.5)
+            ctx.player.duration.start_time = datetime.datetime.now() - datetime.timedelta(seconds=position)
+
+        self.bot.loop.create_task(set_duration())
+
+        await ctx.send(f"**:fast_forward: Seeking to** `{timestamp}`")
 
     @commands.command(
         name="now",
@@ -1608,6 +1701,7 @@ class Music(commands.Cog):
     @notify.before_invoke
     @loop.before_invoke
     @loop_queue.before_invoke
+    @seek.before_invoke
     async def ensure_player(self, ctx):
         if not ctx.cog.get_player(ctx):
             raise NoPlayerError()

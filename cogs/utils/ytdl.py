@@ -234,6 +234,8 @@ class Song:
         volume: float = 0.5,
         filename=None,
     ):
+        self.ffmpeg_options = self.FFMPEG_OPTIONS.copy()
+
         self.source = source
 
         self.ctx = ctx
@@ -282,7 +284,7 @@ class Song:
             self.source.volume = volume
 
     def make_source(self):
-        source = discord.FFmpegPCMAudio(self.filename, **self.FFMPEG_OPTIONS)
+        source = discord.FFmpegPCMAudio(self.filename, **self.ffmpeg_options)
         self.source = discord.PCMVolumeTransformer(source, self.volume)
 
     def discard_source(self):
