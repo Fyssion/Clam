@@ -205,6 +205,7 @@ class Player:
                 self.current.volume = self._volume
 
                 self.current.make_source()
+                self.current.ffmpeg_options = self.current.FFMPEG_OPTIONS.copy()
 
                 log.info(f"{ctx.guild}: Playing song '{self.current.title}'")
                 self.voice.play(self.current.source, after=self.play_next_song)
