@@ -506,7 +506,7 @@ class Internet(commands.Cog):
                     # print(etree.tostring(link, pretty_print=True).decode())
                     span = link.find("./h3/div[@class='ellip']/span")
                     if span is None and link.text is None:
-                        span = link.find("./h3[@class='LC20lb DKV0Md']/span")
+                        span = link.find(".//h3[@class='LC20lb DKV0Md']/span")
                         text = span.text if span is not None else "???"
                     else:
                         text = span.text if span is not None else link.text
