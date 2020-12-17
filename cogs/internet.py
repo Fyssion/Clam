@@ -549,7 +549,8 @@ class Internet(commands.Cog):
             await ctx.send(msg)
 
     @commands.command(
-        description="Preform a google search via the API and display the results", aliases=["gapi"]
+        description="Preform a google search via the API and display the results",
+        aliases=["gapi"],
     )
     @commands.cooldown(5, 30, commands.BucketType.user)
     async def googleapi(self, ctx, *, query):
@@ -791,100 +792,139 @@ class Internet(commands.Cog):
         file = discord.File(face, filename="face.png")
         await ctx.send(embed=em, file=file)
 
-    @commands.command(
-        description="Fetch info about a Roblox profile", usage="[username]"
-    )
-    @commands.cooldown(2, 30, commands.BucketType.user)
-    async def roblox(self, ctx, *, username):
-        # Okay, so the Roblox API is a bit strange. You have to make
-        # separate API requests to each API to get info. That means
-        # I have to make a bunch of requests, which makes me enforce
-        # a heavy cooldown. Most of this command uses the standard API, except
-        # for the avatar. For some reason, Roblox does not provide a way (that I could find)
-        # to get an avatar image URL. To get the avatar, I had to preform some
-        # web scraping, which slows the command down quite a bit.
-        # If I knew of a better way to do this, I would most certainly do it.
-
-        await ctx.trigger_typing()
-
+    async def get_roblox_profile(self, username):
         session = self.bot.session
 
         # See if the user exists
         async with session.get(
-            f"http://api.roblox.com/users/get-by-username/?username={username}"
+            f"http://api.roblox.com/users/get-by-username/?username={uriquote(username)}"
         ) as resp:
             if resp.status != 200:
-                return await ctx.send("I couldn't find that user. Sorry.")
+                raise RuntimeError(
+                    f"Roblox has failed to respond with {resp.status} status code."
+                )
 
             profile = await resp.json()
 
         if not profile.get("success") and not profile.get("Id"):
-            return await ctx.send("I couldn't find that user. Sorry.")
+            raise RuntimeError("I couldn't find that user. Sorry.")
 
-        # Get basic info about them
-        async with session.get(
-            f"https://users.roblox.com/v1/users/{profile['Id']}"
-        ) as resp:
+        url = f"https://www.roblox.com/users/{profile['Id']}/profile"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 6.3; Win64; x64) Gecko/20100101 Firefox/84.0"
+        }
+
+        # the final profile (an embed)
+        em = discord.Embed(title=profile["Username"], url=url, color=colors.PRIMARY)
+
+        async with self.bot.session.get(url, headers=headers) as resp:
             if resp.status != 200:
-                return await ctx.send("I couldn't fetch that user. Sorry.")
-            user_data = await resp.json()
-
-        description = user_data["description"]
-        created_at = dateparser.parse(user_data["created"])
-
-        profile_url = f"https://www.roblox.com/users/{profile['Id']}/profile"
-
-        # Get the avatar URL by web scraping
-        async with session.get(profile_url) as resp:
-            if resp.status != 200:
-                return await ctx.send("I couldn't fetch that user's avatar. Sorry.")
-
-            html = await resp.read()
-            html = html.decode("utf-8")
-
-        soup = BeautifulSoup(html, "html.parser")
-
-        links = soup.find_all("img")
-
-        avatar = links[0].get("src")
-
-        # Get friend count
-        async with session.get(
-            f"https://friends.roblox.com/v1/users/{profile['Id']}/friends/count"
-        ) as resp:
-            if resp.status != 200:
-                return await ctx.send(
-                    "I couldn't fetch that user's friend count. Sorry."
+                self.log.info(
+                    f"Roblox failed to respond with {resp.status} status code.",
                 )
-            friends_data = await resp.json()
+                raise RuntimeError("Roblox has failed to respond.")
 
-        # Get status
-        async with session.get(
-            f"https://users.roblox.com/v1/users/{profile['Id']}/status"
-        ) as resp:
-            if resp.status != 200:
-                return await ctx.send("I couldn't fetch that user's status. Sorry.")
-            status_data = await resp.json()
+            root = etree.fromstring(await resp.text(), etree.HTMLParser())
 
-        em = discord.Embed(
-            title=profile["Username"],
-            url=profile_url,
-            description=description,
-            timestamp=created_at,
-            color=colors.PRIMARY,
-        )
+            # for bad in root.xpath("//style"):
+            #     bad.getparent().remove(bad)
 
-        em.set_thumbnail(url=avatar)
-        em.set_footer(text="Created")
+            # for bad in root.xpath("//script"):
+            #     bad.getparent().remove(bad)
 
-        em.add_field(
-            name="Status", value=status_data.get("status") or "No status", inline=False
-        )
-        em.add_field(
-            name="Friends",
-            value=friends_data.get("count") or "No friends",
-            inline=False,
-        )
+            # with open("roblox.html", "w", encoding="utf-8") as f:
+            #     f.write(etree.tostring(root, pretty_print=True).decode("utf-8"))
+
+            profile = root.xpath(".//div[contains(@class, 'profile-container')]")
+            if profile is None or len(profile) == 0:
+                raise RuntimeError("Failed to get info from Roblox.")
+
+            profile = profile[0]
+
+            print("profile_section", profile)
+
+            # find the avatar
+            avatar = profile.find(
+                ".//div[@id='UserAvatar']/span[@class='thumbnail-span-original hidden']/img"
+            )
+            if avatar is not None:
+                em.set_thumbnail(url=avatar.get("src"))
+
+            # find user info
+            divs = profile.xpath(
+                "..//"
+                # "div[@ng-controller='profileBaseController']/"
+                # "div[@class='section profile-header']/"
+                "div[@class='section-content profile-header-content']/"
+                "div"
+            )
+            print("divs", divs)
+
+            def insert_detail(detail, value, **embed_kwargs):
+                if detail and value:
+                    em.add_field(name=detail, value=value, **embed_kwargs)
+
+            if divs is not None and len(divs) > 0:
+                details = divs[0]
+                insert_detail("Friends", details.get("data-friendscount"))
+                insert_detail("Followers", details.get("data-followerscount"))
+                insert_detail("Following", details.get("data-followingscount"))
+
+                status = details.get("data-statustext")
+                set_status_at = details.get("data-statusdate")
+                if status and set_status_at:
+                    # convert mm/dd/yyyy h:mm:ss to mm/dd/yyyy
+                    cut = set_status_at.split()[0]
+                    status += f"\n(set on {cut})"
+
+                insert_detail("Status", status, inline=False)
+
+            # getting other stats
+
+            """
+            Looks like this
+            <ul class="profile-stats-container">
+              <li class="profile-stat">
+                <p class="text-label">Join Date</p>
+                <p class="text-lead">x/x/xxxx</p>
+              </li>
+              <li class="profile-stat">
+                <p class="text-label">Place Visits</p>
+                <p class="text-lead">x</p>
+              </li>
+            </ul>
+"""
+            stats = profile.xpath(".//ul[@class='profile-stats-container']/li")
+
+            print("stats", stats)
+            if stats is not None and len(stats) == 2:
+                for stat in stats:
+                    try:
+                        paras = stat.xpath("./p")
+                        detail = paras[0].text  # the title
+                        value = paras[1].text   # the actual value
+                        insert_detail(detail, value)
+                    except Exception:
+                        continue
+
+            # get the description
+            description = profile.find(".//span[@class='profile-about-content-text linkify']")
+            if description is not None:
+                em.description = description.text
+
+            return em
+
+    @commands.command(
+        description="Fetch info about a Roblox profile", usage="[username]"
+    )
+    @commands.cooldown(3, 15, commands.BucketType.user)
+    async def roblox(self, ctx, *, username):
+        # Web scrape to get the rest of the info in one request instead of 4
+        async with ctx.typing():
+            try:
+                em = await self.get_roblox_profile(username)
+            except RuntimeError as e:
+                return await ctx.send(str(e))
 
         await ctx.send(embed=em)
 
