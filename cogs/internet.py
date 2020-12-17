@@ -811,7 +811,8 @@ class Internet(commands.Cog):
         if not profile.get("success") and not profile.get("Id"):
             raise RuntimeError("I couldn't find that user. Sorry.")
 
-        url = f"https://www.roblox.com/users/{profile['Id']}/profile"
+        base_url = f"https://www.roblox.com/users/{profile['Id']}"
+        url = base_url + "/profile"
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 6.3; Win64; x64) Gecko/20100101 Firefox/84.0"
         }
@@ -865,11 +866,19 @@ class Internet(commands.Cog):
             if detail and value:
                 em.add_field(name=detail, value=value, **embed_kwargs)
 
+        def format_f_detail(details, detail, *, add_s=False):
+            tag = f"{detail}s" if add_s else detail
+            value = details.get(f"data-{tag}count")
+            if not value:
+                return None
+
+            return f"{value} [(view)]({base_url}/friends#!/{detail})"
+
         if divs is not None and len(divs) > 0:
             details = divs[0]
-            insert_detail("Friends", details.get("data-friendscount"))
-            insert_detail("Followers", details.get("data-followerscount"))
-            insert_detail("Following", details.get("data-followingscount"))
+            insert_detail("Friends", format_f_detail(details, "friends"))
+            insert_detail("Followers", format_f_detail(details, "followers"))
+            insert_detail("Following", format_f_detail(details, "following", add_s=True))
 
             status = details.get("data-statustext")
             set_status_at = details.get("data-statusdate")
@@ -898,7 +907,7 @@ class Internet(commands.Cog):
         stats = profile.xpath(".//ul[@class='profile-stats-container']/li")
 
         print("stats", stats)
-        if stats is not None and len(stats) == 2:
+        if stats is not None and len(stats) > 0:
             for stat in stats:
                 try:
                     paras = stat.xpath("./p")
@@ -908,12 +917,21 @@ class Internet(commands.Cog):
                 except Exception:
                     continue
 
+        # get whether they have premium
+        emoji = "<:roblox_premium:789226760805023795>"
+        premium = profile.xpath(".//span[contains(@class, 'icon-premium')]")
+        if premium is not None and len(premium) > 0:
+            em.description = f"{emoji} (this user has Roblox Premium)"
+
         # get the description
         description = profile.find(
             ".//span[@class='profile-about-content-text linkify']"
         )
         if description is not None:
-            em.description = description.text
+            if em.description:
+                em.description += f"\n\n{description.text}"
+            else:
+                em.description = description.text
 
         return em
 
