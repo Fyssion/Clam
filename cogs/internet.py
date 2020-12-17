@@ -824,7 +824,7 @@ class Internet(commands.Cog):
                 )
                 raise RuntimeError("Roblox has failed to respond.")
 
-        root = etree.fromstring(await resp.text(), etree.HTMLParser())
+            root = etree.fromstring(await resp.text(), etree.HTMLParser())
 
         # for bad in root.xpath("//style"):
         #     bad.getparent().remove(bad)
