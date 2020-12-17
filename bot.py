@@ -227,8 +227,8 @@ class Clam(commands.Bot):
     def get_guild_prefixes(self, guild):
         prefixes = ["c."]
 
-        if str(guild.id) in bot.guild_prefixes.keys():
-            prefixes = bot.guild_prefixes[str(guild.id)]
+        if str(guild.id) in self.bot.guild_prefixes.keys():
+            prefixes = self.bot.guild_prefixes[str(guild.id)]
 
         return prefixes
 
