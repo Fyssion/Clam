@@ -824,95 +824,95 @@ class Internet(commands.Cog):
                 )
                 raise RuntimeError("Roblox has failed to respond.")
 
-            root = etree.fromstring(await resp.text(), etree.HTMLParser())
+        root = etree.fromstring(await resp.text(), etree.HTMLParser())
 
-            # for bad in root.xpath("//style"):
-            #     bad.getparent().remove(bad)
+        # for bad in root.xpath("//style"):
+        #     bad.getparent().remove(bad)
 
-            # for bad in root.xpath("//script"):
-            #     bad.getparent().remove(bad)
+        # for bad in root.xpath("//script"):
+        #     bad.getparent().remove(bad)
 
-            # with open("roblox.html", "w", encoding="utf-8") as f:
-            #     f.write(etree.tostring(root, pretty_print=True).decode("utf-8"))
+        # with open("roblox.html", "w", encoding="utf-8") as f:
+        #     f.write(etree.tostring(root, pretty_print=True).decode("utf-8"))
 
-            profile = root.xpath(".//div[contains(@class, 'profile-container')]")
-            if profile is None or len(profile) == 0:
-                raise RuntimeError("Failed to get info from Roblox.")
+        profile = root.xpath(".//div[contains(@class, 'profile-container')]")
+        if profile is None or len(profile) == 0:
+            raise RuntimeError("Failed to get info from Roblox.")
 
-            profile = profile[0]
+        profile = profile[0]
 
-            print("profile_section", profile)
+        print("profile_section", profile)
 
-            # find the avatar
-            avatar = profile.find(
-                ".//div[@id='UserAvatar']/span[@class='thumbnail-span-original hidden']/img"
-            )
-            if avatar is not None:
-                em.set_thumbnail(url=avatar.get("src"))
+        # find the avatar
+        avatar = profile.find(
+            ".//div[@id='UserAvatar']/span[@class='thumbnail-span-original hidden']/img"
+        )
+        if avatar is not None:
+            em.set_thumbnail(url=avatar.get("src"))
 
-            # find user info
-            divs = profile.xpath(
-                "..//"
-                # "div[@ng-controller='profileBaseController']/"
-                # "div[@class='section profile-header']/"
-                "div[@class='section-content profile-header-content']/"
-                "div"
-            )
-            print("divs", divs)
+        # find user info
+        divs = profile.xpath(
+            "..//"
+            # "div[@ng-controller='profileBaseController']/"
+            # "div[@class='section profile-header']/"
+            "div[@class='section-content profile-header-content']/"
+            "div"
+        )
+        print("divs", divs)
 
-            def insert_detail(detail, value, **embed_kwargs):
-                if detail and value:
-                    em.add_field(name=detail, value=value, **embed_kwargs)
+        def insert_detail(detail, value, **embed_kwargs):
+            if detail and value:
+                em.add_field(name=detail, value=value, **embed_kwargs)
 
-            if divs is not None and len(divs) > 0:
-                details = divs[0]
-                insert_detail("Friends", details.get("data-friendscount"))
-                insert_detail("Followers", details.get("data-followerscount"))
-                insert_detail("Following", details.get("data-followingscount"))
+        if divs is not None and len(divs) > 0:
+            details = divs[0]
+            insert_detail("Friends", details.get("data-friendscount"))
+            insert_detail("Followers", details.get("data-followerscount"))
+            insert_detail("Following", details.get("data-followingscount"))
 
-                status = details.get("data-statustext")
-                set_status_at = details.get("data-statusdate")
-                if status and set_status_at:
-                    # convert mm/dd/yyyy h:mm:ss to mm/dd/yyyy
-                    cut = set_status_at.split()[0]
-                    status += f"\n(set on {cut})"
+            status = details.get("data-statustext")
+            set_status_at = details.get("data-statusdate")
+            if status and set_status_at:
+                # convert mm/dd/yyyy h:mm:ss to mm/dd/yyyy
+                cut = set_status_at.split()[0]
+                status += f"\n(set on {cut})"
 
-                insert_detail("Status", status, inline=False)
+            insert_detail("Status", status, inline=False)
 
-            # getting other stats
+        # getting other stats
 
-            """
-            Looks like this
-            <ul class="profile-stats-container">
-              <li class="profile-stat">
-                <p class="text-label">Join Date</p>
-                <p class="text-lead">x/x/xxxx</p>
-              </li>
-              <li class="profile-stat">
-                <p class="text-label">Place Visits</p>
-                <p class="text-lead">x</p>
-              </li>
-            </ul>
+        """
+        Looks like this
+        <ul class="profile-stats-container">
+          <li class="profile-stat">
+            <p class="text-label">Join Date</p>
+            <p class="text-lead">x/x/xxxx</p>
+          </li>
+          <li class="profile-stat">
+            <p class="text-label">Place Visits</p>
+            <p class="text-lead">x</p>
+          </li>
+        </ul>
 """
-            stats = profile.xpath(".//ul[@class='profile-stats-container']/li")
+        stats = profile.xpath(".//ul[@class='profile-stats-container']/li")
 
-            print("stats", stats)
-            if stats is not None and len(stats) == 2:
-                for stat in stats:
-                    try:
-                        paras = stat.xpath("./p")
-                        detail = paras[0].text  # the title
-                        value = paras[1].text   # the actual value
-                        insert_detail(detail, value)
-                    except Exception:
-                        continue
+        print("stats", stats)
+        if stats is not None and len(stats) == 2:
+            for stat in stats:
+                try:
+                    paras = stat.xpath("./p")
+                    detail = paras[0].text  # the title
+                    value = paras[1].text   # the actual value
+                    insert_detail(detail, value)
+                except Exception:
+                    continue
 
-            # get the description
-            description = profile.find(".//span[@class='profile-about-content-text linkify']")
-            if description is not None:
-                em.description = description.text
+        # get the description
+        description = profile.find(".//span[@class='profile-about-content-text linkify']")
+        if description is not None:
+            em.description = description.text
 
-            return em
+        return em
 
     @commands.command(
         description="Fetch info about a Roblox profile", usage="[username]"
