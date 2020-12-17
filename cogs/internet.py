@@ -130,6 +130,8 @@ class Internet(commands.Cog):
         self.bot = bot
         self.emoji = ":globe_with_meridians:"
 
+        self.log = bot.log
+
         self.wikipedia = mediawiki.MediaWiki()
 
     async def search_wikipedia(self, ctx, query, *, color=0x6B6B6B, sentences=2):
@@ -800,9 +802,9 @@ class Internet(commands.Cog):
             f"http://api.roblox.com/users/get-by-username/?username={uriquote(username)}"
         ) as resp:
             if resp.status != 200:
-                raise RuntimeError(
-                    f"Roblox has failed to respond with {resp.status} status code."
-                )
+                msg = f"Roblox has failed to respond with {resp.status} status code."
+                self.log.info(msg)
+                raise RuntimeError(msg)
 
             profile = await resp.json()
 
@@ -819,10 +821,9 @@ class Internet(commands.Cog):
 
         async with self.bot.session.get(url, headers=headers) as resp:
             if resp.status != 200:
-                self.log.info(
-                    f"Roblox failed to respond with {resp.status} status code.",
-                )
-                raise RuntimeError("Roblox has failed to respond.")
+                msg = f"Roblox has failed to respond with {resp.status} status code."
+                self.log.info(msg)
+                raise RuntimeError(msg)
 
             root = etree.fromstring(await resp.text(), etree.HTMLParser())
 
@@ -902,13 +903,15 @@ class Internet(commands.Cog):
                 try:
                     paras = stat.xpath("./p")
                     detail = paras[0].text  # the title
-                    value = paras[1].text   # the actual value
+                    value = paras[1].text  # the actual value
                     insert_detail(detail, value)
                 except Exception:
                     continue
 
         # get the description
-        description = profile.find(".//span[@class='profile-about-content-text linkify']")
+        description = profile.find(
+            ".//span[@class='profile-about-content-text linkify']"
+        )
         if description is not None:
             em.description = description.text
 
