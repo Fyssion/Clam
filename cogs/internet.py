@@ -328,9 +328,9 @@ class Internet(commands.Cog):
                 return e
 
         # check for "time in" card
-        time = node.find("./div[@class='vk_c vk_gy vk_sh card-section sL6Rbf R36Kq']")
-        # print("time", time)
+        time = node.find("./div[@class='vk_c vk_gy vk_sh card-section sL6Rbf']")
         if time is not None:
+            time = time[0]
             try:
                 e.title = node.find("span").text
                 e.description = f'{time.text}\n{"".join(time.itertext()).strip()}'
@@ -341,6 +341,7 @@ class Internet(commands.Cog):
 
         # time in has an alternative form without spans
         time = node.find("./div[@class='vk_bk vk_ans _nEd']")
+        print("time2", time)
         if time is not None:
             converted = "".join(time.itertext()).strip()
             try:
@@ -394,30 +395,30 @@ class Internet(commands.Cog):
             return e
 
         # check for weather card
-        location = node.find("./div[@id='wob_loc']")
+        location = node.find(".//div[@id='wob_loc']")
         if location is None:
             return None
 
         # these units should be metric
 
-        date = node.find("./div[@id='wob_dts']")
+        date = node.find(".//div[@id='wob_dts']")
 
         # <img alt="category here" src="cool image">
         category = node.find(".//img[@id='wob_tci']")
 
         xpath = etree.XPath(
-            ".//div[@id='wob_d']//div[contains(@class, 'vk_bk')]//span[@class='wob_t']"
+            ".//div[@id='wob_d']//div[contains(@class, 'vk_bk')]/..//span[contains(@class, 'wob_t')]"
         )
         temperatures = xpath(node)
 
-        misc_info_node = node.find(".//div[@class='vk_gy vk_sh wob-dtl']")
+        misc_info_node = node.find(".//div[@class='vk_gy vk_sh']")
 
         if misc_info_node is None:
             return None
 
         precipitation = misc_info_node.find("./div/span[@id='wob_pp']")
         humidity = misc_info_node.find("./div/span[@id='wob_hm']")
-        wind = misc_info_node.find("./div/span/span[@id='wob_tws']")
+        wind = misc_info_node.find("./div/span/span[@id='wob_ws']")
 
         try:
             e.title = "Weather for " + location.text.strip()
@@ -442,6 +443,7 @@ class Internet(commands.Cog):
             if wind is not None:
                 e.add_field(name="Wind", value=wind.text)
         except Exception:
+            traceback.print_exc()
             return None
 
         return e
@@ -501,7 +503,7 @@ class Internet(commands.Cog):
                     "or @class='kp-blk' or @class='RQXSBc' or @class='g obcontainer' or @class='YQaNob']"
                 )
 
-            # print("card node", card_node)
+            print("card node", card_node)
 
             if card_node is None or len(card_node) == 0:
                 card = None
