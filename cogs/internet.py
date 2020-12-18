@@ -447,7 +447,7 @@ class Internet(commands.Cog):
 
         return e
 
-    def parse_extrabar_topform(self, e, items):
+    def parse_topbar_topform(self, e, items):
         if len(items) > 10:
             items = items[:10]
 
@@ -479,7 +479,7 @@ class Internet(commands.Cog):
         e.description = "\n".join(item_texts)
         return e
 
-    def parse_extrabar_sideform(self, e, items):
+    def parse_topbar_sideform(self, e, items):
         if len(items) > 10:
             items = items[:10]
 
@@ -506,7 +506,7 @@ class Internet(commands.Cog):
 
         return e
 
-    def parse_google_extrabar(self, node):
+    def parse_google_topbar(self, node):
         e = discord.Embed(color=0x4285F4)
 
         # regular extabar title
@@ -532,7 +532,7 @@ class Internet(commands.Cog):
         items = node.xpath(".//a[contains(@class, 'klitem-tr')]")
 
         if items is not None and len(items) > 0:
-            return self.parse_extrabar_topform(e, items)
+            return self.parse_topbar_topform(e, items)
 
         items = node.xpath(
             ".//div[@class='hFvVJe' or @class='klbar']//"
@@ -540,7 +540,7 @@ class Internet(commands.Cog):
         )
 
         if items is not None and len(items) > 0:
-            return self.parse_extrabar_sideform(e, items)
+            return self.parse_topbar_sideform(e, items)
 
         return None
 
@@ -587,14 +587,15 @@ class Internet(commands.Cog):
 
             # google has this extra bar above all the search results
             # that can contain a list of things
-            extrabar = root.find(".//div[@id='extabar']")
+            topbar = root.xpath(".//div[@class='EyBRub' or @id='botabar']")
 
-            # print("extrabar", extrabar)
+            # print("topbar", topbar)
 
-            if extrabar is not None:
-                card = self.parse_google_extrabar(extrabar)
+            if topbar is not None and len(topbar) > 0:
+                topbar = topbar[0]
+                card = self.parse_google_topbar(topbar)
 
-            else:
+            elif not card:
                 card_node = root.xpath(
                     ".//div[@id='rso']/div[@class='ULSxyf' or @class='hlcw0c' or @class='g mnr-c g-blk']//"
                     "div[contains(@class, 'vk_c') or @class='card-section' or @class='g mnr-c g-blk' "
