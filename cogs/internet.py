@@ -285,9 +285,16 @@ class Internet(commands.Cog):
         info = node.find(".//div[@class='ifM9O']")
         if info is not None:
             try:
-                e.title = "".join(info.itertext()).strip()
+                title = info.find(".//span")
+                if title is None:
+                    try:
+                        e.title = "".join(info.itertext()).strip()
+                    except Exception:
+                        pass
+                else:
+                    e.title = title.text
                 actual_information = info.xpath(
-                    "parent::div/parent::div//div[@class='_XWk' or @class='Z0LcW XcVN5d AZCkJd' or contains(@class, 'kpd-ans')]"
+                    ".//div[@class='_XWk' or@class='uyUSCd' or @class='Z0LcW XcVN5d AZCkJd' or contains(@class, 'kpd-ans')]"
                 )[0]
                 e.description = "".join(actual_information.itertext()).strip()
             except Exception:
@@ -481,12 +488,11 @@ class Internet(commands.Cog):
             """
 
             card_node = root.xpath(
-                ".//div[@id='rso']/div[@class='ULSxyf' or @class='hlcw0c']//"
+                ".//div[@id='rso']/div[@class='ULSxyf' or @class='hlcw0c' or @class='g mnr-c g-blk']//"
                 "div[contains(@class, 'vk_c') or @class='card-section' or @class='g mnr-c g-blk' "
-                "or @class='kp-blk' or @class='RQXSBc' or @class='g obcontainer' or @class='YQaNob']"
+                "or @class='kp-blk' or @class='RQXSBc' or @class='g obcontainer' "
+                "or @class='xpdopen rYczAc' or @class='YQaNob']"
             )
-
-            # print("card node", card_node)
 
             if card_node is None or len(card_node) == 0:
                 card_node = root.xpath(
@@ -494,6 +500,8 @@ class Internet(commands.Cog):
                     "div[contains(@class, 'vk_c') or @class='card-section' or @class='g mnr-c g-blk' "
                     "or @class='kp-blk' or @class='RQXSBc' or @class='g obcontainer' or @class='YQaNob']"
                 )
+
+            # print("card node", card_node)
 
             if card_node is None or len(card_node) == 0:
                 card = None
@@ -525,7 +533,7 @@ class Internet(commands.Cog):
         except RuntimeError as e:
             await ctx.send(str(e))
         else:
-            if card:
+            if card is not None:
                 value = "\n".join(
                     f'[{title}]({url.replace(")", "%29")})'
                     for url, title in entries[:3]
@@ -875,7 +883,9 @@ class Internet(commands.Cog):
             details = divs[0]
             insert_detail("Friends", format_f_detail(details, "friends"))
             insert_detail("Followers", format_f_detail(details, "followers"))
-            insert_detail("Following", format_f_detail(details, "following", add_s=True))
+            insert_detail(
+                "Following", format_f_detail(details, "following", add_s=True)
+            )
 
             status = details.get("data-statustext")
             set_status_at = details.get("data-statusdate")
