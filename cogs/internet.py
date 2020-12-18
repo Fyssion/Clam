@@ -448,6 +448,113 @@ class Internet(commands.Cog):
 
         return e
 
+    def parse_extrabar_topform(self, e, items):
+        if len(items) > 10:
+            items = items[:10]
+
+        show_links = False if len(items) > 3 else True
+
+        item_texts = []
+        for item in items:
+            text = item.get("title")
+            link = item.get("href")
+
+            if not text:
+                # sometimes the title is in the div below
+                below = item.find("./div")
+                text = below.get("title")
+
+            if not show_links or not link:
+                if text:
+                    item_texts.append(text)
+                continue
+
+            link = f"https://www.google.com{link}"
+
+            if text and link:
+                item_texts.append(f"[{text}]({link})")
+
+        if not item_texts:
+            print("here2")
+            return None
+
+        e.description = "\n".join(item_texts)
+
+        print("here 3")
+
+        return e
+
+    def parse_extrabar_sideform(self, e, items):
+        if len(items) > 10:
+            items = items[:10]
+
+        show_links = False if len(items) > 3 else True
+
+        item_texts = []
+        for item in items:
+            text = "".join(item.itertext()).strip()
+            link = item.get("href")
+
+            if not show_links or not link:
+                item_texts.append(text)
+                continue
+
+            link = f"https://www.google.com{link}"
+
+            if text and link:
+                item_texts.append(f"[{text}]({link})")
+
+        if not item_texts:
+            return None
+
+        e.description = "\n".join(item_texts)
+
+        return e
+
+    def parse_google_extrabar(self, node):
+        e = discord.Embed(color=0x4285F4)
+
+        # regular extabar title
+        title = node.find(".//div[@class='LXqMce']")
+        print("title", title)
+        if title is not None:
+            try:
+                e.title = "".join(title.itertext()).strip()
+            except Exception:
+                return None
+
+        # alternate form of extabar title
+        titles = node.xpath(".//div[@id='lxhdr']//span[@class='kxbc']")
+        print("titles2", titles)
+
+        if titles is not None and len(titles) > 0:
+            try:
+                formatted = " / ".join(t.text for t in titles if t.text)
+            except Exception:
+                return None
+
+            e.title = formatted
+
+        # this tag has all the information
+        items = node.xpath(".//a[contains(@class, 'klitem-tr')]")
+
+        print("items", items)
+
+        if items is not None and len(items) > 0:
+            return self.parse_extrabar_topform(e, items)
+
+        items = node.xpath(
+            ".//div[@class='hFvVJe' or @class='klbar']//"
+            "div[@class='kIXOkb PZPZlf' or @class='EDblX DAVP1']/a"
+        )
+
+        print("items2", items)
+
+        if items is not None and len(items) > 0:
+            return self.parse_extrabar_sideform(e, items)
+
+        return None
+
     async def get_google_entries(self, query):
         url = f"https://www.google.com/search?q={uriquote(query)}"
         params = {"safe": "on", "lr": "lang_en", "hl": "en"}
@@ -471,14 +578,14 @@ class Internet(commands.Cog):
 
             root = etree.fromstring(await resp.text(), etree.HTMLParser())
 
-            # for bad in root.xpath("//style"):
-            #     bad.getparent().remove(bad)
+            for bad in root.xpath("//style"):
+                bad.getparent().remove(bad)
 
-            # for bad in root.xpath("//script"):
-            #     bad.getparent().remove(bad)
+            for bad in root.xpath("//script"):
+                bad.getparent().remove(bad)
 
-            # with open("google.html", "w", encoding="utf-8") as f:
-            #     f.write(etree.tostring(root, pretty_print=True).decode("utf-8"))
+            with open("google.html", "w", encoding="utf-8") as f:
+                f.write(etree.tostring(root, pretty_print=True).decode("utf-8"))
 
             """
             Tree looks like this.. sort of..
@@ -489,26 +596,36 @@ class Internet(commands.Cog):
             </div>
             """
 
-            card_node = root.xpath(
-                ".//div[@id='rso']/div[@class='ULSxyf' or @class='hlcw0c' or @class='g mnr-c g-blk']//"
-                "div[contains(@class, 'vk_c') or @class='card-section' or @class='g mnr-c g-blk' "
-                "or @class='kp-blk' or @class='RQXSBc' or @class='g obcontainer' "
-                "or @class='xpdopen rYczAc' or @class='YQaNob']"
-            )
+            # google has this extra bar above all the search results
+            # that can contain a list of things
+            extrabar = root.find(".//div[@id='extabar']")
 
-            if card_node is None or len(card_node) == 0:
+            print("extrabar", extrabar)
+
+            if extrabar is not None:
+                card = self.parse_google_extrabar(extrabar)
+
+            else:
                 card_node = root.xpath(
-                    ".//div[@id='rso']//"
+                    ".//div[@id='rso']/div[@class='ULSxyf' or @class='hlcw0c' or @class='g mnr-c g-blk']//"
                     "div[contains(@class, 'vk_c') or @class='card-section' or @class='g mnr-c g-blk' "
-                    "or @class='kp-blk' or @class='RQXSBc' or @class='g obcontainer' or @class='YQaNob']"
+                    "or @class='kp-blk' or @class='RQXSBc' or @class='g obcontainer' "
+                    "or @class='xpdopen rYczAc' or @class='YQaNob']"
                 )
 
-            print("card node", card_node)
+                if card_node is None or len(card_node) == 0:
+                    card_node = root.xpath(
+                        ".//div[@id='rso']//"
+                        "div[contains(@class, 'vk_c') or @class='card-section' or @class='g mnr-c g-blk' "
+                        "or @class='kp-blk' or @class='RQXSBc' or @class='g obcontainer' or @class='YQaNob']"
+                    )
 
-            if card_node is None or len(card_node) == 0:
-                card = None
-            else:
-                card = self.parse_google_card(card_node[0])
+                print("card node", card_node)
+
+                if card_node is None or len(card_node) == 0:
+                    card = None
+                else:
+                    card = self.parse_google_card(card_node[0])
 
             search_results = root.findall(".//div[@class='rc']")
             # print(len(search_results))
