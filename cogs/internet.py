@@ -443,7 +443,6 @@ class Internet(commands.Cog):
             if wind is not None:
                 e.add_field(name="Wind", value=wind.text)
         except Exception:
-            traceback.print_exc()
             return None
 
         return e
@@ -475,13 +474,9 @@ class Internet(commands.Cog):
                 item_texts.append(f"[{text}]({link})")
 
         if not item_texts:
-            print("here2")
             return None
 
         e.description = "\n".join(item_texts)
-
-        print("here 3")
-
         return e
 
     def parse_extrabar_sideform(self, e, items):
@@ -516,7 +511,6 @@ class Internet(commands.Cog):
 
         # regular extabar title
         title = node.find(".//div[@class='LXqMce']")
-        print("title", title)
         if title is not None:
             try:
                 e.title = "".join(title.itertext()).strip()
@@ -525,7 +519,6 @@ class Internet(commands.Cog):
 
         # alternate form of extabar title
         titles = node.xpath(".//div[@id='lxhdr']//span[@class='kxbc']")
-        print("titles2", titles)
 
         if titles is not None and len(titles) > 0:
             try:
@@ -538,8 +531,6 @@ class Internet(commands.Cog):
         # this tag has all the information
         items = node.xpath(".//a[contains(@class, 'klitem-tr')]")
 
-        print("items", items)
-
         if items is not None and len(items) > 0:
             return self.parse_extrabar_topform(e, items)
 
@@ -547,8 +538,6 @@ class Internet(commands.Cog):
             ".//div[@class='hFvVJe' or @class='klbar']//"
             "div[@class='kIXOkb PZPZlf' or @class='EDblX DAVP1']/a"
         )
-
-        print("items2", items)
 
         if items is not None and len(items) > 0:
             return self.parse_extrabar_sideform(e, items)
@@ -578,14 +567,14 @@ class Internet(commands.Cog):
 
             root = etree.fromstring(await resp.text(), etree.HTMLParser())
 
-            for bad in root.xpath("//style"):
-                bad.getparent().remove(bad)
+            # for bad in root.xpath("//style"):
+            #     bad.getparent().remove(bad)
 
-            for bad in root.xpath("//script"):
-                bad.getparent().remove(bad)
+            # for bad in root.xpath("//script"):
+            #     bad.getparent().remove(bad)
 
-            with open("google.html", "w", encoding="utf-8") as f:
-                f.write(etree.tostring(root, pretty_print=True).decode("utf-8"))
+            # with open("google.html", "w", encoding="utf-8") as f:
+            #     f.write(etree.tostring(root, pretty_print=True).decode("utf-8"))
 
             """
             Tree looks like this.. sort of..
@@ -600,7 +589,7 @@ class Internet(commands.Cog):
             # that can contain a list of things
             extrabar = root.find(".//div[@id='extabar']")
 
-            print("extrabar", extrabar)
+            # print("extrabar", extrabar)
 
             if extrabar is not None:
                 card = self.parse_google_extrabar(extrabar)
@@ -620,7 +609,7 @@ class Internet(commands.Cog):
                         "or @class='kp-blk' or @class='RQXSBc' or @class='g obcontainer' or @class='YQaNob']"
                     )
 
-                print("card node", card_node)
+                # print("card node", card_node)
 
                 if card_node is None or len(card_node) == 0:
                     card = None
