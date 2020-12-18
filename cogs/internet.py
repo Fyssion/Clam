@@ -444,7 +444,7 @@ class Internet(commands.Cog):
         params = {"safe": "on", "lr": "lang_en", "hl": "en"}
 
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 6.3; Win64; x64) Gecko/20100101 Firefox/53.0"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0"
         }
 
         # list of URLs and title tuples
@@ -814,7 +814,7 @@ class Internet(commands.Cog):
         base_url = f"https://www.roblox.com/users/{profile['Id']}"
         url = base_url + "/profile"
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 6.3; Win64; x64) Gecko/20100101 Firefox/84.0"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0"
         }
 
         # the final profile (an embed)
