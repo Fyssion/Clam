@@ -843,8 +843,6 @@ class Internet(commands.Cog):
 
         profile = profile[0]
 
-        print("profile_section", profile)
-
         # find the avatar
         avatar = profile.find(
             ".//div[@id='UserAvatar']/span[@class='thumbnail-span-original hidden']/img"
@@ -860,7 +858,6 @@ class Internet(commands.Cog):
             "div[@class='section-content profile-header-content']/"
             "div"
         )
-        print("divs", divs)
 
         def insert_detail(detail, value, **embed_kwargs):
             if detail and value:
@@ -906,7 +903,6 @@ class Internet(commands.Cog):
 """
         stats = profile.xpath(".//ul[@class='profile-stats-container']/li")
 
-        print("stats", stats)
         if stats is not None and len(stats) > 0:
             for stat in stats:
                 try:
