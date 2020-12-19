@@ -698,10 +698,6 @@ class Fun(commands.Cog):
         """dumb command pls ignore"""
         fin = []
         for letter in text:
-            if letter == " ":
-                fin.append(" "*random.randint(1, 2))
-                continue
-
             fin.append(letter+(" "*random.randint(0, 2)))
         await ctx.send("".join(fin))
 
