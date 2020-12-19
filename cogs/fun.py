@@ -693,6 +693,18 @@ class Fun(commands.Cog):
         codeblock = tabulate(percentages, codeblock=True, language="asciidoc")
         await ctx.send(f"Time Progress Bars\n{codeblock}")
 
+    @commands.command(hidden=True)
+    async def re_text(self, ctx, *, text):
+        """dumb command pls ignore"""
+        fin = []
+        for letter in text:
+            if letter == " ":
+                fin.append(" "*random.randint(1, 2))
+                continue
+
+            fin.append(letter+(" "*random.randint(0, 2)))
+        await ctx.send("".join(fin))
+
     # async def do_thethaurize(self, sentence):
     #     words = sentence.split(" ")
     #     final_words = []
