@@ -10,6 +10,7 @@ import importlib
 import asyncio
 import collections
 import humanize
+from typing import Union
 import calendar
 from dateutil import tz
 from cleverbot import async_ as cleverbot
@@ -694,8 +695,13 @@ class Fun(commands.Cog):
         await ctx.send(f"Time Progress Bars\n{codeblock}")
 
     @commands.command(hidden=True)
-    async def re_text(self, ctx, *, text):
+    async def re_text(self, ctx, *, text: Union[discord.Message, str]):
         """dumb command pls ignore"""
+        if isinstance(text, discord.Message):
+            text = text.content
+            if not text:
+                return await ctx.send(" ".join(list("i can't reify that u dummy")))
+
         await ctx.send(" ".join(list(text)))
 
     # async def do_thethaurize(self, sentence):
