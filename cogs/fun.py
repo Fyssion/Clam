@@ -696,10 +696,7 @@ class Fun(commands.Cog):
     @commands.command(hidden=True)
     async def re_text(self, ctx, *, text):
         """dumb command pls ignore"""
-        fin = []
-        for letter in text:
-            fin.append(letter+(" "*random.randint(0, 2)))
-        await ctx.send("".join(fin))
+        await ctx.send(" ".join(list(text)))
 
     # async def do_thethaurize(self, sentence):
     #     words = sentence.split(" ")
