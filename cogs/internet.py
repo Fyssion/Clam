@@ -1351,6 +1351,7 @@ class Internet(commands.Cog):
             "flask": "https://flask.palletsprojects.com/en/1.1.x",
             "sqlalchemy": "https://docs.sqlalchemy.org/en/13",
             "telegrampy": "https://telegrampy.readthedocs.io/en/latest",
+            "tornado": "https://www.tornadoweb.org/en/stable/",
         }
 
         if obj is None:
@@ -1432,6 +1433,11 @@ class Internet(commands.Cog):
     async def docs_telegampy(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a telegram.py entity."""
         await self.do_docs(ctx, "telegrampy", obj)
+
+    @docs.command(name="tornado")
+    async def docs_tornado(self, ctx, *, obj: str = None):
+        """Gives you a documentation link for a tornado entity."""
+        await self.do_docs(ctx, "tornado", obj)
 
 
 def setup(bot):
