@@ -183,7 +183,7 @@ class Player:
                 self.next.clear()
                 self.duration.stop()
 
-                if self.loop_queue:
+                if self.loop_queue and not self.startover:
                     await self.songs.put(self.current)
 
                 if not self.loop:
