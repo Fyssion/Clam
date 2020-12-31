@@ -587,7 +587,7 @@ class Fun(commands.Cog):
 
         utc_now = d.utcnow().replace(tzinfo=tz.UTC)
 
-        if utc_now.hour + utc_offset > 24:
+        if utc_now.hour + utc_offset > 23:
             hour = utc_now.hour - (24 - utc_offset)
             day = utc_now.day + 1
             month = utc_now.month
