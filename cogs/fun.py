@@ -601,7 +601,7 @@ class Fun(commands.Cog):
                     year += 1
                 day = 1
 
-        elif utc_now.hour + utc_offset < 1:
+        elif utc_now.hour + utc_offset < 0:
             hour = utc_now.hour + (24 + utc_offset)
             day = utc_now.day - 1
             month = utc_now.month
