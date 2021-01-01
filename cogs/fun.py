@@ -611,6 +611,7 @@ class Fun(commands.Cog):
                 month = utc_now.month - 1
 
                 if month < 1:
+                    month = 12
                     year -= 1
                 day = calendar.monthrange(year, month)[1]
 
