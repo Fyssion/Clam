@@ -693,7 +693,8 @@ class Fun(commands.Cog):
         )
 
         codeblock = tabulate(percentages, codeblock=True, language="asciidoc")
-        await ctx.send(f"Time Progress Bars\n{codeblock}")
+        timezone = f"UTC{utc_offset}" if utc_offset != 0 else "UTC±0"
+        await ctx.send(f"Time Progress Bars (for {timezone})\n{codeblock}")
 
     @commands.command(hidden=True)
     async def re_text(self, ctx, *, text: Union[discord.Message, str]):
