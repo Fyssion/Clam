@@ -1733,8 +1733,21 @@ class Music(commands.Cog):
         query = "SELECT COUNT(*), SUM(plays) FROM songs;"
         count, plays = await ctx.db.fetchrow(query)
 
+        query = "SELECT info->>'duration' FROM songs;"
+        records = await ctx.db.fetch(query)
+
+        total = 0
+
+        for record in records:
+            total += float(record[0])
+
+        total = round(total)
+
+        duration = ytdl.Song.parse_duration(total)
+
         await ctx.send(
-            f"Music database contains **{count} songs** with a total of **{plays} plays**."
+            f"Music database contains **{count} songs** with a total of **{plays} plays**.\n"
+            f"That's **{duration}** of music!"
         )
 
     @musicdb.command(name="list", aliases=["all"])
@@ -1912,8 +1925,21 @@ class Music(commands.Cog):
             formatted.append(f"{places[i]} **{title}** ({plays} plays)")
 
         value = "\n".join(formatted) or "None"
+        em.add_field(name=":trophy: Top Songs", value=value, inline=False)
 
-        em.add_field(name=":trophy: Top Songs", value=value, inline=True)
+        query = """SELECT title, (info->>'duration')::DOUBLE PRECISION AS "dur"
+                   FROM SONGS
+                   ORDER BY dur DESC
+                   LIMIT 5;
+        """
+        records = await ctx.db.fetch(query)
+
+        formatted = []
+        for (i, (title, duration)) in enumerate(records):
+            formatted.append(f"{places[i]} **{title}** ({ytdl.Song.timestamp_duration(round(duration))})")
+
+        value = "\n".join(formatted) or "None"
+        em.add_field(name=":clock10: Longest Songs", value=value, inline=False)
 
         await ctx.send(embed=em)
 
