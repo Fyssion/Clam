@@ -493,10 +493,11 @@ class Highlight(commands.Cog):
         await ctx.delete_send(embed=em, delete_after=10.0)
 
     @highlight.command(
-        name="transfer",
-        description="Transfer your words from another server",
+        name="import",
+        description="Import your words from another server",
+        aliases=["transfer"]
     )
-    async def highlight_transfer(self, ctx, guild_id: int):
+    async def highlight_import(self, ctx, guild_id: int):
         # self.delete_timer(ctx.message)
 
         # query = """INSERT INTO highlight_words (word, user_id, guild_id)
