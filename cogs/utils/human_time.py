@@ -127,7 +127,7 @@ def human_join(seq, delim=", ", final="or"):
     if size == 2:
         return f"{seq[0]} {final} {seq[1]}"
 
-    return delim.join(seq[:-1]) + f" {final} {seq[-1]}"
+    return delim.join(seq[:-1]) + f", {final} {seq[-1]}"
 
 
 # Monkey patch mins and secs into the units
