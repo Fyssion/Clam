@@ -1731,7 +1731,7 @@ class Music(commands.Cog):
     async def musicdb(self, ctx):
         """Commands to manage the music db"""
         query = "SELECT COUNT(*), SUM(plays) FROM songs;"
-        count, plays = await ctx.db.fetchrow(query)
+        count, total_plays = await ctx.db.fetchrow(query)
 
         query = "SELECT info->>'duration', plays FROM songs;"
         records = await ctx.db.fetch(query)
@@ -1751,7 +1751,7 @@ class Music(commands.Cog):
         duration_with_plays = ytdl.Song.parse_duration(total_with_plays)
 
         await ctx.send(
-            f"Music database contains **{count} songs** with a total of **{plays} plays**.\n"
+            f"Music database contains **{count} songs** with a total of **{total_plays} plays**.\n"
             f"That's **{duration}** of music cached...\n"
             f"...and **{duration_with_plays}** of music played!"
         )
