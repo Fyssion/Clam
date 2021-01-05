@@ -1776,23 +1776,55 @@ class Music(commands.Cog):
     @commands.is_owner()
     async def musicdb_search(self, ctx, *, song):
         """Search the database for songs"""
-        query = """SELECT id, title, plays, last_updated
+        query = """SELECT id, title, plays, last_updated, (info->>'duration')::DOUBLE PRECISION AS duration
                    FROM songs
                    ORDER BY similarity(title, $1) DESC
-                   LIMIT 10;
+                   LIMIT 20;
                 """
 
         records = await ctx.db.fetch(query, song)
 
+        if not records:
+            return await ctx.send("No matching songs found.")
+
         songs = []
-        for song_id, title, plays, last_updated in records:
+        for song_id, title, plays, last_updated, duration in records:
             formatted = human_time.human_timedelta(last_updated, brief=True, accuracy=1)
+            dur = ytdl.Song.timestamp_duration(round(duration))
             songs.append(
-                f"{title} # ID: {song_id} ({plays } plays) last updated {formatted}"
+                f"{title} # ID: {song_id} ({plays } plays) duration: {dur} last updated {formatted}"
             )
 
         pages = ctx.pages(songs, per_page=10, title=f"Results for '{song}'")
         await pages.start(ctx)
+
+    @musicdb.command(name="info", aliases=["show"])
+    @commands.is_owner()
+    async def musicdb_info(self, ctx, *, song):
+        """Similar to search, but it only shows the first result."""
+        try:
+            song = int(song)
+            condition = "id=$1"
+        except ValueError:
+            condition = "song_id=$1"
+
+        query = f"SELECT * FROM songs WHERE {condition} LIMIT 1;"
+        record = await ctx.db.fetchrow(query, song)
+
+        if not record:
+            query = """SELECT *
+                       FROM songs
+                       ORDER BY similarity(title, $1) DESC
+                       LIMIT 1;
+                    """
+            record = await ctx.db.fetchrow(query, song)
+
+            if not record:
+                return await ctx.send("No matching songs found.")
+
+        song = ytdl.Song.from_record(record, ctx)
+        em = music_player.Player.now_playing_embed(song, "Song Info", db_info=True)
+        await ctx.send(embed=em)
 
     @flags.add_flag("--delete-file", action="store_true")
     @musicdb.command(name="delete", aliases=["remove"], cls=NoUsageFlagCommand)

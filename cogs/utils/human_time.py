@@ -31,6 +31,7 @@ import pytz
 from dateutil.relativedelta import relativedelta
 from discord.ext import commands
 import re
+import humanize
 
 
 # Make a dict of all timezone abbreviations and their corresponding timezones
@@ -400,3 +401,9 @@ def human_timedelta(dt, *, source=None, accuracy=3, brief=False, suffix=True):
             return human_join(output, final="and") + suffix
         else:
             return " ".join(output) + suffix
+
+
+def human_fulltime(dt):
+    date = humanize.naturaldate(dt).capitalize()
+    timedelta = humanize.naturaltime(dt)
+    return f"{date} ({timedelta})"

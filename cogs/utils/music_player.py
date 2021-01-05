@@ -10,7 +10,7 @@ import traceback
 import sys
 import enum
 
-from . import stopwatch
+from . import stopwatch, human_time
 from .ytdl import Song
 
 
@@ -137,7 +137,8 @@ class Player:
     def has_started(self):
         return self.voice is not None and self.current is not None
 
-    def create_duration(self, current, total):
+    @staticmethod
+    def create_duration(current, total):
         decimal = current / total
         position = round(decimal * 30)
         bar = "`"
@@ -149,30 +150,40 @@ class Player:
         bar += "`"
         return bar
 
-    def now_playing_embed(self, title="Now playing", duration=None):
-        src = self.current
+    @staticmethod
+    def now_playing_embed(song, title="Now playing", *, duration=None, db_info=False):
         em = discord.Embed(
             title=title,
-            description=f"```css\n{src.title}\n```",
+            description=f"```css\n{song.title}\n```",
             color=discord.Color.green(),
         )
         if not duration:
-            em.add_field(name="Duration", value=src.duration)
+            em.add_field(name="Duration", value=song.duration)
         else:
             seconds = duration.total_seconds()
             formatted = Song.timestamp_duration(int(seconds))
-            bar = self.create_duration(seconds, src.total_seconds)
+            bar = Player.create_duration(seconds, song.total_seconds)
             em.add_field(
-                name="Duration", value=f"{formatted}/{src.duration} {bar}", inline=False
+                name="Duration",
+                value=f"{formatted}/{song.duration} {bar}",
+                inline=False,
             )
-        em.add_field(name="Requested by", value=src.requester.mention)
-        em.add_field(name="Uploader", value=f"[{src.uploader}]({src.uploader_url})")
-        em.add_field(name="URL", value=f"[Click]({src.url})")
-        em.set_thumbnail(url=src.thumbnail)
 
-        if self.current.database:
-            em.set_footer(text="Song cached in database. Last updated")
-            em.timestamp = self.current.last_updated
+        if not db_info:
+            em.add_field(name="Requested by", value=song.requester.mention)
+
+        em.add_field(name="Uploader", value=f"[{song.uploader}]({song.uploader_url})")
+        em.add_field(name="URL", value=f"[Click]({song.url})")
+        em.set_thumbnail(url=song.thumbnail)
+
+        if song.database:
+            em.set_footer(text=f"Song cached in database (ID: {song.db_id}). Last updated")
+            em.timestamp = song.last_updated
+
+            if db_info:
+                em.add_field(name="First cached", value=human_time.human_fulltime(song.registered_at))
+                em.add_field(name="Filename", value=f"`{song.filename}`")
+                em.add_field(name="Platform ID", value=song.id)
 
         return em
 

@@ -773,6 +773,10 @@ class Song:
         days, hours = divmod(hours, 24)
 
         duration = ""
+
+        if days > 0:
+            duration += f"{plural(days):day}, "
+
         if hours > 0:
             duration += f"{hours}:"
             minutes = f"{minutes:02d}"
