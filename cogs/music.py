@@ -1752,8 +1752,7 @@ class Music(commands.Cog):
 
         await ctx.send(
             f"Music database contains **{count} songs** with a total of **{total_plays} plays**.\n"
-            f"That's **{duration}** of music cached...\n"
-            f"...and **{duration_with_plays}** of music played!"
+            f"That's **{duration}** of music cached, and **{duration_with_plays}** of music played!"
         )
 
     @musicdb.command(name="list", aliases=["all"])
