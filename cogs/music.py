@@ -1733,21 +1733,27 @@ class Music(commands.Cog):
         query = "SELECT COUNT(*), SUM(plays) FROM songs;"
         count, plays = await ctx.db.fetchrow(query)
 
-        query = "SELECT info->>'duration' FROM songs;"
+        query = "SELECT info->>'duration', plays FROM songs;"
         records = await ctx.db.fetch(query)
 
         total = 0
+        total_with_plays = 0
 
-        for record in records:
-            total += float(record[0])
+        for duration, plays in records:
+            duration = float(duration)
+            total += duration
+            total_with_plays += duration * plays
 
         total = round(total)
+        total_with_plays = round(total_with_plays)
 
         duration = ytdl.Song.parse_duration(total)
+        duration_with_plays = ytdl.Song.parse_duration(total_with_plays)
 
         await ctx.send(
             f"Music database contains **{count} songs** with a total of **{plays} plays**.\n"
-            f"That's **{duration}** of music!"
+            f"That's **{duration}** of music cached...\n"
+            f"...and **{duration_with_plays}** of music played!"
         )
 
     @musicdb.command(name="list", aliases=["all"])
