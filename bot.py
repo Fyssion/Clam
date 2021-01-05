@@ -310,7 +310,7 @@ class Clam(commands.Bot):
                 return await ctx.send(
                     f"You have been permanently blacklisted for spamming.\n"
                     "If you wish appeal, please contact the owner of the bot, "
-                    "who can be found here: <https://www.discord.gg/wfCGTrp>"
+                    "who can be found here: <https://www.discord.gg/eHxvStNJb7>"
                 )
             await self.log_spammer(ctx, bucket, retry_after)
             return await ctx.send(

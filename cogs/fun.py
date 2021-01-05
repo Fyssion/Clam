@@ -587,7 +587,7 @@ class Fun(commands.Cog):
 
         utc_now = d.utcnow().replace(tzinfo=tz.UTC)
 
-        if utc_now.hour + utc_offset > 24:
+        if utc_now.hour + utc_offset > 23:
             hour = utc_now.hour - (24 - utc_offset)
             day = utc_now.day + 1
             month = utc_now.month
@@ -601,7 +601,7 @@ class Fun(commands.Cog):
                     year += 1
                 day = 1
 
-        elif utc_now.hour + utc_offset < 1:
+        elif utc_now.hour + utc_offset < 0:
             hour = utc_now.hour + (24 + utc_offset)
             day = utc_now.day - 1
             month = utc_now.month
@@ -611,6 +611,7 @@ class Fun(commands.Cog):
                 month = utc_now.month - 1
 
                 if month < 1:
+                    month = 12
                     year -= 1
                 day = calendar.monthrange(year, month)[1]
 
@@ -692,7 +693,8 @@ class Fun(commands.Cog):
         )
 
         codeblock = tabulate(percentages, codeblock=True, language="asciidoc")
-        await ctx.send(f"Time Progress Bars\n{codeblock}")
+        timezone = f"UTC{utc_offset}" if utc_offset != 0 else "UTC±0"
+        await ctx.send(f"Time Progress Bars (for {timezone})\n{codeblock}")
 
     @commands.command(hidden=True)
     async def re_text(self, ctx, *, text: Union[discord.Message, str]):
