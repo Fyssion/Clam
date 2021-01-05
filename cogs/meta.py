@@ -134,7 +134,7 @@ class ClamHelpCommand(commands.HelpCommand):
         settings = bot.get_cog("Settings")
 
         async def blocked(name):
-            if settings:
+            if settings and ctx.guild:
                 perms = await settings.get_cog_permissions(ctx.guild.id)
 
                 return perms.is_cog_blocked(name, ctx.channel.id)
