@@ -19,6 +19,7 @@ from cogs.utils.emojis import (
     GREEN_TICK,
     RED_TICK,
 )
+from cogs.utils.human_time import plural
 
 
 log = logging.getLogger("clam.music.ytdl")
@@ -745,18 +746,25 @@ class Song:
 
         duration_str = []
         if days > 0:
-            duration_str.append("{} days".format(days))
+            duration_str.append(f"{plural(days):day}")
         if hours > 0:
-            duration_str.append("{} hours".format(hours))
+            duration_str.append(f"{plural(hours):hour}")
         if minutes > 0:
-            duration_str.append("{} minutes".format(minutes))
+            duration_str.append(f"{plural(minutes):minute}")
         if seconds > 0:
-            duration_str.append("{} seconds".format(seconds))
+            duration_str.append(f"{plural(seconds):second}")
 
         if len(duration_str) == 0:
             return Song.timestamp_duration(duration)
 
-        return ", ".join(duration_str)
+        if len(duration_str) == 1:
+            return duration_str[0]
+
+        elif len(duration_str) == 2:
+            return " and ".join(duration_str)
+
+        else:
+            return ", ".join(duration_str[:-1]) + f", and {duration_str[-1]}"
 
     @staticmethod
     def timestamp_duration(duration: int):
