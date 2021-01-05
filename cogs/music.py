@@ -336,7 +336,7 @@ class Music(commands.Cog):
             NoPlayerError,
             NotListeningError,
             CannotJoinVoice,
-            AlreadyActivePlayer
+            AlreadyActivePlayer,
         )
 
         if isinstance(error, overridden_errors):
@@ -692,38 +692,54 @@ class Music(commands.Cog):
         log.info(f"{ctx.guild}: Connecting to {destination}...")
 
         if self.is_bot_borked(ctx.guild):
-            log.info(f"{ctx.guild}: Bot is borked! Trying to reset internal voice client dict....")
+            log.info(
+                f"{ctx.guild}: Bot is borked! Trying to reset internal voice client dict...."
+            )
             # scary!
             self.bot._connection._voice_clients.pop(ctx.guild.id)
 
         try:
             if ctx.player.voice:
-                log.info(f"{ctx.guild}: Player found and is already in a voice channel, moving to {destination}...")
+                log.info(
+                    f"{ctx.guild}: Player found and is already in a voice channel, moving to {destination}..."
+                )
                 await ctx.player.voice.move_to(destination)
                 # await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
 
             elif ctx.guild.voice_client:
-                log.info(f"{ctx.guild}: Player not found but bot is already in a voice channel, moving to {destination}...")
+                log.info(
+                    f"{ctx.guild}: Player not found but bot is already in a voice channel, moving to {destination}..."
+                )
                 await ctx.guild.voice_client.move_to(destination)
                 ctx.player.voice = ctx.guild.voice_client
                 # await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
 
             else:
-                log.info(f"{ctx.guild}: Bot not in voice channel, attempting to connect to {destination}...")
+                log.info(
+                    f"{ctx.guild}: Bot not in voice channel, attempting to connect to {destination}..."
+                )
                 ctx.player.voice = await destination.connect()
                 # await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
 
         except discord.ClientException:
             log.info(f"{ctx.guild}: Connection attempt to {destination} failed")
             if ctx.guild.me.guild_permissions.move_members:
-                log.info(f"{ctx.guild}: I have permissions to move myself, attemping to do move to {destination}")
+                log.info(
+                    f"{ctx.guild}: I have permissions to move myself, attemping to do move to {destination}"
+                )
                 await ctx.guild.me.move_to(destination)
                 # await ctx.guild.change_voice_state(channel=destination, self_deaf=True)
-                log.info(f"{ctx.guild}: Looks like I moved to {destination} successfully")
+                log.info(
+                    f"{ctx.guild}: Looks like I moved to {destination} successfully"
+                )
                 return
 
-            log.info(f"{ctx.guild}: I don't have permissions to move myself, sending fail message...")
-            await ctx.send("Failed to connect to voice. Try re-running the command. If that fails, contact Fyssion.")
+            log.info(
+                f"{ctx.guild}: I don't have permissions to move myself, sending fail message..."
+            )
+            await ctx.send(
+                "Failed to connect to voice. Try re-running the command. If that fails, contact Fyssion."
+            )
             return False
 
         log.info(f"{ctx.guild}: Looks like I connected to {destination} successfully")
@@ -870,7 +886,9 @@ class Music(commands.Cog):
         ctx.player.voice.volume = volume / 100
         ctx.player.current.source.volume = volume / 100
 
-        await ctx.send(f"**{self.get_volume_emoji(volume)} Volume set to:** `{volume}%`")
+        await ctx.send(
+            f"**{self.get_volume_emoji(volume)} Volume set to:** `{volume}%`"
+        )
 
     @commands.command()
     @is_dj(only_member_check=True)
@@ -882,7 +900,9 @@ class Music(commands.Cog):
 
         total_seconds = ctx.player.current.total_seconds
         if position >= total_seconds:
-            raise commands.BadArgument(f"Position is greater than song length ({position}/{total_seconds}).")
+            raise commands.BadArgument(
+                f"Position is greater than song length ({position}/{total_seconds})."
+            )
 
         if position < 0:
             raise BadSongPosition()
@@ -901,14 +921,18 @@ class Music(commands.Cog):
 
         ctx.player.startover = True
 
-        if not ctx.player.loop and not (ctx.player.loop_queue and len(ctx.player.songs) == 1):
+        if not ctx.player.loop and not (
+            ctx.player.loop_queue and len(ctx.player.songs) == 1
+        ):
             ctx.player.songs._queue.appendleft(song)
 
         ctx.player.skip()
 
         async def set_duration():
             await asyncio.sleep(0.5)
-            ctx.player.duration.start_time = datetime.datetime.now() - datetime.timedelta(seconds=position)
+            ctx.player.duration.start_time = (
+                datetime.datetime.now() - datetime.timedelta(seconds=position)
+            )
 
         self.bot.loop.create_task(set_duration())
 
@@ -925,11 +949,13 @@ class Music(commands.Cog):
 
         if ctx.player.voice.is_paused():
             em = ctx.player.now_playing_embed(
-                "Currently Paused", ctx.player.duration.get_time()
+                ctx.player.current, "Currently Paused", ctx.player.duration.get_time()
             )
 
         else:
-            em = ctx.player.now_playing_embed(duration=ctx.player.duration.get_time())
+            em = ctx.player.now_playing_embed(
+                ctx.player.current, duration=ctx.player.duration.get_time()
+            )
 
         await ctx.send(embed=em)
 
@@ -1207,7 +1233,9 @@ class Music(commands.Cog):
 
             ctx.player.startover = True
 
-            if not ctx.player.loop and not (ctx.player.loop_queue and len(ctx.player.songs) == 1):
+            if not ctx.player.loop and not (
+                ctx.player.loop_queue and len(ctx.player.songs) == 1
+            ):
                 ctx.player.songs._queue.appendleft(song)
 
             ctx.player.skip()
@@ -1973,7 +2001,9 @@ class Music(commands.Cog):
 
         formatted = []
         for (i, (title, duration)) in enumerate(records):
-            formatted.append(f"{places[i]} **{title}** ({ytdl.Song.timestamp_duration(round(duration))})")
+            formatted.append(
+                f"{places[i]} **{title}** ({ytdl.Song.timestamp_duration(round(duration))})"
+            )
 
         value = "\n".join(formatted) or "None"
         em.add_field(name=":clock10: Longest Songs", value=value, inline=False)
