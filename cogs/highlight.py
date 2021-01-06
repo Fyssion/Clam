@@ -119,6 +119,9 @@ class Highlight(commands.Cog):
         # channel: {member: task}
         self.typing_users = {}
 
+    async def cog_check(self, ctx):
+        return await commands.guild_only().predicate(ctx)
+
     async def prepare_cache(self):
         while True:
             if hasattr(self.bot, "pool") and self.bot.pool:
