@@ -1249,6 +1249,26 @@ class Music(commands.Cog):
 
         await self.votes(ctx, "startover", startover_song)
 
+    async def check_song_duration(self, ctx, song):
+        if song.total_seconds < 10800:  # 3 hours
+            return
+
+        try:
+            record = await ctx.db.fetchrow("SELECT * FROM songs WHERE title=$1 AND song_id=$2;", song.title, song.id)
+            if record:
+                song = ytdl.Song.from_record(record, ctx)
+
+            partial = functools.partial(self.get_file_size, song.filename)
+            size = await self.bot.loop.run_in_executor(None, partial)
+            filesize = humanize.naturalsize(size, binary=True)
+
+            em = music_player.Player.now_playing_embed(song, "3+ Hour Song Downloaded", db_info=True, filesize=filesize)
+            em.add_field(name="Context", value=f"[Jump to message]({ctx.message.jump_url})")
+            await ctx.console.send(embed=em)
+
+        except Exception:
+            pass
+
     async def fetch_yt_playlist(self, ctx, url):
         yt_emoji = "<:youtube:781633321255567361>"
 

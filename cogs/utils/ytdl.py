@@ -586,11 +586,17 @@ class Song:
                             "Could not insert song alias, there is already an identical one."
                         )
 
-            return cls(
+            song = cls(
                 ctx,
                 data=info,
                 filename=filename,
             )
+
+            music = ctx.bot.get_cog("Music")
+            if music:
+                ctx.bot.loop.create_task(music.check_song_duration(ctx, song))
+
+            return song
 
     @classmethod
     async def get_playlist(
@@ -707,6 +713,11 @@ class Song:
                     data=info,
                     filename=filename,
                 )
+
+                music = ctx.bot.get_cog("Music")
+                if music:
+                    ctx.bot.loop.create_task(music.check_song_duration(ctx, source))
+
                 playlist.append(source)
 
             progress_message.change_label(1, text=f"Getting songs ({i+1}/{length})")
