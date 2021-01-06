@@ -545,6 +545,23 @@ class Highlight(commands.Cog):
 
         await ctx.delete_send(ctx.tick(True, "Transferred words"))
 
+    @highlight.command(name="clear")
+    async def highlight_clear(self, ctx):
+        """Clears all your highlight words in this server"""
+        self.delete_timer(ctx.message)
+
+        query = """DELETE FROM highlight_words
+                   WHERE guild_id=$1 AND user_id=$2
+                   RETURNING id;
+                """
+
+        records = await ctx.db.fetch(query, ctx.guild.id, ctx.author.id)
+
+        if not records:
+            return await ctx.send("You have no highlight words in this server.", delete_after=5.0)
+
+        await ctx.send(ctx.tick(True, f"Deleted {human_time.plural(len(records)):highlight word|highlight words}."))
+
     # CONFIG SECTION
 
     async def cog_command_error(self, ctx, error):
