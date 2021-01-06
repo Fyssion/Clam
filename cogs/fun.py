@@ -393,7 +393,7 @@ class Fun(commands.Cog):
 
     @commands.group(
         description=("Roll a die or two"),
-        aliases=["diceroll"],
+        aliases=["diceroll", "rolldie"],
         invoke_without_command=True,
     )
     async def rolldice(self, ctx, dice: int = 1, sides: int = 6):
