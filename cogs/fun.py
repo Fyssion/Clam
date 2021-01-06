@@ -389,7 +389,7 @@ class Fun(commands.Cog):
     @commands.command(description="Flip a coin.")
     async def flipcoin(self, ctx):
         result = random.choice(["heads", "tails"])
-        await ctx.send(f"You flipped a **{result}**.")
+        await ctx.send(f"You flipped **{result}**.")
 
     @commands.group(
         description=("Roll a die or two"),
