@@ -19,7 +19,7 @@ import dateparser
 import asyncio
 
 from .utils import colors, emojis, human_time, checks
-from .utils.human_time import plural
+from .utils.human_time import plural, human_join
 
 
 def snowstamp(snowflake):
@@ -943,7 +943,15 @@ class Tools(commands.Cog):
         else:
             name = str(member)
 
-        em.set_author(name=name, icon_url=member.avatar_url)
+        format_names = ["png", "jpeg", "webp"]
+        if member.is_avatar_animated():
+            format_names.append("gif")
+
+        formats = [f"[{f.upper()}]({member.avatar_url_as(format=f)})" for f in format_names]
+
+        em.description = f"View as {human_join(formats)}"
+
+        em.set_author(name=name, icon_url=member.avatar_url_as(static_format="png"))
         em.set_image(url=member.avatar_url)
 
         await ctx.send(embed=em)
