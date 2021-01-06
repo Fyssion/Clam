@@ -151,7 +151,7 @@ class Player:
         return bar
 
     @staticmethod
-    def now_playing_embed(song, title="Now playing", *, duration=None, db_info=False):
+    def now_playing_embed(song, title="Now playing", *, duration=None, db_info=False, filesize=None):
         em = discord.Embed(
             title=title,
             description=f"```css\n{song.title}\n```",
@@ -184,6 +184,9 @@ class Player:
                 em.add_field(name="First cached", value=human_time.human_fulltime(song.registered_at))
                 em.add_field(name="Filename", value=f"`{song.filename}`")
                 em.add_field(name="Platform ID", value=song.id)
+
+                if filesize:
+                    em.add_field(name="File size", value=filesize)
 
         return em
 

@@ -9,12 +9,14 @@ from urllib.parse import urlparse
 import logging
 import sys
 import os
+import os.path
 import traceback
 import youtube_dl
 import datetime
 import importlib
 import enum
 import typing
+import humanize
 
 from .utils import db, ytdl, music_player, colors, human_time
 from .utils.emojis import GREEN_TICK, RED_TICK, LOADING
@@ -1754,6 +1756,12 @@ class Music(commands.Cog):
 
     # music db management commands
 
+    def get_cache_size(self):
+        return sum(os.path.getsize("cache/" + f) for f in os.listdir("cache") if os.path.isfile("cache/" + f))
+
+    def get_file_size(self, fp):
+        return os.path.getsize(fp)
+
     @commands.group(aliases=["mdb"], invoke_without_command=True)
     @commands.is_owner()
     async def musicdb(self, ctx):
@@ -1778,9 +1786,12 @@ class Music(commands.Cog):
         duration = ytdl.Song.parse_duration(total)
         duration_with_plays = ytdl.Song.parse_duration(total_with_plays)
 
+        cache_size = await self.bot.loop.run_in_executor(None, self.get_cache_size)
+
         await ctx.send(
             f"Music database contains **{count} songs** with a total of **{total_plays} plays**.\n"
-            f"That's **{duration}** of music cached, and **{duration_with_plays}** of music played!"
+            f"That's **{duration}** of music cached, and **{duration_with_plays}** of music played!\n"
+            f"The total size of the cache folder is {humanize.naturalsize(cache_size, binary=True)}."
         )
 
     @musicdb.command(name="list", aliases=["all"])
@@ -1851,7 +1862,12 @@ class Music(commands.Cog):
                 return await ctx.send("No matching songs found.")
 
         song = ytdl.Song.from_record(record, ctx)
-        em = music_player.Player.now_playing_embed(song, "Song Info", db_info=True)
+
+        partial = functools.partial(self.get_file_size, song.filename)
+        size = await self.bot.loop.run_in_executor(None, partial)
+        filesize = humanize.naturalsize(size, binary=True)
+
+        em = music_player.Player.now_playing_embed(song, "Song Info", db_info=True, filesize=filesize)
         await ctx.send(embed=em)
 
     @flags.add_flag("--delete-file", action="store_true")
