@@ -24,7 +24,7 @@ from bs4 import BeautifulSoup
 from .utils import aiopypi, aioxkcd, fuzzy, colors
 from .utils.menus import MenuPages
 from .utils.utils import SphinxObjectFileReader
-from .utils.human_time import plural
+from .utils.formats import plural
 
 
 class DocsSource(menus.ListPageSource):

@@ -18,11 +18,12 @@ import os
 import itertools
 import json
 
-from .utils.utils import get_lines_of_code, TabularData
-from .utils import db, colors, human_time
+from .utils.utils import get_lines_of_code
+from .utils import db, colors, humantime
 from .utils.emojis import TEXT_CHANNEL, VOICE_CHANNEL
 from .utils.menus import MenuPages
 from .utils.flags import NoUsageFlagCommand
+from .utils.formats import plural, TabularData
 
 
 log = logging.getLogger("clam.stats")
@@ -158,7 +159,7 @@ class Stats(commands.Cog):
                 timestamp=count[1] or datetime.utcnow(),
             )
 
-            em.description = f"There have been **{count[0]} commands used**."
+            em.description = f"There have been **{plural(count[0], pretty=True):command} used**."
             em.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
             em.set_footer(text=f"Tracking command usage since")
 
@@ -175,7 +176,7 @@ class Stats(commands.Cog):
 
             formatted = []
             for (index, (command, uses)) in enumerate(records):
-                formatted.append(f"{places[index]} **{command}** ({uses} uses)")
+                formatted.append(f"{places[index]} **{command}** ({plural(uses, pretty=True):use})")
 
             value = "\n".join(formatted) or "None"
 
@@ -195,7 +196,7 @@ class Stats(commands.Cog):
 
             value = []
             for (index, (command, uses)) in enumerate(records):
-                value.append(f"{places[index]} **{command}** ({uses} uses)")
+                value.append(f"{places[index]} **{command}** ({plural(uses, pretty=True):use})")
 
             em.add_field(
                 name=":clock1: Top Commands Today",
@@ -218,7 +219,7 @@ class Stats(commands.Cog):
             for (index, (author_id, uses)) in enumerate(records):
                 author = ctx.guild.get_member(author_id)
                 authorf = str(author) if author else f"<@!{author_id}>"
-                value.append(f"{places[index]} **{authorf}** ({uses} uses)")
+                value.append(f"{places[index]} **{authorf}** ({plural(uses, pretty=True):use})")
 
             em.add_field(
                 name=":medal: Top Command Users",
@@ -241,7 +242,7 @@ class Stats(commands.Cog):
             for (index, (author_id, uses)) in enumerate(records):
                 author = ctx.guild.get_member(author_id)
                 authorf = str(author) if author else f"<@!{author_id}>"
-                value.append(f"{places[index]} **{authorf}** ({uses} uses)")
+                value.append(f"{places[index]} **{authorf}** ({plural(uses, pretty=True):use})")
 
             em.add_field(
                 name=":clock1: Top Command Users Today",
@@ -260,7 +261,7 @@ class Stats(commands.Cog):
 
             em = discord.Embed(
                 title=f"Member Command Usage Stats",
-                description=f"Total commands used: {count[0]}",
+                description=f"There have been **{plural(count[0], pretty=True):command} used**.",
                 color=colors.PRIMARY,
                 timestamp=count[1] or datetime.utcnow(),
             )
@@ -280,7 +281,7 @@ class Stats(commands.Cog):
 
             value = []
             for (index, (name, uses)) in enumerate(records):
-                value.append(f"{places[index]} **{name}** ({uses} uses)")
+                value.append(f"{places[index]} **{name}** ({plural(uses, pretty=True):use})")
 
             em.add_field(
                 name=":trophy: Top Command Uses",
@@ -300,7 +301,7 @@ class Stats(commands.Cog):
 
             value = []
             for (index, (name, uses)) in enumerate(records):
-                value.append(f"{places[index]} **{name}** ({uses} uses)")
+                value.append(f"{places[index]} **{name}** ({plural(uses, pretty=True):use})")
 
             em.add_field(
                 name=":clock1: Top Command Uses Today",
@@ -318,7 +319,7 @@ class Stats(commands.Cog):
 
         em = discord.Embed(
             title="Global Command Usage Stats",
-            description=f"Total commands used: **`{count[0]}`**",
+            description=f"There have been **{plural(count[0], pretty=True):command} used**.",
             timestamp=count[1] or datetime.utcnow(),
             color=colors.PRIMARY,
         ).set_footer(text="Tracking command usage since")
@@ -341,7 +342,7 @@ class Stats(commands.Cog):
 
         value = []
         for i, (name, count) in enumerate(records):
-            value.append(f"{places[i]} **{name}** ({count} uses)")
+            value.append(f"{places[i]} **{name}** ({plural(count, pretty=True):use})")
 
         em.add_field(name="Top Commands", value="\n".join(value) or "None")
 
@@ -356,7 +357,7 @@ class Stats(commands.Cog):
         value = []
         for i, (guild_id, count) in enumerate(records):
             guild = self.bot.get_guild(guild_id) or guild_id
-            value.append(f"{places[i]} **{guild}** ({count} uses)")
+            value.append(f"{places[i]} **{guild}** ({plural(count, pretty=True):use})")
 
         em.add_field(name="Top Guilds", value="\n".join(value) or "None")
 
@@ -371,7 +372,7 @@ class Stats(commands.Cog):
         value = []
         for i, (author_id, count) in enumerate(records):
             author = self.bot.get_user(author_id) or author_id
-            value.append(f"{places[i]} **{author}** ({count} uses)")
+            value.append(f"{places[i]} **{author}** ({plural(count, pretty=True):use})")
 
         em.add_field(name="Top Users", value="\n".join(value) or "None")
 
@@ -388,7 +389,7 @@ class Stats(commands.Cog):
 
         em = discord.Embed(
             title="Global Command Usage Stats For Today",
-            description=f"Total commands used today: **`{count[0]}`**",
+            description=f"There have been **{plural(count[0], pretty=True):command} used today**.",
             color=colors.PRIMARY,
         )
 
@@ -411,7 +412,7 @@ class Stats(commands.Cog):
 
         value = []
         for i, (name, count) in enumerate(records):
-            value.append(f"{places[i]} **{name}** ({count} uses)")
+            value.append(f"{places[i]} **{name}** ({plural(count, pretty=True):use})")
 
         em.add_field(name="Top Commands", value="\n".join(value) or "None")
 
@@ -427,7 +428,7 @@ class Stats(commands.Cog):
         value = []
         for i, (guild_id, count) in enumerate(records):
             guild = self.bot.get_guild(guild_id) or guild_id
-            value.append(f"{places[i]} **{guild}** ({count} uses)")
+            value.append(f"{places[i]} **{guild}** ({plural(count, pretty=True):use})")
 
         em.add_field(name="Top Guilds", value="\n".join(value) or "None")
 
@@ -443,7 +444,7 @@ class Stats(commands.Cog):
         value = []
         for i, (author_id, count) in enumerate(records):
             author = self.bot.get_user(author_id) or author_id
-            value.append(f"{places[i]} **{author}** ({count} uses)")
+            value.append(f"{places[i]} **{author}** ({plural(count, pretty=True):use})")
 
         em.add_field(name="Top Users", value="\n".join(value) or "None")
 
@@ -471,7 +472,7 @@ class Stats(commands.Cog):
             timestamp=count[1] or datetime.utcnow(),
         )
 
-        em.description = f"There have been **{count[0]} commands used**."
+        em.description = f"There have been **{plural(count[0], pretty=True):command} used**."
         em.set_author(name=guild.name, icon_url=guild.icon_url)
         em.set_footer(text=f"Tracking command usage since")
 
@@ -488,7 +489,7 @@ class Stats(commands.Cog):
 
         formatted = []
         for (index, (command, uses)) in enumerate(records):
-            formatted.append(f"{places[index]} **{command}** ({uses} uses)")
+            formatted.append(f"{places[index]} **{command}** ({plural(uses, pretty=True):use})")
 
         value = "\n".join(formatted) or "None"
 
@@ -508,7 +509,7 @@ class Stats(commands.Cog):
 
         value = []
         for (index, (command, uses)) in enumerate(records):
-            value.append(f"{places[index]} **{command}** ({uses} uses)")
+            value.append(f"{places[index]} **{command}** ({plural(uses, pretty=True):use})")
 
         em.add_field(
             name=":clock1: Top Commands Today",
@@ -531,7 +532,7 @@ class Stats(commands.Cog):
         for (index, (author_id, uses)) in enumerate(records):
             author = guild.get_member(author_id)
             authorf = str(author) if author else f"<@!{author_id}>"
-            value.append(f"{places[index]} **{authorf}** ({uses} uses)")
+            value.append(f"{places[index]} **{authorf}** ({plural(uses, pretty=True):use})")
 
         em.add_field(
             name=":medal: Top Command Users",
@@ -554,7 +555,7 @@ class Stats(commands.Cog):
         for (index, (author_id, uses)) in enumerate(records):
             author = guild.get_member(author_id)
             authorf = str(author) if author else f"<@!{author_id}>"
-            value.append(f"{places[index]} **{authorf}** ({uses} uses)")
+            value.append(f"{places[index]} **{authorf}** ({plural(uses, pretty=True):use})")
 
         em.add_field(
             name=":clock1: Top Command Users Today",
@@ -569,7 +570,7 @@ class Stats(commands.Cog):
         short_sha2 = commit.name_rev[0:6]
 
         # [`hash`](url) message (offset)
-        offset = human_time.human_timedelta(
+        offset = humantime.timedelta(
             commit.committed_datetime.astimezone(timezone.utc).replace(tzinfo=None),
             accuracy=1,
         )
@@ -604,8 +605,8 @@ class Stats(commands.Cog):
         dev = self.bot.get_user(224513210471022592)
         up = datetime.now() - self.bot.startup_time
         em.add_field(name=":gear: Creator", value=str(dev))
-        em.add_field(name=":adult: User Count", value=len(self.bot.users))
-        em.add_field(name=":family: Server Count", value=len(self.bot.guilds))
+        em.add_field(name=":adult: User Count", value=f"{len(self.bot.users):,}")
+        em.add_field(name=":family: Server Count", value=f"{len(self.bot.guilds):,}")
 
         channels = 0
         text_channels = 0
@@ -682,7 +683,7 @@ class Stats(commands.Cog):
     )
     async def uptime(self, ctx):
         up = datetime.now() - self.bot.startup_time
-        uptime = human_time.human_timedelta(
+        uptime = humantime.timedelta(
             self.bot.startup_time, source=datetime.now()
         )
         await ctx.send(f"<:online:649270802088460299> I booted up **{uptime}**")

@@ -33,7 +33,7 @@ import asyncpg
 import datetime
 import textwrap
 
-from .utils import db, human_time, colors
+from .utils import db, humantime, colors
 from .utils.menus import MenuPages
 
 
@@ -63,7 +63,7 @@ class TimerPageSource(menus.ListPageSource):
         for i, (_id, expires, message) in enumerate(entries, start=offset):
             shorten = textwrap.shorten(message, width=512)
             em.add_field(
-                name=f"`ID: {_id}` In {human_time.human_timedelta(expires)}",
+                name=f"`ID: {_id}` In {humantime.timedelta(expires)}",
                 value=shorten or "No message",
                 inline=False,
             )
@@ -106,7 +106,7 @@ class Timer:
 
     @property
     def human_delta(self):
-        return human_time.human_timedelta(self.created_at)
+        return humantime.timedelta(self.created_at)
 
     def __repr__(self):
         return f"<Timer created={self.created_at} expires={self.expires} event={self.event}>"
@@ -259,7 +259,7 @@ class Timers(commands.Cog):
         self,
         ctx,
         *,
-        when: human_time.UserFriendlyTime(commands.clean_content, default=""),
+        when: humantime.UserFriendlyTime(commands.clean_content, default=""),
     ):
         """Create a timer that will notify you when completed
 
@@ -285,7 +285,7 @@ class Timers(commands.Cog):
             created=ctx.message.created_at,
             message_id=ctx.message.id,
         )
-        delta = human_time.human_timedelta(when.dt, source=timer.created_at)
+        delta = humantime.timedelta(when.dt, source=timer.created_at)
         friendly_message = f"message `{when.arg}`" if when.arg else "no message"
         await ctx.send(
             f"{ctx.tick(True)} Set a timer for **`{delta}`** with {friendly_message}"

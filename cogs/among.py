@@ -3,7 +3,7 @@ import discord
 
 import asyncpg
 
-from .utils import db, human_time, cache
+from .utils import db, humantime, cache
 
 
 class AmongGameTable(db.Table, table_name="among_games"):
@@ -102,7 +102,7 @@ class AmongUs(commands.Cog, name="Among Us"):
 
         await ctx.send(
             f"Among Us code: `{code}` (region: `{code.region}`)\n"
-            f"Set by `{formatted}` {human_time.human_timedelta(code.set_at, accuracy=1)}."
+            f"Set by `{formatted}` {humantime.timedelta(code.set_at, accuracy=1)}."
         )
 
     @among_code.command(
@@ -129,7 +129,7 @@ class AmongUs(commands.Cog, name="Among Us"):
                     return await ctx.send(
                         (
                             f"{ctx.tick(False)} That code and region have already been set by "
-                            f"`{formatted}` {human_time.human_timedelta(code.set_at, accuracy=1)}.\n"
+                            f"`{formatted}` {humantime.timedelta(code.set_at, accuracy=1)}.\n"
                             f"You can clear the current code with `{ctx.guild_prefix}among code clear`"
                         ),
                     )

@@ -18,7 +18,7 @@ from jishaku.models import copy_context_with
 import asyncpg
 import logging
 
-from .utils import db, human_time, checks, cache
+from .utils import db, humantime, checks, cache
 from .utils.emojis import GREEN_TICK, RED_TICK, LOADING
 from .utils.checks import has_manage_guild
 from .utils.utils import is_int
@@ -492,7 +492,7 @@ class Moderation(commands.Cog):
         self,
         ctx,
         user: typing.Union[discord.Member, discord.User, int],
-        duration: human_time.FutureTime,
+        duration: humantime.FutureTime,
         *,
         reason=None,
     ):
@@ -522,7 +522,7 @@ class Moderation(commands.Cog):
 
         to_be_banned = discord.Object(id=user_id)
 
-        friendly_time = human_time.human_timedelta(duration.dt)
+        friendly_time = humantime.timedelta(duration.dt)
         reason = f"Tempban by {ctx.author} (ID: {ctx.author.id}) for {friendly_time} with reason: {reason}"
 
         try:
@@ -540,7 +540,7 @@ class Moderation(commands.Cog):
             )
             raise
 
-        friendly_time = human_time.human_timedelta(duration.dt, source=timer.created_at)
+        friendly_time = humantime.timedelta(duration.dt, source=timer.created_at)
         await ctx.send(
             f"{ctx.tick(True)} Banned user {human_friendly} for `{friendly_time}`."
         )
@@ -734,7 +734,7 @@ class Moderation(commands.Cog):
         self,
         ctx,
         member: discord.Member,
-        duration: human_time.FutureTime,
+        duration: humantime.FutureTime,
         *,
         reason=None,
     ):
@@ -754,7 +754,7 @@ class Moderation(commands.Cog):
 
         execute_db = False if member.id in settings.muted_members else True
 
-        friendly_time = human_time.human_timedelta(
+        friendly_time = humantime.timedelta(
             duration.dt, source=ctx.message.created_at
         )
         reason = f"Tempmute by {ctx.author} (ID: {ctx.author.id}) for {friendly_time} with reason: {reason}"
@@ -810,7 +810,7 @@ class Moderation(commands.Cog):
 
     @commands.command()
     @commands.guild_only()
-    async def selfmute(self, ctx, duration: human_time.ShortTime, *, reason=None):
+    async def selfmute(self, ctx, duration: humantime.ShortTime, *, reason=None):
         timers = self.bot.get_cog("Timers")
         if not timers:
             return await ctx.send(
@@ -824,7 +824,7 @@ class Moderation(commands.Cog):
         if duration.dt < (created_at + datetime.timedelta(minutes=5)):
             raise commands.BadArgument("Duration cannot be less than 5 minutes.")
 
-        human_friendly = human_time.human_timedelta(
+        human_friendly = humantime.timedelta(
             duration.dt, source=ctx.message.created_at
         )
         confirm = await ctx.confirm(
@@ -1792,7 +1792,7 @@ class Moderation(commands.Cog):
         e.add_field(name="Joined", value=member.joined_at)
         e.add_field(
             name="Created",
-            value=human_time.human_timedelta(member.created_at),
+            value=humantime.timedelta(member.created_at),
             inline=False,
         )
 

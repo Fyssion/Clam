@@ -28,7 +28,7 @@ DEALINGS IN THE SOFTWARE.
 
 from discord.ext import commands, tasks, menus
 from .utils import checks, db, cache
-from .utils.human_time import plural, human_join
+from .utils.formats import plural, human_join
 from collections import Counter, defaultdict
 
 import discord

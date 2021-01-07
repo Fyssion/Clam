@@ -16,10 +16,9 @@ import re
 import os
 from jishaku.codeblocks import codeblock_converter
 
-from .utils.utils import TabularData
 from .utils.menus import MenuPages
-from .utils.human_time import plural
-from .utils import colors, human_time, aiopypi
+from .utils.formats import plural, TabularData
+from .utils import colors, humantime, aiopypi
 
 
 CLAM_DMS_CATEGORY = 714981398540451841
@@ -297,7 +296,7 @@ class Admin(commands.Cog):
 
     @commands.command(description="Temporarily blacklist a user", aliases=["tempblock"])
     async def tempblacklist(
-        self, ctx, user: discord.User, duration: human_time.FutureTime
+        self, ctx, user: discord.User, duration: humantime.FutureTime
     ):
         timers = self.bot.get_cog("Timers")
         if not timers:
@@ -313,7 +312,7 @@ class Admin(commands.Cog):
 
         timer = await timers.create_timer(duration.dt, "tempblacklist", user.id)
 
-        friendly_time = human_time.human_timedelta(
+        friendly_time = humantime.timedelta(
             duration.dt, source=ctx.message.created_at
         )
         await ctx.send(
@@ -339,7 +338,7 @@ class Admin(commands.Cog):
                 f"Removed tempblacklisted user **`{user}`** from the blacklist."
             )
 
-        human_friendly += f"\nOriginally tempblacklisted {human_time.human_timedelta(timer.created_at)}."
+        human_friendly += f"\nOriginally tempblacklisted {humantime.timedelta(timer.created_at)}."
 
         em = discord.Embed(
             title="Tempblacklist Expiration",
@@ -350,7 +349,7 @@ class Admin(commands.Cog):
         em.add_field(name="User", value=value, inline=False)
         em.add_field(
             name="Originally tempblacklisted",
-            value=human_time.human_timedelta(timer.created_at),
+            value=humantime.timedelta(timer.created_at),
         )
         em.set_footer(text="Blacklist date")
 

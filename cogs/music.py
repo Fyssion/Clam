@@ -18,10 +18,10 @@ import enum
 import typing
 import humanize
 
-from .utils import db, ytdl, music_player, colors, human_time
+from .utils import db, ytdl, music_player, colors, humantime
 from .utils.emojis import GREEN_TICK, RED_TICK, LOADING
 from .utils.menus import UpdatingMessage
-from .utils.human_time import plural
+from .utils.formats import plural
 from .utils.flags import NoUsageFlagCommand
 
 
@@ -188,7 +188,7 @@ class SongPosition(commands.Converter):
 
         # try this as a blanket
         try:
-            st = await human_time.ShortTime.convert(ctx, arg)
+            st = await humantime.ShortTime.convert(ctx, arg)
         except commands.BadArgument:
             pass
         else:
@@ -1823,7 +1823,7 @@ class Music(commands.Cog):
 
         songs = []
         for song_id, title, plays, last_updated in records:
-            formatted = human_time.human_timedelta(last_updated, brief=True, accuracy=1)
+            formatted = humantime.timedelta(last_updated, brief=True, accuracy=1)
             songs.append(
                 f"{title} # ID: {song_id} ({plays } plays) last updated {formatted}"
             )
@@ -1848,7 +1848,7 @@ class Music(commands.Cog):
 
         songs = []
         for song_id, title, plays, last_updated, duration in records:
-            formatted = human_time.human_timedelta(last_updated, brief=True, accuracy=1)
+            formatted = humantime.timedelta(last_updated, brief=True, accuracy=1)
             dur = ytdl.Song.timestamp_duration(round(duration))
             songs.append(
                 f"{title} # ID: {song_id} ({plays } plays) duration: {dur} last updated {formatted}"

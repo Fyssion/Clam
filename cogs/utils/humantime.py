@@ -33,6 +33,8 @@ from discord.ext import commands
 import re
 import humanize
 
+from .formats import human_join, plural
+
 
 # Make a dict of all timezone abbreviations and their corresponding timezones
 
@@ -102,33 +104,6 @@ def tz_name(timezone, country_code=None):
                 set_zones.add(name)
 
     return min(set_zones, key=len)
-
-
-class plural:
-    def __init__(self, value):
-        self.value = value
-
-    def __format__(self, format_spec):
-        v = self.value
-        singular, sep, plural = format_spec.partition("|")
-        plural = plural or f"{singular}s"
-        if abs(v) != 1:
-            return f"{v} {plural}"
-        return f"{v} {singular}"
-
-
-def human_join(seq, delim=", ", final="or"):
-    size = len(seq)
-    if size == 0:
-        return ""
-
-    if size == 1:
-        return seq[0]
-
-    if size == 2:
-        return f"{seq[0]} {final} {seq[1]}"
-
-    return delim.join(seq[:-1]) + f", {final} {seq[-1]}"
 
 
 # Monkey patch mins and secs into the units
@@ -341,7 +316,7 @@ class UserFriendlyTime(commands.Converter):
             raise
 
 
-def human_timedelta(dt, *, source=None, accuracy=3, brief=False, suffix=True):
+def timedelta(dt, *, source=None, accuracy=3, brief=False, suffix=True):
     now = source or datetime.datetime.utcnow()
     # Microsecond free zone
     now = now.replace(microsecond=0)
@@ -403,7 +378,7 @@ def human_timedelta(dt, *, source=None, accuracy=3, brief=False, suffix=True):
             return " ".join(output) + suffix
 
 
-def human_fulltime(dt):
+def fulltime(dt):
     date = humanize.naturaldate(dt).capitalize()
     timedelta = humanize.naturaltime(dt)
     return f"{date} ({timedelta})"

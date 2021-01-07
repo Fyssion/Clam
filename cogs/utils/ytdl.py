@@ -19,7 +19,7 @@ from cogs.utils.emojis import (
     GREEN_TICK,
     RED_TICK,
 )
-from cogs.utils.human_time import plural
+from cogs.utils.formats import plural
 
 
 log = logging.getLogger("clam.music.ytdl")

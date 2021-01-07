@@ -15,7 +15,7 @@ import humanize
 import pytz
 
 from .utils.menus import MenuPages
-from .utils import db, colors, human_time
+from .utils import db, colors, humantime
 
 utc = pytz.UTC
 
@@ -501,7 +501,7 @@ class Events(commands.Cog):
 
                 tz, country_code = args
 
-                timezone = human_time.tz_name(tz, country_code)
+                timezone = humantime.tz_name(tz, country_code)
 
             if not timezone:
                 return await channel.send(
@@ -699,7 +699,7 @@ class Events(commands.Cog):
         self,
         ctx,
         *,
-        event: human_time.UserFriendlyTime(converter=commands.clean_content),
+        event: humantime.UserFriendlyTime(converter=commands.clean_content),
     ):
         """Create a new event
 

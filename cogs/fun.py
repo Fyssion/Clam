@@ -15,10 +15,10 @@ import calendar
 from dateutil import tz
 from cleverbot import async_ as cleverbot
 
-from .utils import colors, human_time, fuzzy
+from .utils import colors, humantime, fuzzy
 from .utils.utils import is_int, quote
 from .utils.menus import MenuPages
-from .utils.human_time import plural
+from .utils.formats import plural
 from .utils.tabulate import tabulate
 
 # from .utils.utils import thesaurize
@@ -442,7 +442,7 @@ class Fun(commands.Cog):
                 break
             percentage = int(outcome.occurrences / number * 100)
             human_friendly.append(
-                f"`{percentage}%` **{outcome.choice}** ({human_time.plural(outcome.occurrences):occurrence})"
+                f"`{percentage}%` **{outcome.choice}** ({plural(outcome.occurrences):occurrence})"
             )
 
         formatted = "\n".join(human_friendly)

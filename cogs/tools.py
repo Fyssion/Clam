@@ -18,8 +18,8 @@ import typing
 import dateparser
 import asyncio
 
-from .utils import colors, emojis, human_time, checks
-from .utils.human_time import plural, human_join
+from .utils import colors, emojis, humantime, checks
+from .utils.formats import plural, human_join
 
 
 def snowstamp(snowflake):
@@ -146,7 +146,7 @@ class Tools(commands.Cog):
         for reaction in message.reactions:
             percentage = int(reaction.count / total * 100)
             human_friendly.append(
-                f"{reaction.emoji} `{percentage}%` ({human_time.plural(reaction.count):reaction})"
+                f"{reaction.emoji} `{percentage}%` ({plural(reaction.count):reaction})"
             )
 
         formatted = "\n".join(human_friendly)
@@ -187,7 +187,7 @@ class Tools(commands.Cog):
         em = discord.Embed(title="New Joins", colour=colors.PRIMARY)
 
         for member in members:
-            body = f"Joined {human_time.human_timedelta(member.joined_at)}\nCreated {human_time.human_timedelta(member.created_at)}"
+            body = f"Joined {humantime.timedelta(member.joined_at)}\nCreated {humantime.timedelta(member.created_at)}"
             em.add_field(name=f"{member} (ID: {member.id})", value=body, inline=False)
 
         await ctx.send(embed=em)
@@ -209,7 +209,7 @@ class Tools(commands.Cog):
         em = discord.Embed(title="Oldest Joins", colour=colors.PRIMARY)
 
         for member in members:
-            body = f"Joined {human_time.human_timedelta(member.joined_at)}\nCreated {human_time.human_timedelta(member.created_at)}"
+            body = f"Joined {humantime.timedelta(member.joined_at)}\nCreated {humantime.timedelta(member.created_at)}"
             em.add_field(name=f"{member} (ID: {member.id})", value=body, inline=False)
 
         await ctx.send(embed=em)
@@ -231,7 +231,7 @@ class Tools(commands.Cog):
         em = discord.Embed(title="Boomers (oldest accounts)", colour=colors.PRIMARY)
 
         for member in members:
-            body = f"Created {human_time.human_timedelta(member.created_at)}\nJoined {human_time.human_timedelta(member.joined_at)}"
+            body = f"Created {humantime.timedelta(member.created_at)}\nJoined {humantime.timedelta(member.joined_at)}"
             em.add_field(name=f"{member} (ID: {member.id})", value=body, inline=False)
 
         await ctx.send(embed=em)
@@ -256,8 +256,8 @@ class Tools(commands.Cog):
 
         for member in members:
             body = (
-                f"Created {human_time.human_timedelta(member.created_at)}\n"
-                f"Joined {human_time.human_timedelta(member.joined_at)}"
+                f"Created {humantime.timedelta(member.created_at)}\n"
+                f"Joined {humantime.timedelta(member.joined_at)}"
             )
             em.add_field(name=f"{member} (ID: {member.id})", value=body, inline=False)
 
@@ -541,7 +541,7 @@ class Tools(commands.Cog):
 
                 percentage = int(reaction.count / total * 100)
                 human_friendly.append(
-                    f"{bolded}{emoji} | {option} `{percentage}%` ({human_time.plural(reaction.count):vote}){bolded}"
+                    f"{bolded}{emoji} | {option} `{percentage}%` ({plural(reaction.count):vote}){bolded}"
                 )
 
             results = "\n".join(human_friendly)
@@ -610,7 +610,7 @@ class Tools(commands.Cog):
                 em.set_image(url=data.url)
 
         em.set_author(name=str(message.author), icon_url=message.author.avatar_url)
-        formatted = human_time.human_timedelta(deleted_at, brief=True, accuracy=1)
+        formatted = humantime.timedelta(deleted_at, brief=True, accuracy=1)
         em.set_footer(text=f"Deleted {formatted} | Message sent")
         content = f"\N{WASTEBASKET} Deleted Message | ID: {message.id}"
 
@@ -669,7 +669,7 @@ class Tools(commands.Cog):
                 em.set_image(url=data.url)
 
         em.set_author(name=str(after.author), icon_url=after.author.avatar_url)
-        formatted = human_time.human_timedelta(edited_at, brief=True, accuracy=1)
+        formatted = humantime.timedelta(edited_at, brief=True, accuracy=1)
         em.set_footer(text=f"Edited {formatted} | Message sent")
         content = f"\N{MEMO} Edited Message | ID: {after.id}"
 
@@ -823,7 +823,7 @@ class Tools(commands.Cog):
         for snipe in sniped:
             if isinstance(snipe, DeletedMessage) or hasattr(snipe, "message"):
                 message = snipe.message
-                human_friendly = human_time.human_timedelta(
+                human_friendly = humantime.timedelta(
                     snipe.deleted_at, brief=True, accuracy=1
                 )
                 entries.append(
@@ -832,7 +832,7 @@ class Tools(commands.Cog):
 
             else:
                 message = snipe.before
-                human_friendly = human_time.human_timedelta(
+                human_friendly = humantime.timedelta(
                     snipe.edited_at, brief=True, accuracy=1
                 )
                 entries.append(
@@ -840,7 +840,7 @@ class Tools(commands.Cog):
                 )
 
         # entries = [
-        #     f"{m.author} - {human_time.human_timedelta(d, brief=True, accuracy=1)} `(ID: {m.id})`"
+        #     f"{m.author} - {humantime.timedelta(d, brief=True, accuracy=1)} `(ID: {m.id})`"
         #     for m, d in sniped
         # ]
 

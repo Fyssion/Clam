@@ -12,7 +12,7 @@ import asyncpg
 import humanize
 
 from .utils.menus import MenuPages
-from .utils import db, colors, human_time
+from .utils import db, colors, humantime
 
 
 class TodoTaskSource(menus.ListPageSource):
@@ -27,16 +27,16 @@ class TodoTaskSource(menus.ListPageSource):
         if self.list_type == "all":
             for i, (todo_id, name, created_at, completed_at) in enumerate(entries, start=offset):
                 if completed_at:
-                    human_friendly = human_time.human_timedelta(completed_at, brief=True, accuracy=1)
+                    human_friendly = humantime.timedelta(completed_at, brief=True, accuracy=1)
                     all_todos.append(
                         f":ballot_box_with_check: ~~{name}~~ - {human_friendly} `(ID: {todo_id})`"
                     )
                 else:
-                    human_friendly = human_time.human_timedelta(created_at, brief=True, accuracy=1)
+                    human_friendly = humantime.timedelta(created_at, brief=True, accuracy=1)
                     all_todos.append(f":black_large_square: {name} - {human_friendly} `(ID: {todo_id})`")
         else:
             for i, (todo_id, name, created_at) in enumerate(entries, start=offset):
-                human_friendly = human_time.human_timedelta(created_at, brief=True, accuracy=1)
+                human_friendly = humantime.timedelta(created_at, brief=True, accuracy=1)
                 all_todos.append(f":black_large_square: {name} - {human_friendly} `(ID: {todo_id})`")
 
         # "created/completed at" or "created at"

@@ -7,7 +7,8 @@ import logging
 import datetime
 import re
 
-from .utils import db, human_time, colors
+from .utils import db, humantime, colors
+from .utils.formats import plural
 
 
 log = logging.getLogger("clam.highlight")
@@ -563,7 +564,7 @@ class Highlight(commands.Cog):
         if not records:
             return await ctx.send("You have no highlight words in this server.", delete_after=5.0)
 
-        await ctx.send(ctx.tick(True, f"Deleted {human_time.plural(len(records)):highlight word|highlight words}."))
+        await ctx.send(ctx.tick(True, f"Deleted {plural(len(records)):highlight word|highlight words}."))
 
     # CONFIG SECTION
 
@@ -747,7 +748,7 @@ class Highlight(commands.Cog):
         usage="<user/channel and time>",
     )
     async def tempblock(
-        self, ctx, *, when: human_time.UserFriendlyTime(BlockConverter, default="")
+        self, ctx, *, when: humantime.UserFriendlyTime(BlockConverter, default="")
     ):
         self.delete_timer(ctx.message)
 
@@ -776,7 +777,7 @@ class Highlight(commands.Cog):
             friendly = "channel"
 
         await ctx.delete_send(
-            f"Temporarily blocked {friendly} for {human_time.human_timedelta(time)}"
+            f"Temporarily blocked {friendly} for {humantime.timedelta(time)}"
         )
 
     @commands.Cog.listener()
