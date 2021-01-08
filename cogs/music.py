@@ -1,28 +1,28 @@
-from discord.ext import commands, menus, flags
-import discord
-
 import asyncio
-from async_timeout import timeout
-import re
-import functools
-from urllib.parse import urlparse
-import logging
-import sys
-import os
-import os.path
-import traceback
-import youtube_dl
 import datetime
-import importlib
 import enum
+import functools
+import importlib
+import logging
+import os.path
+import re
+import sys
+import traceback
 import typing
-import humanize
+from urllib.parse import urlparse
 
-from .utils import db, ytdl, music_player, colors, humantime
-from .utils.emojis import GREEN_TICK, RED_TICK, LOADING
-from .utils.menus import UpdatingMessage
-from .utils.formats import plural
+import discord
+import humanize
+import youtube_dl
+from async_timeout import timeout
+from discord.ext import commands, menus, flags
+
+
+from .utils import colors, db, humantime, music_player, ytdl
+from .utils.emojis import GREEN_TICK, LOADING, RED_TICK
 from .utils.flags import NoUsageFlagCommand
+from .utils.formats import plural
+from .utils.menus import UpdatingMessage
 
 
 log = logging.getLogger("clam.music")

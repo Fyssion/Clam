@@ -1,21 +1,16 @@
+import asyncio
+import datetime
+
 import discord
 from discord.ext import commands, menus, tasks
 
-from collections import Counter, defaultdict
-from datetime import datetime
-from datetime import timedelta
-from datetime import timezone
-import traceback
-import json
-import psutil
-import typing
-import asyncio
 import asyncpg
 import humanize
 import pytz
 
+from .utils import colors, db, humantime
 from .utils.menus import MenuPages
-from .utils import db, colors, humantime
+
 
 utc = pytz.UTC
 
@@ -194,7 +189,7 @@ class Events(commands.Cog):
                 """
         con = connection or self.bot.pool
 
-        records = await con.fetch(query, timedelta(seconds=seconds))
+        records = await con.fetch(query, datetime.timedelta(seconds=seconds))
 
         if not records:
             return [None]
@@ -204,7 +199,7 @@ class Events(commands.Cog):
         return events
 
     async def dispatch_event(self, event):
-        now = datetime.utcnow()
+        now = datetime.datetime.datetime.utcnow()
 
         if event.starts_at >= now:
             to_sleep = (event.starts_at - now).total_seconds()
@@ -305,7 +300,7 @@ class Events(commands.Cog):
         if not timers:
             return await role.delete()
 
-        when = datetime.utcnow() + timedelta(hours=5)
+        when = datetime.datetime.datetime.utcnow() + datetime.timedelta(hours=5)
 
         await timers.create_timer(when, "event_role_delete", role.guild.id, role.id)
 
@@ -795,7 +790,7 @@ class Events(commands.Cog):
 
         partial_event = PartialEvent(record[0], *event_args)
 
-        delta = (date - datetime.utcnow()).total_seconds()
+        delta = (date - datetime.datetime.utcnow()).total_seconds()
 
         if delta <= (86400 * 7):  # 7 days
             self._event_ready.set()

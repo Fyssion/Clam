@@ -1,22 +1,16 @@
-import sys
-import click
-import logging
 import asyncio
-import asyncpg
-import discord
-import importlib
 import contextlib
-from pathlib import Path
+import importlib
+import logging
+import sys
+import traceback
 from logging.handlers import RotatingFileHandler
 
-from config import Config
+import click
+
 from bot import Clam, initial_extensions
+from config import Config
 from cogs.utils.db import Table
-
-from pathlib import Path
-
-import traceback
-
 
 config = Config("config.yml")
 

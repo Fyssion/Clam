@@ -24,16 +24,15 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-
-from discord.ext import commands, tasks, menus
-import discord
-
 import asyncio
-import asyncpg
 import datetime
 import textwrap
 
-from .utils import db, humantime, colors
+import asyncpg
+import discord
+from discord.ext import commands, tasks, menus
+
+from .utils import colors, db, humantime
 from .utils.menus import MenuPages
 
 

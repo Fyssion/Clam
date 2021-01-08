@@ -1,30 +1,26 @@
-import discord
-from discord.ext import commands, menus
-
-from datetime import datetime
-from urllib.parse import urlparse
-import dateparser
-import aiohttp
-import importlib
-import re
-import os
-import ast
 import base64
-import json
+import datetime
 import functools
+import json
+import importlib
 import io
-import async_cse
-import traceback
-from lxml import etree
-import mediawiki
+import os
+import re
+from urllib.parse import urlparse
 from urllib.parse import quote as uriquote
-from PIL import Image
-from bs4 import BeautifulSoup
 
-from .utils import aiopypi, aioxkcd, fuzzy, colors
+import async_cse
+import dateparser
+import discord
+import mediawiki
+from discord.ext import commands, menus
+from lxml import etree
+from PIL import Image
+
+from .utils import aiopypi, aioxkcd, colors, fuzzy
+from .utils.formats import plural
 from .utils.menus import MenuPages
 from .utils.utils import SphinxObjectFileReader
-from .utils.formats import plural
 
 
 class DocsSource(menus.ListPageSource):

@@ -26,21 +26,20 @@ DEALINGS IN THE SOFTWARE.
 """
 
 
-from discord.ext import commands, tasks, menus
-from .utils import checks, db, cache
-from .utils.formats import plural, human_join
-from collections import Counter, defaultdict
-
-import discord
-import datetime
-import time
-import json
-import random
 import asyncio
-import asyncpg
+import datetime
 import logging
-import weakref
 import re
+import time
+import weakref
+
+import asyncpg
+import discord
+from discord.ext import commands, tasks, menus
+
+from .utils import cache, checks, db
+from .utils.formats import human_join, plural
+
 
 log = logging.getLogger(__name__)
 

@@ -1,8 +1,8 @@
-import io
-import zlib
 import codecs
-import pathlib
+import io
 import os
+import pathlib
+import zlib
 
 import discord
 

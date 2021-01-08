@@ -1,28 +1,26 @@
-from discord.ext import commands, flags, tasks
-from discord.flags import BaseFlags, fill_with_flags, flag_value
-import discord
-
-import datetime
-import io
-import json
-import typing
-from datetime import datetime as d
 import asyncio
-import re
-from urllib.parse import urlparse
-from async_timeout import timeout
-from collections import Counter, defaultdict
+import datetime
 import enum
-import os.path
-from jishaku.models import copy_context_with
-import asyncpg
+import json
+import io
 import logging
+import os.path
+import re
+import typing
+from collections import Counter, defaultdict
+from urllib.parse import urlparse
 
-from .utils import db, humantime, checks, cache
-from .utils.emojis import GREEN_TICK, RED_TICK, LOADING
+import asyncpg
+import discord
+from discord.ext import commands, flags, tasks
+from jishaku.models import copy_context_with
+
+
+from .utils import cache, checks, db, humantime
 from .utils.checks import has_manage_guild
-from .utils.utils import is_int
+from .utils.emojis import GREEN_TICK, LOADING, RED_TICK
 from .utils.flags import NoUsageFlagGroup
+from .utils.utils import is_int
 
 
 log = logging.getLogger("clam.mod")
@@ -2142,7 +2140,7 @@ class Moderation(commands.Cog):
             title="Member Join",
             description=f"**{member.mention} joined the server!**",
             color=discord.Color.green(),
-            timestamp=d.utcnow(),
+            timestamp=datetime.datetime.utcnow(),
         )
         em.set_thumbnail(url=member.avatar_url)
         await log.send(embed=em)
@@ -2156,7 +2154,7 @@ class Moderation(commands.Cog):
             title="Member Left",
             description=f"**{user.mention} left the server**",
             color=discord.Color.red(),
-            timestamp=d.utcnow(),
+            timestamp=datetime.datetime.utcnow(),
         )
         em.set_thumbnail(url=user.avatar_url)
         await log.send(embed=em)

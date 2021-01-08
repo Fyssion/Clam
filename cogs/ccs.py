@@ -1,8 +1,7 @@
-from discord.ext import commands
-import discord
-
-from datetime import datetime
 import asyncio
+
+import discord
+from discord.ext import commands
 
 from .utils import db, emojis
 from .utils.errors import PrivateCog

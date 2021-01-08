@@ -1,29 +1,26 @@
-from datetime import datetime, timezone, timedelta
-from collections import Counter
 import asyncio
+import datetime
 import functools
 import io
-import typing
-import logging
-import pkg_resources
-from collections import defaultdict, Counter
-
-import discord
-from discord.ext import commands, tasks, flags
-import asyncpg
-import humanize
-import git
-import psutil
-import os
-import itertools
 import json
+import logging
+import os
+import pkg_resources
+import typing
+from collections import Counter, defaultdict
 
-from .utils.utils import get_lines_of_code
-from .utils import db, colors, humantime
-from .utils.emojis import TEXT_CHANNEL, VOICE_CHANNEL
-from .utils.menus import MenuPages
+import asyncpg
+import discord
+import git
+import humanize
+import psutil
+from discord.ext import commands, tasks, flags
+
+from .utils import colors, db, humantime
+from .utils.emojis import VOICE_CHANNEL, TEXT_CHANNEL
 from .utils.flags import NoUsageFlagCommand
 from .utils.formats import plural, TabularData
+from .utils.utils import get_lines_of_code
 
 
 log = logging.getLogger("clam.stats")
@@ -156,7 +153,7 @@ class Stats(commands.Cog):
             em = discord.Embed(
                 title="Server Command Usage Stats",
                 color=colors.PRIMARY,
-                timestamp=count[1] or datetime.utcnow(),
+                timestamp=count[1] or datetime.datetime.utcnow(),
             )
 
             em.description = f"There have been **{plural(count[0], pretty=True):command} used**."
@@ -263,7 +260,7 @@ class Stats(commands.Cog):
                 title=f"Member Command Usage Stats",
                 description=f"There have been **{plural(count[0], pretty=True):command} used**.",
                 color=colors.PRIMARY,
-                timestamp=count[1] or datetime.utcnow(),
+                timestamp=count[1] or datetime.datetime.utcnow(),
             )
 
             em.set_author(name=f"{member} - {member.id}", icon_url=member.avatar_url)
@@ -320,7 +317,7 @@ class Stats(commands.Cog):
         em = discord.Embed(
             title="Global Command Usage Stats",
             description=f"There have been **{plural(count[0], pretty=True):command} used**.",
-            timestamp=count[1] or datetime.utcnow(),
+            timestamp=count[1] or datetime.datetime.utcnow(),
             color=colors.PRIMARY,
         ).set_footer(text="Tracking command usage since")
 
@@ -469,7 +466,7 @@ class Stats(commands.Cog):
         em = discord.Embed(
             title="Guild Command Usage Stats",
             color=colors.PRIMARY,
-            timestamp=count[1] or datetime.utcnow(),
+            timestamp=count[1] or datetime.datetime.utcnow(),
         )
 
         em.description = f"There have been **{plural(count[0], pretty=True):command} used**."
@@ -571,7 +568,7 @@ class Stats(commands.Cog):
 
         # [`hash`](url) message (offset)
         offset = humantime.timedelta(
-            commit.committed_datetime.astimezone(timezone.utc).replace(tzinfo=None),
+            commit.committed_datetime.astimezone(datetime.timezone.utc).replace(tzinfo=None),
             accuracy=1,
         )
         commit_hex = commit.name_rev.split()[0]
@@ -751,7 +748,7 @@ class Stats(commands.Cog):
                    LIMIT 30;
                 """
 
-        await self.tabulate_query(ctx, query, command, timedelta(days=days))
+        await self.tabulate_query(ctx, query, command, datetime.timedelta(days=days))
 
     @command_history.command(name="guild", aliases=["server"])
     @commands.is_owner()
@@ -806,7 +803,7 @@ class Stats(commands.Cog):
 
         all_commands = {c.qualified_name: 0 for c in self.bot.walk_commands()}
 
-        records = await ctx.db.fetch(query, timedelta(days=days))
+        records = await ctx.db.fetch(query, datetime.timedelta(days=days))
         for name, uses in records:
             if name in all_commands:
                 all_commands[name] = uses
@@ -818,7 +815,7 @@ class Stats(commands.Cog):
         render = table.render()
 
         embed = discord.Embed(title="Summary", colour=discord.Colour.green())
-        embed.set_footer(text="Since").timestamp = datetime.utcnow() - timedelta(
+        embed.set_footer(text="Since").timestamp = datetime.datetime.utcnow() - datetime.timedelta(
             days=days
         )
 
@@ -845,7 +842,7 @@ class Stats(commands.Cog):
     ):
         """Command history for a cog or grouped by a cog."""
 
-        interval = timedelta(days=days)
+        interval = datetime.timedelta(days=days)
         if cog is not None:
             cog = self.bot.get_cog(cog)
             if cog is None:
@@ -1000,7 +997,7 @@ class Stats(commands.Cog):
         data = [[n or "None", v] for n, v in sorted_stats.items()]
         data.insert(0, ["Total", sum(self.bot.socket_stats.values())])
 
-        delta = datetime.utcnow() - self.bot.startup_time
+        delta = datetime.datetime.utcnow() - self.bot.startup_time
         minutes = delta.total_seconds() / 60
         total = sum(self.bot.socket_stats.values())
         cpm = total / minutes

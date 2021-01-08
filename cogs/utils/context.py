@@ -1,9 +1,9 @@
-from discord.ext import commands
 import discord
+from discord.ext import commands
 
-from .utils import reply_to
 from .emojis import GREEN_TICK, RED_TICK
-from .menus import MenuPages, Confirm, BasicPages, TablePages
+from .menus import BasicPages, Confirm, MenuPages, TablePages
+from .utils import reply_to
 
 
 class Context(commands.Context):

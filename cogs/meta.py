@@ -1,24 +1,24 @@
+import asyncio
+import functools
+import json
+import inspect
+import math
+import os.path
+import sys
+import traceback
+from inspect import isawaitable
+from string import Formatter
+
 import discord
 from discord.ext import commands, menus
 
-from string import Formatter
-import traceback
-import os
-import os.path
-import json
-import sys
-import asyncio
-import inspect
-import functools
-import math
 from jishaku.models import copy_context_with
-from inspect import isawaitable
 
-from .utils.utils import get_lines_of_code
 from .utils import colors
 from .utils.checks import has_manage_guild
+from .utils.errors import Blacklisted, PrivateCog
 from .utils.menus import MenuPages
-from .utils.errors import PrivateCog, Blacklisted
+from .utils.utils import get_lines_of_code
 
 
 def strfdelta(tdelta, fmt):

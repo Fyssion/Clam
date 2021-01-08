@@ -1,32 +1,28 @@
-from discord.ext import commands, menus
-import discord
-
-from datetime import datetime as d
-from datetime import timedelta
-import re
-import collections
-import os
-import os.path
-import json
+import asyncio
 import base64
 import binascii
-import humanize
-import io
+import collections
+import datetime
 import functools
-from PIL import Image
-import typing
-import dateparser
-import asyncio
+import io
+import json
+import re
+import os.path
 
-from .utils import colors, emojis, humantime, checks
-from .utils.formats import plural, human_join
+import discord
+import humanize
+from discord.ext import commands, menus
+from PIL import Image
+
+from .utils import checks, colors, emojis, humantime
+from .utils.formats import human_join, plural
 
 
 def snowstamp(snowflake):
     timestamp = (int(snowflake) >> 22) + 1420070400000
     timestamp /= 1000
 
-    return d.utcfromtimestamp(timestamp).strftime("%b %d, %Y at %#I:%M %p")
+    return datetime.datetime.utcfromtimestamp(timestamp).strftime("%b %d, %Y at %#I:%M %p")
 
 
 def can_snipe():
@@ -434,7 +430,7 @@ class Tools(commands.Cog):
 
         option_map = {o.emoji: o.text for o in options}
 
-        when = d.utcnow() + timedelta(days=1)
+        when = datetime.datetime.utcnow() + datetime.timedelta(days=1)
         await timers.create_timer(
             when,
             "poll",
@@ -490,7 +486,7 @@ class Tools(commands.Cog):
 
         option_map = {self.POLL_EMOJIS[i]: o for i, o in enumerate(options)}
 
-        when = d.utcnow() + timedelta(days=1)
+        when = datetime.datetime.utcnow() + datetime.timedelta(days=1)
         await timers.create_timer(
             when,
             "poll",
@@ -880,7 +876,7 @@ class Tools(commands.Cog):
         ):
             return
 
-        now = d.utcnow()
+        now = datetime.datetime.utcnow()
         self.bot.sniped_messages.insert(
             0, DeletedMessage(message, message.id, message.channel, now)
         )
@@ -902,7 +898,7 @@ class Tools(commands.Cog):
         if before.content == after.content:
             return
 
-        now = d.utcnow()
+        now = datetime.datetime.utcnow()
         self.bot.sniped_messages.insert(
             0, EditedMessage(before, after, after.id, after.channel, now)
         )
@@ -1171,9 +1167,9 @@ class Tools(commands.Cog):
 
         epoch = int.from_bytes(decoded, "big")
         timestamp = epoch + 1293840000
-        created = d.utcfromtimestamp(timestamp)
+        created = datetime.datetime.utcfromtimestamp(timestamp)
         if not self.time_in_range(2015, 2040, created.year):
-            created = created - timedelta(days=14975)
+            created = created - datetime.timedelta(days=14975)
 
         created = created.strftime("%b %d, %Y at %#I:%M %p")
         em = discord.Embed(color=0x36393F)

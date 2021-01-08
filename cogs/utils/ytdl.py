@@ -1,25 +1,17 @@
-from discord.ext import commands, menus
-import discord
-
 import asyncio
+import datetime
 import functools
 import logging
-import os
 import re
-import youtube_dl
-import datetime
-import asyncpg
+import os
 
-from cogs.utils.emojis import (
-    WAY_BACK,
-    BACK,
-    FORWARD,
-    WAY_FOWARD,
-    STOP,
-    GREEN_TICK,
-    RED_TICK,
-)
-from cogs.utils.formats import plural
+import asyncpg
+import discord
+import youtube_dl
+from discord.ext import commands, menus
+
+from .emojis import BACK, FORWARD, GREEN_TICK, RED_TICK
+from .formats import plural
 
 
 log = logging.getLogger("clam.music.ytdl")

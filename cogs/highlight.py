@@ -1,13 +1,14 @@
-from discord.ext import commands, tasks
-import discord
-
-import asyncpg
 import asyncio
-import logging
 import datetime
+import logging
 import re
 
-from .utils import db, humantime, colors
+import asyncpg
+import discord
+from discord.ext import commands, tasks
+
+
+from .utils import colors, db, humantime
 from .utils.formats import plural
 
 

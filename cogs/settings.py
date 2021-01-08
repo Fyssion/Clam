@@ -1,9 +1,10 @@
+from collections import defaultdict
+from typing import Optional
+
+import asyncpg
 import discord
 from discord.ext import commands
 
-from collections import defaultdict
-from typing import Optional
-import asyncpg
 
 from .utils import db, cache, checks, colors
 

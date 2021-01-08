@@ -1,9 +1,8 @@
-from discord.ext import commands
-import discord
-
 import asyncpg
+import discord
+from discord.ext import commands
 
-from .utils import db, humantime, cache
+from .utils import cache, db, humantime
 
 
 class AmongGameTable(db.Table, table_name="among_games"):

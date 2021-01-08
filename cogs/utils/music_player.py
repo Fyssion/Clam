@@ -1,16 +1,16 @@
-from discord.ext import commands
-import discord
-
 import asyncio
-from async_timeout import timeout
+import enum
 import itertools
 import logging
 import random
-import traceback
 import sys
-import enum
+import traceback
 
-from . import stopwatch, humantime
+import discord
+from async_timeout import timeout
+from discord.ext import commands
+
+from . import humantime, stopwatch
 from .ytdl import Song
 
 

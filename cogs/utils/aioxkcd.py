@@ -1,7 +1,8 @@
-import aiohttp
 import json
 from datetime import datetime
 from random import randint
+
+import aiohttp
 
 
 class XkcdError(Exception):

@@ -1,11 +1,12 @@
-import discord
-from discord.ext import commands, menus
-
-import asyncpg
 import asyncio
 import re
 
-from .utils import db, checks, colors
+import asyncpg
+import discord
+from discord.ext import commands, menus
+
+
+from .utils import checks, colors, db
 from .utils.menus import MenuPages
 
 

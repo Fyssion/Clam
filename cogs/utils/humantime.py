@@ -24,14 +24,15 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-import datetime
 import collections
-import parsedatetime as pdt
+import datetime
+import re
+
+import humanize
 import pytz
 from dateutil.relativedelta import relativedelta
 from discord.ext import commands
-import re
-import humanize
+import parsedatetime as pdt
 
 from .formats import human_join, plural
 

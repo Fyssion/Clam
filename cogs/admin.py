@@ -1,24 +1,24 @@
-import discord
-from discord.ext import commands, menus, tasks
-
-from datetime import datetime as d
-import pkg_resources
-import traceback
-import psutil
-import typing
-import importlib
 import asyncio
+import datetime
+import importlib
+import io
+import time
+import os
+import re
 import subprocess
 import sys
-import time
-import io
-import re
-import os
+import traceback
+import typing
+
+import discord
+import pkg_resources
+import psutil
+from discord.ext import commands, menus, tasks
 from jishaku.codeblocks import codeblock_converter
 
-from .utils.menus import MenuPages
+from .utils import aiopypi, colors, humantime
 from .utils.formats import plural, TabularData
-from .utils import colors, humantime, aiopypi
+from .utils.menus import MenuPages
 
 
 CLAM_DMS_CATEGORY = 714981398540451841
@@ -676,7 +676,7 @@ class Admin(commands.Cog):
         em = discord.Embed(
             description=message,
             color=discord.Color.red(),
-            timestamp=d.utcnow(),
+            timestamp=datetime.datetime.utcnow(),
         )
         em.set_author(
             name=f"To: {user} ({user.id})",
@@ -708,7 +708,7 @@ class Admin(commands.Cog):
         em = discord.Embed(
             description=message.clean_content,
             color=discord.Color.red(),
-            timestamp=d.utcnow(),
+            timestamp=datetime.datetime.utcnow(),
         )
         em.set_author(
             name=f"To: {dm_session.user} ({dm_session.user.id})",
@@ -729,7 +729,7 @@ class Admin(commands.Cog):
         em = discord.Embed(
             description=message.clean_content,
             color=discord.Color.blue(),
-            timestamp=d.utcnow(),
+            timestamp=datetime.datetime.utcnow(),
         )
         em.set_author(
             name=f"From: {message.author} ({message.author.id})",

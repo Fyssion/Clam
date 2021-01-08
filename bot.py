@@ -1,23 +1,21 @@
-import discord
-from discord.ext import commands
-
-import logging
-import yaml
-from datetime import datetime as d
-import aiohttp
-import traceback
-import json
-import async_cse
 import collections
+import datetime
+import json
+import logging
 import os
 import os.path
-from cleverbot import async_ as cleverbot
+
+import aiohttp
+import async_cse
+import discord
 import wolframalpha
+from cleverbot import async_ as cleverbot
+from discord.ext import commands
 
 from config import Config
 from cogs.utils import db
 from cogs.utils.context import Context
-from cogs.utils.errors import PrivateCog, Blacklisted
+from cogs.utils.errors import PrivateCog
 
 
 log = logging.getLogger("clam")
@@ -334,7 +332,7 @@ class Clam(commands.Bot):
 
     async def on_ready(self):
         if self.startup_time is None:
-            self.startup_time = d.now()
+            self.startup_time = datetime.datetime.now()
         if self.console is None:
             self.console = self.get_channel(711952122132037722)
 

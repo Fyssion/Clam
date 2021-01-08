@@ -1,12 +1,13 @@
-from discord.ext import commands, menus
-import discord
-
-import asyncpg
-import enum
 import asyncio
+import enum
 import json
 import logging
+
+import asyncpg
+import discord
+from discord.ext import commands, menus
 from jishaku.models import copy_context_with
+
 
 from .utils import db, checks, colors
 

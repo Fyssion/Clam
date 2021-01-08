@@ -26,11 +26,10 @@ DEALINGS IN THE SOFTWARE.
 """
 
 
-import inspect
 import asyncio
 import enum
+import inspect
 import time
-
 from functools import wraps
 
 from lru import LRU

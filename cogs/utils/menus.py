@@ -1,10 +1,10 @@
-import discord
-from discord.ext import menus
-
 import asyncio
 import datetime
 
-from cogs.utils.emojis import WAY_BACK, BACK, FORWARD, WAY_FOWARD, STOP, GREEN_TICK, RED_TICK
+import discord
+from discord.ext import menus
+
+from .emojis import WAY_BACK, BACK, FORWARD, WAY_FOWARD, STOP, GREEN_TICK, RED_TICK
 from .tabulate import tabulate
 
 

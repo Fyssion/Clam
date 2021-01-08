@@ -1,27 +1,21 @@
-from discord.ext import commands, menus
-import discord
-
-from datetime import datetime as d
-from datetime import timedelta
+import calendar
+import datetime
 import math
 import random
-import functools
-import importlib
 import asyncio
 import collections
-import humanize
 from typing import Union
-import calendar
+
+import discord
 from dateutil import tz
-from cleverbot import async_ as cleverbot
+from discord.ext import commands, menus
 
-from .utils import colors, humantime, fuzzy
-from .utils.utils import is_int, quote
-from .utils.menus import MenuPages
+from .utils import colors, fuzzy
 from .utils.formats import plural
+from .utils.menus import MenuPages
 from .utils.tabulate import tabulate
+from .utils.utils import quote
 
-# from .utils.utils import thesaurize
 
 num2words1 = {
     1: "one",
@@ -145,15 +139,15 @@ class Fun(commands.Cog):
         """Ask the bot anything through the Cleverbot API"""
         async with ctx.typing():
             convo, last_used = self.bot.cleverbot_convos.get(
-                ctx.author.id, (None, d.utcnow())
+                ctx.author.id, (None, datetime.datetime.utcnow())
             )
 
-            if last_used > d.utcnow() - timedelta(minutes=10):
+            if last_used > datetime.datetime.utcnow() - datetime.timedelta(minutes=10):
                 convo = None
 
             if not convo:
                 convo = self.bot.cleverbot.conversation()
-                self.bot.cleverbot_convos[ctx.author.id] = (convo, d.utcnow())
+                self.bot.cleverbot_convos[ctx.author.id] = (convo, datetime.datetime.utcnow())
 
             if anything:
                 reply = await convo.say()
@@ -475,8 +469,8 @@ class Fun(commands.Cog):
 
         end = message.created_at
 
-        start = start - timedelta(microseconds=start.microsecond % 10000)
-        end = end - timedelta(microseconds=end.microsecond % 10000)
+        start = start - datetime.timedelta(microseconds=start.microsecond % 10000)
+        end = end - datetime.timedelta(microseconds=end.microsecond % 10000)
 
         time = end - start
 
@@ -585,7 +579,7 @@ class Fun(commands.Cog):
         if utc_offset < -12 or utc_offset > 12:
             raise commands.BadArgument("Timezone must be within -12-12.")
 
-        utc_now = d.utcnow().replace(tzinfo=tz.UTC)
+        utc_now = datetime.datetime.utcnow().replace(tzinfo=tz.UTC)
 
         if utc_now.hour + utc_offset > 23:
             hour = utc_now.hour - (24 - utc_offset)

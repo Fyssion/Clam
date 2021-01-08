@@ -1,6 +1,6 @@
-from datetime import datetime, timedelta
-import random
 import asyncio
+import datetime
+import random
 
 import discord
 from discord.ext import commands, menus
@@ -41,16 +41,16 @@ class TenSeconds(SinglePlayerGame):
         em.set_footer(text=f"Confused? Learn more with {ctx.guild_prefix}help 10s")
 
         msg = await channel.send(embed=em)
-        self.ten_seconds = datetime.utcnow() + timedelta(seconds=10)
+        self.ten_seconds = datetime.datetime.utcnow() + datetime.timedelta(seconds=10)
 
         return msg
 
     @menus.button("⏲️")
     async def on_time(self, payload):
-        tm = datetime.utcnow()
-        end_time = tm - timedelta(microseconds=tm.microsecond % 100000)
+        tm = datetime.datetime.utcnow()
+        end_time = tm - datetime.timedelta(microseconds=tm.microsecond % 100000)
         tm = self.ten_seconds
-        ten_seconds = tm - timedelta(microseconds=tm.microsecond % 10000)
+        ten_seconds = tm - datetime.timedelta(microseconds=tm.microsecond % 10000)
 
         if ten_seconds == end_time:
             msg = ":tada: You did it! I'm impressed!"
