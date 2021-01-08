@@ -681,7 +681,7 @@ class Stats(commands.Cog):
     async def uptime(self, ctx):
         up = datetime.datetime.now() - self.bot.startup_time
         uptime = humantime.timedelta(
-            self.bot.startup_time, source=ctx.message..created_at
+            self.bot.startup_time, source=ctx.message.created_at
         )
         await ctx.send(f"<:online:649270802088460299> I booted up **{uptime}**")
 
