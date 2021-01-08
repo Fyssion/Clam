@@ -600,7 +600,7 @@ class Stats(commands.Cog):
         em.set_thumbnail(url=self.bot.user.avatar_url)
 
         dev = self.bot.get_user(224513210471022592)
-        up = datetime.now() - self.bot.startup_time
+        up = datetime.datetime.now() - self.bot.startup_time
         em.add_field(name=":gear: Creator", value=str(dev))
         em.add_field(name=":adult: User Count", value=f"{len(self.bot.users):,}")
         em.add_field(name=":family: Server Count", value=f"{len(self.bot.guilds):,}")
@@ -679,9 +679,9 @@ class Stats(commands.Cog):
         aliases=["up"],
     )
     async def uptime(self, ctx):
-        up = datetime.now() - self.bot.startup_time
+        up = datetime.datetime.now() - self.bot.startup_time
         uptime = humantime.timedelta(
-            self.bot.startup_time, source=datetime.now()
+            self.bot.startup_time, source=ctx.message..created_at
         )
         await ctx.send(f"<:online:649270802088460299> I booted up **{uptime}**")
 
