@@ -228,6 +228,56 @@ class Log(commands.Cog):
 
     # EVENTS
 
+    # MOD ACTIONS
+
+    async def log_audit_log_entry(self, guild_log, entry):
+        action = entry.action.name.replace("_", " ").capitalize()
+        em = discord.Embed(title=f"[Mod Action] {action}", color=discord.Color.purple())
+        em.add_field(name="User", value=entry.target, inline=False)
+        em.add_field(name="Reason", value=entry.reason, inline=False)
+        em.add_field(
+            name="Responsible Moderator",
+            value=f"{entry.user.mention} | {entry.user} (ID: {entry.user.id})",
+            inline=False
+        )
+
+        if guild_log.channel:
+            await guild_log.channel.send(embed=em)
+
+    async def log_member_action(self, guild, valid_actions, *, can_be_me=True):
+        guild_log = await self.get_guild_log(guild.id)
+        if not guild_log or not guild_log.log_mod_actions:
+            return
+
+        entries = await guild.audit_logs(limit=1).flatten()
+
+        if not entries:
+            return
+
+        entry = entries[0]
+
+        if entry.action not in valid_actions:
+            return
+
+        if not can_be_me and entry.user == self.bot.user:
+            return
+
+        await self.log_audit_log_entry(guild_log, entry)
+
+    @commands.Cog.listener()
+    async def on_member_ban(self, guild, user):
+        await self.log_member_action(guild, (discord.AuditLogAction.ban,), can_be_me=False)
+
+    @commands.Cog.listener()
+    async def on_member_unban(self, guild, user):
+        await self.log_member_action(guild, (discord.AuditLogAction.unban,), can_be_me=False)
+
+    @commands.Cog.listener("on_member_remove")
+    async def on_member_kick(self, member):
+        await self.log_member_action(member.guild, (discord.AuditLogAction.kick,), can_be_me=False)
+
+    # MEMBER ACTIONS
+
     @commands.Cog.listener()
     async def on_message_delete(self, message):
         guild_log = await self.get_guild_log(message.guild.id)
@@ -296,6 +346,8 @@ class Log(commands.Cog):
 
         if guild_log.channel:
             await guild_log.channel.send(embed=em)
+
+    # JOINS/LEAVES
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
