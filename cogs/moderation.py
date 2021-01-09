@@ -1981,12 +1981,12 @@ class Moderation(commands.Cog):
         """Disables AutoMod on this server."""
 
         query = """INSERT INTO guild_settings (id, automod_mode)
-                   VALUES ($1, $2, NULL) ON CONFLICT (id)
+                   VALUES ($1, $2) ON CONFLICT (id)
                    DO UPDATE SET
                         automod_mode = EXCLUDED.automod_mode;
                 """
 
-        await ctx.execute(query, ctx.guild.id, AutomodMode.off.value)
+        await ctx.db.execute(query, ctx.guild.id, AutomodMode.off.value)
         self._spam_check.pop(ctx.guild.id, None)
         self.get_guild_settings.invalidate(self, ctx.guild.id)
 
