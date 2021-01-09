@@ -234,7 +234,7 @@ class ClamHelpCommand(commands.HelpCommand):
 
         return f"Aliases: {', '.join(formatted_aliases)}"
 
-    def format_command(self, command):
+    def format_command(self, command, ctx):
         signature = self.get_command_signature(command)
 
         formatted_command = f"**`{signature}`**"
@@ -246,7 +246,7 @@ class ClamHelpCommand(commands.HelpCommand):
             formatted_command += f"\n{self.format_aliases(command)}"
 
         if command.help:
-            formatted_command += f"\n{command.help}\n"
+            formatted_command += f"\n{command.help.format(prefix=ctx.prefix)}\n"
 
         if not isinstance(command, commands.Group) or not command.commands:
             formatted_command += f"\n\n{self.arg_help}"
@@ -272,7 +272,7 @@ class ClamHelpCommand(commands.HelpCommand):
             em.set_thumbnail(url=url)
 
         if cog.description:
-            em.description += f"\n{cog.description}\n"
+            em.description += f"\n{cog.description.format(prefix=ctx.prefix)}\n"
 
         more_info = f"{self.arg_help}\n{self.i_cmd(ctx)}"
 
@@ -290,7 +290,7 @@ class ClamHelpCommand(commands.HelpCommand):
 
         em = self.get_base_embed()
 
-        em.description = self.format_command(group)
+        em.description = self.format_command(group, ctx)
 
         cog_name = group.cog.__class__.__name__
         if os.path.isfile(f"assets/cogs/{cog_name}.png"):
@@ -320,7 +320,7 @@ class ClamHelpCommand(commands.HelpCommand):
             url = f"https://raw.githubusercontent.com/Fyssion/Clam/main/assets/cogs/{cog_name}.png"
             em.set_thumbnail(url=url)
 
-        em.description = self.format_command(command)
+        em.description = self.format_command(command, ctx)
 
         await ctx.send(embed=em)
 
