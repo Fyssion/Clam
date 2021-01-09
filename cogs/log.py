@@ -102,6 +102,9 @@ class Log(commands.Cog):
 
         To set the logging channel, use this command with the log channel.
         Otherwise, use `{prefix}log create`
+
+        Log options are listed below. To learn more about a
+        specific option, use `{prefix}help log <option>`. 
         """
         if not channel:
             return await self.send_log_info(ctx)
@@ -112,7 +115,7 @@ class Log(commands.Cog):
                 """
         await ctx.db.execute(query, ctx.guild.id, channel.id)
 
-        await ctx.send(ctx.tick(True, f"Now logging member joins and AutoMod actions to {channel.mention}."
+        await ctx.send(ctx.tick(True, f"Now logging member joins and AutoMod actions to {channel.mention}. "
                                       f"For more info on changing what gets logged, see `{ctx.prefix}help log`"))
         self.get_guild_log.invalidate(self, ctx.guild.id)
 
