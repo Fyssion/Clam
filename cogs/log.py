@@ -171,7 +171,8 @@ class Log(commands.Cog):
             return await ctx.send("Logging is not enabled.")
 
         query = f"""UPDATE guild_logs
-                   SET {option}=(NOT {option}) WHERE id=$1
+                   SET {option}=(NOT {option})
+                   WHERE id=$1
                    RETURNING {option};
                 """
 
