@@ -1893,7 +1893,7 @@ class Moderation(commands.Cog):
         self.get_guild_settings.invalidate(self, ctx.guild.id)
 
         guild_log = await ctx.get_guild_log()
-        if not guild_log or not guild_log.log_joins_and_leaves:
+        if not guild_log or not guild_log.log_automod_actions:
             logging_info = f" To enable AutoMod logging, see `{ctx.prefix}help log`."
         else:
             logging_info = ""
@@ -1934,7 +1934,7 @@ class Moderation(commands.Cog):
         self.get_guild_settings.invalidate(self, ctx.guild.id)
 
         guild_log = await ctx.get_guild_log()
-        if not guild_log or not guild_log.log_joins_and_leaves:
+        if not guild_log or not guild_log.log_automod_actions:
             logging_info = f" To enable AutoMod logging, see `{ctx.prefix}help log`."
         else:
             logging_info = ""
@@ -1968,7 +1968,7 @@ class Moderation(commands.Cog):
         self.get_guild_settings.invalidate(self, ctx.guild.id)
 
         guild_log = await ctx.get_guild_log()
-        if not guild_log or not guild_log.log_joins_and_leaves:
+        if not guild_log or not guild_log.log_automod_actions:
             logging_info = f" To enable AutoMod logging, see `{ctx.prefix}help log`."
         else:
             logging_info = ""
