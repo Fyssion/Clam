@@ -19,6 +19,9 @@ class Context(commands.Context):
     def db(self):
         return self.bot.pool
 
+    async def get_guild_log(self):
+        return await self.bot.get_guild_log(self.guild.id)
+
     async def delete_send(self, *args, **kwargs):
         if "delete_after" not in kwargs:
             kwargs["delete_after"] = 5.0

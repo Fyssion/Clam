@@ -20,19 +20,30 @@ from .utils import cache, checks, db, humantime
 from .utils.checks import has_manage_guild
 from .utils.emojis import GREEN_TICK, LOADING, RED_TICK
 from .utils.flags import NoUsageFlagGroup
+from .utils.formats import human_join, plural
 from .utils.utils import is_int
 
 
 log = logging.getLogger("clam.mod")
 
 
-class RaidMode(enum.Enum):
+class AutomodMode(enum.Enum):
     off = 0
-    on = 1
-    strict = 2
+    low = 1
+    medium = 2
+    high = 3
 
     def __str__(self):
         return self.name
+
+
+class SpamViolations(db.Table, table_name="spam_violations"):
+    id = db.PrimaryKeyColumn()
+
+    guild_id = db.Column(db.Integer(big=True))
+    channel_id = db.Column(db.Integer(big=True))
+    user_id = db.Column(db.Integer(big=True))
+    violated_at = db.Column(db.Datetime, default="now() at time zone 'utc'")
 
 
 class GuildSettingsTable(db.Table, table_name="guild_settings"):
@@ -40,10 +51,13 @@ class GuildSettingsTable(db.Table, table_name="guild_settings"):
 
     mute_role_id = db.Column(db.Integer(big=True))
     muted_members = db.Column(db.Array(db.Integer(big=True)))
-    raid_mode = db.Column(db.Integer(small=True))
-    broadcast_channel = db.Column(db.Integer(big=True))
+    automod_mode = db.Column(db.Integer(small=True))
+    violation_count = db.Column(db.Integer(small=True))
+    ignore_roles = db.Column(db.Boolean, default=False)
+    ignored_channels = db.Column(db.Array(db.Integer(big=True)))
+    ignored_roles = db.Column(db.Array(db.Integer(big=True)))
+    ignored_members = db.Column(db.Array(db.Integer(big=True)))
     mention_count = db.Column(db.Integer(small=True))
-    safe_mention_channel_ids = db.Column(db.Array(db.Integer(big=True)))
 
 
 class GuildSettings:
@@ -56,18 +70,15 @@ class GuildSettings:
         self.id = record["id"]
         self.mute_role_id = record["mute_role_id"]
         self.muted_members = record["muted_members"] or []
-        self.raid_mode = record["raid_mode"]
-        self.id = record["id"]
-        self.broadcast_channel_id = record["broadcast_channel"]
+        self.automod_mode = record["automod_mode"]
+        self.violation_count = record["violation_count"]
+        self.ignore_roles = record["ignore_roles"]
+        self.ignored_channels = record["ignored_channels"] or []
+        self.ignored_roles = record["ignored_roles"] or []
+        self.ignored_members = record["ignored_members"] or []
         self.mention_count = record["mention_count"]
-        self.safe_mention_channel_ids = set(record["safe_mention_channel_ids"] or [])
 
         return self
-
-    @property
-    def broadcast_channel(self):
-        guild = self.bot.get_guild(self.id)
-        return guild and guild.get_channel(self.broadcast_channel_id)
 
     @property
     def mute_role(self):
@@ -104,32 +115,6 @@ class GuildSettings:
 
         role = self.mute_role
         await member.remove_roles(role, reason=reason)
-
-
-# @fill_with_flags()
-# class LoggingFlags(BaseFlags):
-#     """Describes what to log"""
-
-#     @flag_value
-#     def message_edit(self):
-#         return 1 << 0
-
-#     @flag_value
-#     def message_delete(self):
-#         return 1 << 1
-
-#     @flag_value
-#     def guild_join(self):
-#         return 1 << 2
-
-#     @flag_value
-#     def guild_leave(self):
-#         return 1 << 3
-
-
-# class Logs(db.Table):
-#     id = db.PrimaryKeyColumn()
-#     guild_id = db.Column(db.Integer(big=True), index=True)
 
 
 class WelcomeContent:
@@ -378,11 +363,9 @@ class Moderation(commands.Cog):
         # A batch list of message content for message
         self.message_batches = defaultdict(list)
         self._batch_message_lock = asyncio.Lock(loop=bot.loop)
-        self.bulk_send_messages.start()
 
     def cog_unload(self):
         self.batch_updates.stop()
-        self.bulk_send_messages.stop()
 
     async def cog_command_error(self, ctx, error):
         if isinstance(error, NoMuteRole) or isinstance(error, RoleHierarchyFailure):
@@ -393,13 +376,15 @@ class Moderation(commands.Cog):
             original = error.original
             if isinstance(original, discord.Forbidden):
                 await ctx.send("I do not have permission to execute this action.")
+                ctx.handled = True
             elif isinstance(original, discord.NotFound):
                 await ctx.send(f"This entity does not exist: {original.text}")
+                ctx.handled = True
             elif isinstance(original, discord.HTTPException):
                 await ctx.send(
                     "Somehow, an unexpected error occurred. Try again later?"
                 )
-            ctx.handled = True
+                ctx.handled = True
 
     @commands.command(aliases=["su"])
     @checks.has_permissions(administrator=True)
@@ -442,6 +427,11 @@ class Moderation(commands.Cog):
         if record is not None:
             return GuildSettings.from_record(record, self.bot)
         return None
+
+    @cache.cache()
+    async def get_spam_violations(self, guild_id, user_id):
+        query = "SELECT * FROM spam_violations WHERE guild_id=$1 AND user_id=$2;"
+        return await self.bot.pool.fetch(query, guild_id, user_id) or []
 
     @commands.command()
     @checks.has_permissions(ban_members=True)
@@ -726,6 +716,29 @@ class Moderation(commands.Cog):
 
         await ctx.send(f"{ctx.tick(True)} Unmuted `{member}`")
 
+    async def tempmute_member(self, settings, member, dt, reason):
+        timers = self.bot.get_cog("Timers")
+        if not timers:
+            raise RuntimeError("Timers cog is not loaded. Cannot perform tempmute.")
+
+        role = settings.mute_role
+
+        execute_db = False if member.id in settings.muted_members else True
+
+        try:
+            await settings.mute_member(member, reason, execute_db=execute_db)
+            await timers.create_timer(
+                dt, "tempmute", member.guild.id, role.id, member.id, member.id
+            )
+
+        except Exception:
+            await settings.unmute_member(
+                member, reason="Mute or timer creation failed for previous tempmute."
+            )
+            raise
+
+        self.get_guild_settings.invalidate(self, member.guild.id)
+
     @commands.command()
     @can_mute()
     async def tempmute(
@@ -748,28 +761,12 @@ class Moderation(commands.Cog):
             )
 
         settings = await self.get_guild_settings(ctx.guild.id)
-        role = settings.mute_role
-
-        execute_db = False if member.id in settings.muted_members else True
 
         friendly_time = humantime.timedelta(
             duration.dt, source=ctx.message.created_at
         )
         reason = f"Tempmute by {ctx.author} (ID: {ctx.author.id}) for {friendly_time} with reason: {reason}"
-
-        try:
-            await settings.mute_member(member, reason, execute_db=execute_db)
-            timer = await timers.create_timer(
-                duration.dt, "tempmute", ctx.guild.id, role.id, ctx.author.id, member.id
-            )
-
-        except Exception:
-            await settings.unmute_member(
-                member, reason="Timer creation failed for previous tempmute."
-            )
-            raise
-
-        self.get_guild_settings.invalidate(self, ctx.guild.id)
+        await self.tempmute_member(settings, member, duration.dt, reason)
 
         await ctx.send(f"{ctx.tick(True)} Muted `{member}` for `{friendly_time}`.")
 
@@ -1656,45 +1653,103 @@ class Moderation(commands.Cog):
         async with self._batch_lock:
             await self.bulk_insert()
 
-    @tasks.loop(seconds=10.0)
-    async def bulk_send_messages(self):
-        async with self._batch_message_lock:
-            for ((guild_id, channel_id), messages) in self.message_batches.items():
-                guild = self.bot.get_guild(guild_id)
-                channel = guild and guild.get_channel(channel_id)
-                if channel is None:
-                    continue
+    async def register_spam_violation(self, member, message):
+        query = """INSERT INTO spam_violations (guild_id, user_id, channel_id)
+                   VALUES ($1, $2, $3);
+                """
+        await self.bot.pool.execute(query, member.guild.id, member.id, message.channel.id)
+        self.get_spam_violations.invalidate(self, member.guild.id, member.id)
 
-                paginator = commands.Paginator(suffix="", prefix="")
-                for message in messages:
-                    paginator.add_line(message)
+    async def do_automod(self, settings, guild_id, member, message):
+        mode = settings.automod_mode
 
-                for page in paginator.pages:
-                    try:
-                        await channel.send(page)
-                    except discord.HTTPException:
-                        pass
-
-            self.message_batches.clear()
-
-    async def check_raid(self, config, guild_id, member, message):
-        if config.raid_mode != RaidMode.strict.value:
+        if mode == AutomodMode.off.value:
             return
 
         checker = self._spam_check[guild_id]
         if not checker.is_spamming(message):
             return
 
+        violations = await self.get_spam_violations(guild_id, member.id)
+        mute_times = [
+            600,    # 10 minutes
+            3600,   # 1 hour
+            21600,  # 6 hours
+            86400,  # 1 day
+        ]
+
+        medium_and_mute = mode == AutomodMode.medium.value and len(violations) < settings.violation_count
+        if mode == AutomodMode.low.value or medium_and_mute:
+            # Mute the member
+            if len(violations) > 3:
+                mute_time = mute_times[-1]
+                dt = datetime.datetime.utcnow() + datetime.timedelta(seconds=mute_time)
+
+            else:
+                mute_time = mute_times[len(violations)]
+                dt = datetime.datetime.utcnow() + datetime.timedelta(seconds=mute_time)
+
+            await self.register_spam_violation(member, message)
+
+            friendly = humantime.timedelta(dt, brief=True)
+            reason = (
+                f"[AutoMod] Auto-tempmute for {friendly} "
+                f"({plural(len(violations)):previous violation|previous violations})"
+            )
+
+            try:
+                await self.tempmute_member(settings, member, dt, reason)
+            except Exception:
+                log.info(f"[AutoMod] Failed to tempmute {member} (ID: {member.id}) for {humantime.timedelta(dt)}")
+            else:
+                log.info(f"[AutoMod] Tempmuted {member} (ID: {member.id}) for {humantime.timedelta(dt)}")
+
+                guild_log = await self.bot.get_guild_log(member.guild.id)
+                if guild_log:
+                    em = discord.Embed(
+                        title="[AutoMod] Member Auto-Tempmuted",
+                        description=member.mention,
+                        color=discord.Color.orange()
+                    )
+                    em.set_author(name=str(member), icon_url=member.avatar_url)
+                    em.add_field(name="Previous Spam Violations", value=len(violations))
+                    em.add_field(name="Mute Duration", value=humantime.timedelta(dt))
+                    em.add_field(name="Account Created", value=humantime.fulltime(member.created_at))
+
+                    await guild_log.log_automod_action(embed=em)
+
+            return
+
+        if mode == AutomodMode.medium.value:
+            member_violations = f" ({plural(len(violations)):previous violation|previous violations})"
+        else:
+            member_violations = ""
+
         try:
-            await member.ban(reason="Auto-ban from spam (strict raid mode ban)")
+            await member.ban(reason=f"[AutoMod] Auto-ban from spam{member_violations}")
         except discord.HTTPException:
             log.info(
-                f"[Raid Mode] Failed to ban {member} (ID: {member.id}) from server {member.guild} via strict mode."
+                f"[AutoMod] Failed to ban {member} (ID: {member.id}) from server {member.guild}{member_violations}."
             )
         else:
             log.info(
-                f"[Raid Mode] Banned {member} (ID: {member.id}) from server {member.guild} via strict mode."
+                f"[AutoMod] Banned {member} (ID: {member.id}) from server {member.guild}{member_violations}."
             )
+
+            guild_log = await self.bot.get_guild_log(member.guild.id)
+            if guild_log:
+                em = discord.Embed(
+                    title="[AutoMod] Member Auto-Banned",
+                    description=member.mention,
+                    color=discord.Color.red()
+                )
+                em.set_author(name=str(member), icon_url=member.avatar_url)
+                if mode == AutomodMode.medium.value:
+                    em.add_field(name="Previous Spam Violations", value=len(violations))
+
+                em.add_field(name="Account Created", value=humantime.fulltime(member.created_at))
+
+                await guild_log.log_automod_action(embed=em)
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -1711,223 +1766,437 @@ class Moderation(commands.Cog):
         if author.bot:
             return
 
-        # we're going to ignore members with roles
-        if len(author.roles) > 1:
-            return
-
         guild_id = message.guild.id
-        config = await self.get_guild_settings(guild_id)
-        if config is None:
+        settings = await self.get_guild_settings(guild_id)
+        if settings is None:
             return
 
-        # check for raid mode stuff
-        await self.check_raid(config, guild_id, author, message)
+        if settings.ignore_roles and len(author.roles) > 1:
+            return
+
+        if author.id in settings.ignored_members:
+            return
+
+        if message.channel.id in settings.ignored_channels:
+            return
+
+        if any(r.id in settings.ignored_roles for r in author.roles):
+            return
+
+        await self.do_automod(settings, guild_id, author, message)
 
         # auto-ban tracking for mention spams begin here
         if len(message.mentions) <= 3:
             return
 
-        if not config.mention_count:
+        if not settings.mention_count:
             return
 
         # check if it meets the thresholds required
         mention_count = sum(not m.bot and m.id != author.id for m in message.mentions)
-        if mention_count < config.mention_count:
-            return
-
-        if message.channel.id in config.safe_mention_channel_ids:
+        if mention_count < settings.mention_count:
             return
 
         try:
-            await author.ban(reason=f"Spamming mentions ({mention_count} mentions)")
-        except Exception as e:
+            await author.ban(reason=f"[AutoMod] Spamming mentions ({mention_count} mentions)")
+        except Exception:
             log.info(
                 f"Failed to autoban member {author} (ID: {author.id}) in guild ID {guild_id}"
             )
         else:
-            to_send = f"Banned {author} (ID: {author.id}) for spamming {mention_count} mentions."
-            async with self._batch_message_lock:
-                self.message_batches[(guild_id, message.channel.id)].append(to_send)
-
-            # log.info(
-            #     f"Member {author} (ID: {author.id}) has been autobanned from guild ID {guild_id}"
-            # )
             log.info(
                 f"[MentionSpam] Banned {author} (ID: {author.id}) from server {author.guild} for spamming {mention_count} mentions.")
+            guild_log = await self.bot.get_guild_log(author.guild.id)
+            if guild_log:
+                em = discord.Embed(
+                    title="[AutoMod] Member auto-banned for mention spamming",
+                    description=author.mention,
+                    color=discord.Color.red()
+                )
+                em.set_author(name=str(author), icon_url=author.avatar_url)
+                em.add_field(name="Account Created", value=humantime.fulltime(author.created_at))
 
-    @commands.Cog.listener()
-    async def on_member_join(self, member):
-        guild_id = member.guild.id
-        config = await self.get_guild_settings(guild_id)
-        if config is None:
-            return
+                await guild_log.log_automod_action(embed=em)
 
-        if not config.raid_mode:
-            return
-
-        now = datetime.datetime.utcnow()
-
-        is_new = member.created_at > (now - datetime.timedelta(days=7))
-        checker = self._spam_check[guild_id]
-
-        # Do the broadcasted message to the channel
-        title = "Member Joined"
-        if checker.is_fast_join(member):
-            colour = 0xDD5F53  # red
-            if is_new:
-                title = "Member Joined (Very New Member)"
-        else:
-            colour = 0x53DDA4  # green
-
-            if is_new:
-                colour = 0xDDA453  # yellow
-                title = "Member Joined (Very New Member)"
-
-        e = discord.Embed(title=title, colour=colour)
-        e.timestamp = now
-        e.set_author(name=str(member), icon_url=member.avatar_url)
-        e.add_field(name="ID", value=member.id)
-        e.add_field(name="Joined", value=member.joined_at)
-        e.add_field(
-            name="Created",
-            value=humantime.timedelta(member.created_at),
-            inline=False,
-        )
-
-        if config.broadcast_channel:
-            try:
-                await config.broadcast_channel.send(embed=e)
-            except discord.Forbidden:
-                async with self._disable_lock:
-                    await self.disable_raid_mode(guild_id)
-
-    @commands.group(aliases=["raids"], invoke_without_command=True)
+    @commands.group(aliases=["raid"], invoke_without_command=True)
     @checks.has_permissions(manage_guild=True)
-    async def raid(self, ctx):
-        """Controls raid mode on the server.
+    async def automod(self, ctx):
+        """Controls AutoMod on this server.
 
-        Calling this command with no arguments will show the current raid
-        mode information.
+        Calling this command with no arguments will show the AutoMod information.
+
+        AutoMod modes:
+        - low: AutoMod will tempmute spammers, but not ban.
+        - medium: AutoMod will tempmute spammers and ban them after 5 mutes.
+        - high: AutoMod will ban spammers without muting them first.
+
+        To learn more about a mode, use `{prefix}help automod <mode>`
+        To set automod to a mode, use `{prefix}automod <mode>`
 
         You must have Manage Server permissions to use this command or
         its subcommands.
         """
 
-        query = "SELECT raid_mode, broadcast_channel FROM guild_settings WHERE id=$1;"
+        query = """SELECT automod_mode, violation_count, ignored_channels, ignored_roles, ignored_members
+                   FROM guild_settings
+                   WHERE id=$1;"""
 
-        row = await ctx.db.fetchrow(query, ctx.guild.id)
-        if row is None:
-            fmt = "Raid Mode: off\nBroadcast Channel: None"
+        record = await ctx.db.fetchrow(query, ctx.guild.id)
+        if not record or record["automod_mode"] == 0:
+            fmt = "**AutoMod is off**"
+            ignored = ""
         else:
-            ch = f"<#{row[1]}>" if row[1] else None
-            mode = RaidMode(row[0]) if row[0] is not None else RaidMode.off
-            fmt = f"Raid Mode: {mode}\nBroadcast Channel: {ch}"
+            mode, count, ignored_channels, ignored_roles, ignored_members = record
+            mode = AutomodMode(mode)
+            fmt = f"**AutoMod mode set to {mode}**"
+            if mode == AutomodMode.medium:
+                fmt += f" (banning after {count} violations)"
 
-        await ctx.send(fmt)
+            ignored = []
 
-    @raid.command(name="on", aliases=["enable", "enabled"])
+            if ignored_channels:
+                ignored.append(f"{plural(len(ignored_channels)):channel}")
+
+            if ignored_roles:
+                ignored.append(f"{plural(len(ignored_roles)):role}")
+
+            if ignored_members:
+                ignored.append(f"{plural(len(ignored_members)):member}")
+
+            if ignored:
+                ignored = f"Ignoring {human_join(ignored, final='and')}.\n"
+            else:
+                ignored = ""
+
+        await ctx.send(f"{fmt}.\n{ignored}\nFor more info on AutoMod, use `{ctx.prefix}help automod`.")
+
+    @automod.command(name="low")
     @checks.has_permissions(manage_guild=True)
-    async def raid_on(self, ctx, *, channel: discord.TextChannel = None):
-        """Enables basic raid mode on the server.
+    async def automod_low(self, ctx):
+        """Enables low automod on this server.
 
-        When enabled, server verification level is set to table flip
-        levels and allows the bot to broadcast new members joining
-        to a specified channel.
-
-        If no channel is given, then the bot will broadcast join
-        messages on the channel this command was used in.
+        Low automode means the bot will tempmute spammers (no bans).
+        The threshold for spamming depends on a per-content basis
+        and also on a per-user basis of 15 messages per 17 seconds.
         """
 
-        channel = channel or ctx.channel
+        settings = await self.get_guild_settings(ctx.guild.id)
+        if not settings or not settings.mute_role:
+            return await ctx.send(ctx.tick(False, f"A mute role has not been set. See `{ctx.prefix}help mute role`."))
 
-        try:
-            await ctx.guild.edit(verification_level=discord.VerificationLevel.high)
-        except discord.HTTPException:
-            await ctx.send("\N{WARNING SIGN} Could not set verification level.")
-
-        query = """INSERT INTO guild_settings (id, raid_mode, broadcast_channel)
-                   VALUES ($1, $2, $3) ON CONFLICT (id)
-                   DO UPDATE SET
-                        raid_mode = EXCLUDED.raid_mode,
-                        broadcast_channel = EXCLUDED.broadcast_channel;
+        query = """INSERT INTO guild_settings (id, automod_mode)
+                   VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET
+                        automod_mode = EXCLUDED.automod_mode;
                 """
 
-        await ctx.db.execute(query, ctx.guild.id, RaidMode.on.value, channel.id)
+        await ctx.db.execute(query, ctx.guild.id, AutomodMode.low.value)
         self.get_guild_settings.invalidate(self, ctx.guild.id)
-        await ctx.send(
-            f"Raid mode enabled. Broadcasting join messages to {channel.mention}."
-        )
 
-    async def disable_raid_mode(self, guild_id):
-        query = """INSERT INTO guild_settings (id, raid_mode, broadcast_channel)
-                   VALUES ($1, $2, NULL) ON CONFLICT (id)
-                   DO UPDATE SET
-                        raid_mode = EXCLUDED.raid_mode,
-                        broadcast_channel = NULL;
-                """
+        guild_log = await ctx.get_guild_log()
+        if not guild_log or not guild_log.log_joins_and_leaves:
+            logging_info = f" To enable AutoMod logging, see `{ctx.prefix}help log`."
+        else:
+            logging_info = ""
 
-        await self.bot.pool.execute(query, guild_id, RaidMode.off.value)
-        self._spam_check.pop(guild_id, None)
-        self.get_guild_settings.invalidate(self, guild_id)
+        await ctx.send(ctx.tick(True, f"AutoMode low enabled. Now tempmuting spammers. {logging_info}"))
 
-    @raid.command(name="off", aliases=["disable", "disabled"])
+    @automod.command(name="medium")
     @checks.has_permissions(manage_guild=True)
-    async def raid_off(self, ctx):
-        """Disables raid mode on the server.
+    async def automod_medium(self, ctx, violations: int = 5):
+        """Enables medium AutoMod on this server.
 
-        When disabled, the server verification levels are set
-        back to Low levels and the bot will stop broadcasting
-        join messages.
+        Medium AutoMod is similar to low AutoMod, except users are
+        auto-banned after a number of violations. Defaults to 5.
+        The threshold for spamming depends on a per-content basis
+        and also on a per-user basis of 15 messages per 17 seconds.
+
+        To clear a user's violations, see `{prefix}automod clear`.
         """
 
-        try:
-            await ctx.guild.edit(verification_level=discord.VerificationLevel.low)
-        except discord.HTTPException:
-            await ctx.send("\N{WARNING SIGN} Could not set verification level.")
+        if violations < 3:
+            raise commands.BadArgument("Violations must be at least 3.")
 
-        await self.disable_raid_mode(ctx.guild.id)
-        await ctx.send("Raid mode disabled. No longer broadcasting join messages.")
-
-    @raid.command(name="strict")
-    @checks.has_permissions(manage_guild=True)
-    async def raid_strict(self, ctx, *, channel: discord.TextChannel = None):
-        """Enables strict raid mode on the server.
-
-        Strict mode is similar to regular enabled raid mode, with the added
-        benefit of auto-banning members that are spamming. The threshold for
-        spamming depends on a per-content basis and also on a per-user basis
-        of 15 messages per 17 seconds.
-
-        If this is considered too strict, it is recommended to fall back to regular
-        raid mode.
-        """
-        channel = channel or ctx.channel
+        settings = await self.get_guild_settings(ctx.guild.id)
+        if not settings or not settings.mute_role:
+            return await ctx.send(ctx.tick(False, f"A mute role has not been set. See `{ctx.prefix}help mute role`."))
 
         perms = ctx.me.guild_permissions
         if not (perms.kick_members and perms.ban_members):
-            return await ctx.send(
-                "\N{NO ENTRY SIGN} I do not have permissions to kick and ban members."
-            )
+            return await ctx.send(ctx.tick(False, "I do not have permissions to kick and ban members."))
 
-        try:
-            await ctx.guild.edit(verification_level=discord.VerificationLevel.high)
-        except discord.HTTPException:
-            await ctx.send("\N{WARNING SIGN} Could not set verification level.")
-
-        query = """INSERT INTO guild_settings (id, raid_mode, broadcast_channel)
-                   VALUES ($1, $2, $3) ON CONFLICT (id)
-                   DO UPDATE SET
-                        raid_mode = EXCLUDED.raid_mode,
-                        broadcast_channel = EXCLUDED.broadcast_channel;
+        query = """INSERT INTO guild_settings (id, automod_mode, violation_count)
+                   VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET
+                        automod_mode = EXCLUDED.automod_mode,
+                        violation_count = EXCLUDED.violation_count;
                 """
 
-        await ctx.db.execute(query, ctx.guild.id, RaidMode.strict.value, channel.id)
+        await ctx.db.execute(query, ctx.guild.id, AutomodMode.medium.value, violations)
         self.get_guild_settings.invalidate(self, ctx.guild.id)
-        await ctx.send(
-            f"Raid mode enabled strictly. Broadcasting join messages to {channel.mention}."
-        )
 
-    @commands.group(invoke_without_command=True)
+        guild_log = await ctx.get_guild_log()
+        if not guild_log or not guild_log.log_joins_and_leaves:
+            logging_info = f" To enable AutoMod logging, see `{ctx.prefix}help log`."
+        else:
+            logging_info = ""
+
+        await ctx.send(ctx.tick(True, "AutoMod medium enabled. Now tempmuting spammers. "
+                                      f"Spammers will be auto-banned after {plural(violations):violation}.{logging_info}"))
+
+    @automod.command(name="high")
+    @checks.has_permissions(manage_guild=True)
+    async def automod_high(self, ctx):
+        """Enables medium AutoMod on this server.
+
+        High AutoMod auto-bans spammers without muting them first.
+        The threshold for spamming depends on a per-content basis
+        and also on a per-user basis of 15 messages per 17 seconds.
+
+        If this is too strict for you, see AutoMod medium or low.
+        """
+
+        perms = ctx.me.guild_permissions
+        if not (perms.kick_members and perms.ban_members):
+            return await ctx.send(ctx.tick(False, "I do not have permissions to kick and ban members."))
+
+        query = """INSERT INTO guild_settings (id, automod_mode)
+                   VALUES ($1, $2) ON CONFLICT (id)
+                   DO UPDATE SET
+                        automod_mode = EXCLUDED.automod_mode;
+                """
+
+        await ctx.db.execute(query, ctx.guild.id, AutomodMode.high.value)
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
+
+        guild_log = await ctx.get_guild_log()
+        if not guild_log or not guild_log.log_joins_and_leaves:
+            logging_info = f" To enable AutoMod logging, see `{ctx.prefix}help log`."
+        else:
+            logging_info = ""
+
+        await ctx.send(ctx.tick(True, f"AutoMod high enabled. Now banning spammers.{logging_info}"))
+
+    @automod.command(name="off", aliases=["disable", "disabled"])
+    @checks.has_permissions(manage_guild=True)
+    async def automod_off(self, ctx):
+        """Disables AutoMod on this server."""
+
+        query = """INSERT INTO guild_settings (id, automod_mode)
+                   VALUES ($1, $2, NULL) ON CONFLICT (id)
+                   DO UPDATE SET
+                        automod_mode = EXCLUDED.automod_mode;
+                """
+
+        await ctx.execute(query, ctx.guild.id, AutomodMode.off.value)
+        self._spam_check.pop(ctx.guild.id, None)
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
+
+        await ctx.send(ctx.tick(True, "AutoMod disabled."))
+
+    @automod.command(name="clear")
+    @checks.has_permissions(manage_guild=True)
+    async def automod_clear(self, ctx, *, member: discord.Member):
+        """Clears a member's spam violations"""
+
+        query = """DELETE FROM spam_violations
+                   WHERE guild_id=$1 AND user_id=$2
+                   RETURNING id;
+                   """
+        records = await ctx.db.fetch(query, ctx.guild.id, member.id)
+
+        if not records:
+            return await ctx.send("That member has no spam violations on record.")
+
+        await ctx.send(ctx.tick(True, f"Cleared {plural(len(records)):spam violation|spam violations}."))
+
+    @automod.command(name="violations")
+    @checks.has_permissions(manage_guild=True)
+    async def automod_violations(self, ctx, *, member: discord.Member):
+        """View a member's spam violations"""
+        records = await self.get_spam_violations(ctx.guild.id, member.id)
+
+        if not records:
+            return await ctx.send("That member has no spam violations on record.")
+
+        violations = []
+
+        for v_id, guild_id, channel_id, member_id, when in records:
+            channel = ctx.guild.get_channel(channel_id)
+            channel = channel.mention if channel else f"Deleted channel with ID {channel_id}"
+
+            violations.append(f"Channel: {channel} | {humantime.timedelta(when, brief=True)}")
+
+        em = discord.Embed(title="Spam Violations", color=discord.Color.blurple())
+        em.set_author(name=str(member), icon_url=member.avatar_url)
+        pages = ctx.embed_pages(violations, em)
+        await pages.start(ctx)
+
+    @automod.group(name="ignore", invoke_without_command=True)
+    @checks.has_permissions(manage_guild=True)
+    async def automod_ignore(self, ctx, *, entity: typing.Union[discord.TextChannel, discord.Role, discord.Member, str]):
+        """Ignore a channel, role, or member from being affected by AutoMod"""
+        if isinstance(entity, str):
+            raise commands.BadArgument(f"Couldn't find a text channel, role, or member named '{entity}'")
+
+        if isinstance(entity, discord.TextChannel):
+            query = """UPDATE guild_settings
+                       SET ignored_channels =
+                           ARRAY(SELECT DISTINCT * FROM unnest(COALESCE(ignored_channels, '{}') || $2::bigint))
+                       WHERE id = $1;
+                    """
+            name = "ignored channels"
+
+        elif isinstance(entity, discord.Role):
+            query = """UPDATE guild_settings
+                       SET ignored_roles =
+                           ARRAY(SELECT DISTINCT * FROM unnest(COALESCE(ignored_roles, '{}') || $2::bigint))
+                       WHERE id = $1;
+                    """
+            name = "ignored roles"
+
+        else:
+            query = """UPDATE guild_settings
+                       SET ignored_members =
+                           ARRAY(SELECT DISTINCT * FROM unnest(COALESCE(ignored_members, '{}') || $2::bigint))
+                       WHERE id = $1;
+                    """
+            name = "ignored members"
+
+        await ctx.db.execute(query, ctx.guild.id, entity.id)
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
+        await ctx.send(ctx.tick(True, f"Added {entity} to AutoMod {name}."))
+
+    @automod_ignore.command(name="roles")
+    @checks.has_permissions(manage_guild=True)
+    async def automod_ignore_roles(self, ctx):
+        """Ignore all members with roles"""
+        query = """UPDATE guild_settings
+                   SET ignore_roles=TRUE
+                   WHERE id=$1
+                   RETURNING id;
+                """
+        result = await ctx.db.fetchval(query, ctx.guild.id)
+
+        if not result:
+            return await ctx.send("AutoMod is not enabled.")
+
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
+        await ctx.send(ctx.tick(True, "AutoMod is now ignoring members with roles."))
+
+    @automod.group(name="unignore", invoke_without_command=True)
+    @checks.has_permissions(manage_guild=True)
+    async def automod_unignore(self, ctx, *, entity: typing.Union[discord.TextChannel, discord.Role, discord.Member, str]):
+        """Unignore a channel, role, or member"""
+        if isinstance(entity, str):
+            raise commands.BadArgument(f"Couldn't find a text channel, role, or member named '{entity}'")
+
+        if isinstance(entity, discord.TextChannel):
+            query = """UPDATE guild_settings
+                       SET ignored_channels =
+                           ARRAY(SELECT element FROM unnest(ignored_channels) AS element
+                                 WHERE NOT(element = $2::bigint))
+                       WHERE id = $1
+                       RETURNING id;
+                    """
+            name = "ignored channels"
+
+        elif isinstance(entity, discord.Role):
+            query = """UPDATE guild_settings
+                       SET ignored_roles =
+                           ARRAY(SELECT element FROM unnest(ignored_roles) AS element
+                                 WHERE NOT(element = $2::bigint))
+                       WHERE id = $1
+                       RETURNING id;
+                    """
+            name = "ignored roles"
+
+        else:
+            query = """UPDATE guild_settings
+                       SET ignored_members =
+                           ARRAY(SELECT element FROM unnest(ignored_members) AS element
+                                 WHERE NOT(element = $2::bigint))
+                       WHERE id = $1
+                       RETURNING id;
+                    """
+            name = "ignored members"
+
+        result = await ctx.db.execute(query, ctx.guild.id, entity.id)
+
+        if not result:
+            return await ctx.send("AutoMod is not enabled.")
+
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
+        await ctx.send(ctx.tick(True, f"Updated AutoMod {name}."))
+
+    @automod_unignore.command(name="roles")
+    @checks.has_permissions(manage_guild=True)
+    async def automod_unignore_roles(self, ctx):
+        """Unignore all members with roles"""
+        query = """UPDATE guild_settings
+                   SET ignore_roles=FALSE
+                   WHERE id=$1
+                   RETURNING id;
+                """
+        result = await ctx.db.fetchval(query, ctx.guild.id)
+
+        if not result:
+            return await ctx.send("AutoMod is not enabled.")
+
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
+        await ctx.send(ctx.tick(True, "AutoMod is no longer ignoring members with roles."))
+
+    @automod.command(name="ignored")
+    @checks.has_permissions(manage_guild=True)
+    async def automod_ignored(self, ctx):
+        """View the AutoMod ignore list"""
+        query = """SELECT ignore_roles, ignored_channels, ignored_roles, ignored_members
+                   FROM guild_settings
+                   WHERE id=$1;
+                """
+        record = await ctx.db.fetchrow(query, ctx.guild.id)
+
+        if not record:
+            return await ctx.send("AutoMod is not enabled.")
+
+        if not any(v for v in record):
+            return await ctx.send("No ignored entities.")
+
+        paginator = commands.Paginator(prefix="", suffix="")
+
+        if record["ignore_roles"]:
+            paginator.add_line("**AutoMod is set to ignore __any__ members with roles.**")
+            paginator.add_line()
+
+        if record["ignored_channels"]:
+            paginator.add_line("**Ignored Channels**")
+
+            for channel_id in record["ignored_channels"]:
+                channel = ctx.guild.get_channel(channel_id)
+                paginator.add_line(channel.mention if channel else f"Deleted channel with ID {channel_id}")
+
+            paginator.add_line()
+
+        if record["ignored_roles"]:
+            paginator.add_line("**Ignored Roles**")
+
+            for role_id in record["ignored_roles"]:
+                role = ctx.guild.get_role(role_id)
+                paginator.add_line(str(role) if role else f"Deleted role with ID {role_id}")
+
+            paginator.add_line()
+
+        if record["ignored_members"]:
+            paginator.add_line("**Ignored Members**")
+
+            for user_id in record["ignored_members"]:
+                user = self.bot.get_user(user_id)
+                paginator.add_line(str(user) if user else f"Unknown user with ID {user_id}")
+
+            paginator.add_line()
+
+        for page in paginator.pages:
+            await ctx.send(page)
+
+    @automod.group(invoke_without_command=True)
     @commands.guild_only()
     @checks.has_permissions(ban_members=True)
     async def mentionspam(self, ctx, count: int = None):
@@ -1945,21 +2214,18 @@ class Moderation(commands.Cog):
         """
 
         if count is None:
-            query = """SELECT mention_count, COALESCE(safe_mention_channel_ids, '{}') AS channel_ids
+            query = """SELECT mention_count
                        FROM guild_settings
                        WHERE id=$1;
                     """
 
-            row = await ctx.db.fetchrow(query, ctx.guild.id)
-            if row is None or not row["mention_count"]:
+            count = await ctx.db.fetchval(query, ctx.guild.id)
+            if not count:
                 return await ctx.send(
                     "This server has not set up mention spam banning."
                 )
 
-            ignores = ", ".join(f"<#{e}>" for e in row["channel_ids"]) or "None"
-            return await ctx.send(
-                f'- Threshold: {row["mention_count"]} mentions\n- Ignored Channels: {ignores}'
-            )
+            return await ctx.send(f"Auto-banning members that mention more than {count} users.")
 
         if count == 0:
             query = """UPDATE guild_settings SET mention_count = NULL WHERE id=$1;"""
@@ -1973,8 +2239,8 @@ class Moderation(commands.Cog):
             )
             return
 
-        query = """INSERT INTO guild_settings (id, mention_count, safe_mention_channel_ids)
-                   VALUES ($1, $2, '{}')
+        query = """INSERT INTO guild_settings (id, mention_count)
+                   VALUES ($1, $2)
                    ON CONFLICT (id) DO UPDATE SET
                        mention_count = $2;
                 """
@@ -1983,181 +2249,6 @@ class Moderation(commands.Cog):
         await ctx.send(
             f"Now auto-banning members that mention more than {count} users."
         )
-
-    @mentionspam.command(name="ignore", aliases=["bypass"])
-    @commands.guild_only()
-    @checks.has_permissions(ban_members=True)
-    async def mentionspam_ignore(self, ctx, *channels: discord.TextChannel):
-        """Specifies what channels ignore mentionspam auto-bans.
-
-        If a channel is given then that channel will no longer be protected
-        by auto-banning from mention spammers.
-
-        To use this command you must have the Ban Members permission.
-        """
-
-        query = """UPDATE guild_settings
-                   SET safe_mention_channel_ids =
-                       ARRAY(SELECT DISTINCT * FROM unnest(COALESCE(safe_mention_channel_ids, '{}') || $2::bigint[]))
-                   WHERE id = $1;
-                """
-
-        if len(channels) == 0:
-            return await ctx.send("Missing channels to ignore.")
-
-        channel_ids = [c.id for c in channels]
-        await ctx.db.execute(query, ctx.guild.id, channel_ids)
-        self.get_guild_settings.invalidate(self, ctx.guild.id)
-        await ctx.send(
-            f'Mentions are now ignored on {", ".join(c.mention for c in channels)}.'
-        )
-
-    @mentionspam.command(name="unignore", aliases=["protect"])
-    @commands.guild_only()
-    @checks.has_permissions(ban_members=True)
-    async def mentionspam_unignore(self, ctx, *channels: discord.TextChannel):
-        """Specifies what channels to take off the ignore list.
-
-        To use this command you must have the Ban Members permission.
-        """
-
-        if len(channels) == 0:
-            return await ctx.send("Missing channels to protect.")
-
-        query = """UPDATE guild_settings
-                   SET safe_mention_channel_ids =
-                       ARRAY(SELECT element FROM unnest(safe_mention_channel_ids) AS element
-                             WHERE NOT(element = ANY($2::bigint[])))
-                   WHERE id = $1;
-                """
-
-        await ctx.db.execute(query, ctx.guild.id, [c.id for c in channels])
-        self.get_guild_settings.invalidate(self, ctx.guild.id)
-        await ctx.send("Updated mentionspam ignore list.")
-
-    @commands.group(
-        name="log",
-        description="Keep a log of all user actions.",
-        invoke_without_command=True,
-    )
-    @commands.is_owner()
-    @commands.guild_only()
-    @has_manage_guild()
-    async def _log(self, ctx):
-        log = self.get_log(ctx.guild.id)
-        if not log:
-            await self.enable(ctx)
-        return await ctx.send(
-            f"Server log at {log.mention}. Use `{self.bot.guild_prefix(ctx.guild.id)}log set` to change log channel."
-        )
-
-    @_log.command(description="Enable your server's log.")
-    @commands.guild_only()
-    @has_manage_guild()
-    @commands.is_owner()
-    async def enable(self, ctx):
-        if self.get_log(ctx.guild.id):
-            return await ctx.send("Log is already enabled!")
-        await self._set(ctx)
-
-    @_log.command(description="Disable your server's log.")
-    @commands.guild_only()
-    @has_manage_guild()
-    @commands.is_owner()
-    async def disable(self, ctx):
-        if not self.get_log(str(ctx.guild.id)):
-            await ctx.send("This server doesn't have a log.")
-        self.log_channels.pop(str(ctx.guild.id))
-        with open("log_channels.json", "w") as f:
-            json.dump(
-                self.log_channels, f, sort_keys=True, indent=4, separators=(",", ": ")
-            )
-        await ctx.send(f"**Log disabled**")
-
-    @_log.command(
-        name="set", description="Set your server's log channel.", aliases=["setup"]
-    )
-    @commands.guild_only()
-    @has_manage_guild()
-    @commands.is_owner()
-    async def _set(self, ctx, channel: discord.TextChannel = None):
-        if not channel:
-            channel = ctx.channel
-        if channel.guild.id != ctx.guild.id:
-            return await ctx.send("You must specify a channel in this server.")
-        self.log_channels[str(ctx.guild.id)] = channel.id
-        with open("log_channels.json", "w") as f:
-            json.dump(
-                self.log_channels, f, sort_keys=True, indent=4, separators=(",", ": ")
-            )
-        await ctx.send(f"Log channel set to {channel.mention}")
-
-    @commands.Cog.listener("on_message_delete")
-    async def _deletion_detector(self, message):
-        log = self.get_log(message.guild.id)
-        if not log:
-            return
-        em = discord.Embed(
-            title="Message Deletion",
-            color=discord.Color.red(),
-            timestamp=message.created_at,
-        )
-        em.set_author(name=str(message.author), icon_url=message.author.avatar_url)
-        em.set_footer(text=f"Message sent at")
-        em.description = f"In {message.channel.mention}:\n{message.content}"
-        await log.send(embed=em)
-
-    @commands.Cog.listener("on_message_edit")
-    async def _edit_detector(self, before, after):
-        if not before.guild:
-            return
-        log = self.get_log(before.guild.id)
-        if not log or log.id == before.id or before.author.id == self.bot.user.id:
-            return
-        if before.content == after.content:
-            return
-        em = discord.Embed(
-            title="Message Edit",
-            color=discord.Color.blue(),
-            timestamp=before.created_at,
-        )
-        em.set_author(name=str(before.author), icon_url=before.author.avatar_url)
-        em.set_footer(text=f"Message sent at")
-        em.description = (
-            f"[Jump](https://www.discordapp.com/channels/{before.guild.id}/{before.channel.id}/{before.id})\n"
-            f"In {before.channel.mention}:"
-        )
-        em.add_field(name="Before", value=before.content)
-        em.add_field(name="After", value=after.content)
-        await log.send(embed=em)
-
-    @commands.Cog.listener("on_member_join")
-    async def _join_message(self, member):
-        log = self.get_log(member.guild.id)
-        if not log:
-            return
-        em = discord.Embed(
-            title="Member Join",
-            description=f"**{member.mention} joined the server!**",
-            color=discord.Color.green(),
-            timestamp=datetime.datetime.utcnow(),
-        )
-        em.set_thumbnail(url=member.avatar_url)
-        await log.send(embed=em)
-
-    @commands.Cog.listener("on_member_remove")
-    async def _remove_message(self, user):
-        log = self.get_log(user.guild.id)
-        if not log:
-            return
-        em = discord.Embed(
-            title="Member Left",
-            description=f"**{user.mention} left the server**",
-            color=discord.Color.red(),
-            timestamp=datetime.datetime.utcnow(),
-        )
-        em.set_thumbnail(url=user.avatar_url)
-        await log.send(embed=em)
 
 
 def setup(bot):

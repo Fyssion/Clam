@@ -60,6 +60,7 @@ initial_extensions = [
     "cogs.games",
     "cogs.highlight",
     "cogs.internet",
+    "cogs.log",
     "cogs.mathematics",
     "cogs.meta",
     "cogs.moderation",
@@ -212,6 +213,13 @@ class Clam(commands.Bot):
             json.dump(self.blacklist, f)
 
         self.log.info(f"Removed {user_id} from the blacklist.")
+
+    async def get_guild_log(self, guild_id):
+        log_cog = self.get_cog("Log")
+        if not log_cog:
+            return None
+
+        return await log_cog.get_guild_log(guild_id)
 
     def guild_prefix(self, guild):
         if not guild:
