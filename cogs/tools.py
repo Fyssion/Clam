@@ -1026,8 +1026,8 @@ class Tools(commands.Cog):
             inline=True,
         )
 
-        joined_fmt = humantime.fulltime(user.joined_at, humanize_date=True, accuracy=2)
         if is_member:
+            joined_fmt = humantime.fulltime(user.joined_at, humanize_date=True, accuracy=2)
             em.add_field(
                 name="<:join:649722959958638643> Joined Server",
                 value=joined_fmt.capitalize(),
