@@ -1018,18 +1018,19 @@ class Tools(commands.Cog):
 
         em.set_thumbnail(url=user.avatar_url)
         em.set_author(name=author, icon_url=user.avatar_url)
-        humanized = humanize.naturaltime(user.created_at)
+
+        created_fmt = humantime.fulltime(user.created_at, humanize_date=True, accuracy=2)
         em.add_field(
             name=":clock1: Account Created",
-            value=f"{humanize.naturaldate(user.created_at).capitalize()} ({humanized})",
+            value=created_fmt.capitalize(),
             inline=True,
         )
 
+        joined_fmt = humantime.fulltime(user.joined_at, humanize_date=True, accuracy=2)
         if is_member:
-            humanized = humanize.naturaltime(user.joined_at)
             em.add_field(
                 name="<:join:649722959958638643> Joined Server",
-                value=f"{humanize.naturaldate(user.joined_at).capitalize()} ({humanized})",
+                value=joined_fmt.capitalize(),
                 inline=True,
             )
 

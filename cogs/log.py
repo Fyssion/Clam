@@ -368,6 +368,7 @@ class Log(commands.Cog):
         em = discord.Embed(title="Member Joined", description=member.mention, color=0x53DDA4)  # green
         em.set_author(name=str(member), icon_url=member.avatar_url)
         em.add_field(name="ID", value=member.id)
+        em.add_field(name="Joined At", value=humantime.date(member.joined_at))
         em.add_field(
             name="Account Created",
             value=humantime.fulltime(member.created_at),

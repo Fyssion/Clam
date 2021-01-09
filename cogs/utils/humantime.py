@@ -379,7 +379,16 @@ def timedelta(dt, *, source=None, accuracy=3, brief=False, suffix=True):
             return " ".join(output) + suffix
 
 
-def fulltime(dt):
-    date = humanize.naturaldate(dt).capitalize()
-    timedelta = humanize.naturaltime(dt)
-    return f"{date} ({timedelta})"
+def date(dt):
+    return dt.strftime("%b %d %Y at %H:%M:%S")
+
+
+def fulltime(dt, *, humanize_date=False, **timedelta_kwargs):
+    if humanize_date:
+        date_fmt = humanize.naturaldate(dt)
+    else:
+        date_fmt = date(dt)
+
+    delta_fmt = timedelta(dt, **timedelta_kwargs)
+
+    return f"{date_fmt} ({delta_fmt})"

@@ -125,7 +125,7 @@ class Clam(commands.Bot):
         self.dev = self.get_user(224513210471022592)
         self.error_cache = collections.deque(maxlen=100)
         self.console = None
-        self.startup_time = None
+        self.uptime = None
         self.session = None
         self.highlight_words = []
         self.cleverbot = None
@@ -338,8 +338,8 @@ class Clam(commands.Bot):
         await self.process_commands(message)
 
     async def on_ready(self):
-        if self.startup_time is None:
-            self.startup_time = datetime.datetime.now()
+        if self.uptime is None:
+            self.uptime = datetime.datetime.utcnow()
         if self.console is None:
             self.console = self.get_channel(711952122132037722)
 
