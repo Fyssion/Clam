@@ -104,7 +104,7 @@ class Log(commands.Cog):
         Otherwise, use `{prefix}log create`
 
         Log options are listed below. To learn more about a
-        specific option, use `{prefix}help log <option>`. 
+        specific option, use `{prefix}help log <option>`.
         """
         if not channel:
             return await self.send_log_info(ctx)
