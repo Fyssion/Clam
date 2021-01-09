@@ -221,7 +221,11 @@ class Log(commands.Cog):
     async def log_mod_actions(self, ctx):
         """Enable/disable mod action logging
 
-        Mod actions include any action in the audit log.
+        Mod actions include:
+        - member kicks
+        - member bans
+        - member unbans
+
         This is useful if you want a permanent audit log.
         """
         await self.toggle_logging_option(ctx, "log_mod_actions", "mod action")
