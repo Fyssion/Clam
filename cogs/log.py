@@ -234,9 +234,16 @@ class Log(commands.Cog):
         """Enable/disable mod action logging
 
         Mod actions include:
-        - member kicks
-        - member bans
-        - member unbans
+        - kicks
+        - bans
+        - tempbans (and tempban expirations)
+        - unbans
+        - mutes
+        - tempmutes (and tempmute expirations)
+        - unmutes
+
+        Mute actions are only logged if a mute role is set.
+        Use `{prefix}mute role set <role>` to set a mute role.
 
         This is useful if you want a permanent audit log.
         """
