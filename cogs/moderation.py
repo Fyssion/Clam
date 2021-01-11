@@ -772,7 +772,7 @@ class Moderation(commands.Cog):
 
         await ctx.send(f"{ctx.tick(True)} Unmuted `{member}`")
 
-    async def tempmute_member(self, settings, member, dt, reason):
+    async def tempmute_member(self, settings, member, dt, reason, mod=None):
         timers = self.bot.get_cog("Timers")
         if not timers:
             raise RuntimeError("Timers cog is not loaded. Cannot perform tempmute.")
@@ -784,7 +784,7 @@ class Moderation(commands.Cog):
         try:
             await settings.mute_member(member, reason, execute_db=execute_db)
             await timers.create_timer(
-                dt, "tempmute", member.guild.id, role.id, member.id, member.id
+                dt, "tempmute", member.guild.id, role.id, mod.id or None, member.id
             )
 
         except Exception:
@@ -822,7 +822,7 @@ class Moderation(commands.Cog):
             duration.dt, source=ctx.message.created_at
         )
         audit_reason = f"Tempmute by {ctx.author} (ID: {ctx.author.id}) for {friendly_time} with reason: {reason}"
-        await self.tempmute_member(settings, member, duration.dt, audit_reason)
+        await self.tempmute_member(settings, member, duration.dt, audit_reason, mod=ctx.author)
 
         emoji = "\N{HOURGLASS} \N{SPEAKER WITH CANCELLATION STROKE}"
         await self.log_mod_action(ctx, "Tempmute", emoji, ctx.author, member, reason, duration=friendly_time)
@@ -849,8 +849,14 @@ class Moderation(commands.Cog):
         if not guild:
             return
 
-        mod = guild.get_member(mod_id)
-        mod_text = f"{mod} (ID: {mod.id})" if mod else f"mod with ID {mod_id}"
+        if not mod_id:
+            mod = None
+            mod_text = "AutoMod"
+
+        else:
+            mod = guild.get_member(mod_id)
+            mod_text = f"{mod} (ID: {mod.id})" if mod else f"mod with ID {mod_id}"
+
         role = guild.get_role(role_id)
         if not role:
             return
@@ -872,7 +878,10 @@ class Moderation(commands.Cog):
             else:
                 target = f"User with ID {member_id}"
 
-            if mod:
+            if not mod_id:
+                moderator = "AutoMod"
+
+            elif mod:
                 moderator = f"{mod.mention} | {mod} (ID: {mod.id})"
 
             else:
