@@ -138,7 +138,7 @@ class Log(commands.Cog):
 
         overwrites = {
             ctx.guild.me: discord.PermissionOverwrite(
-                read_messages=True, send_messages=True, embed_links=True, manage_channel=True
+                read_messages=True, send_messages=True, embed_links=True, manage_channels=True
             )
         }
 
