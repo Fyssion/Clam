@@ -433,6 +433,22 @@ class Moderation(commands.Cog):
         query = "SELECT * FROM spam_violations WHERE guild_id=$1 AND user_id=$2;"
         return await self.bot.pool.fetch(query, guild_id, user_id) or []
 
+    async def log_mod_action(self, ctx, action, emoji, moderator, target, reason, duration=None):
+        guild_log = await ctx.get_guild_log()
+        if guild_log:
+            em = discord.Embed(title=f"{emoji} [Mod Action] {action}", color=discord.Color.purple())
+            if duration:
+                em.add_field(name="Duration", value=duration, inline=False)
+            em.add_field(name="User", value=str(target), inline=False)
+            if reason:
+                em.add_field(name="Reason", value=reason, inline=False)
+            em.add_field(
+                name="Responsible Moderator",
+                value=f"{ctx.author.mention} | {ctx.author} (ID: {ctx.author.id})",
+                inline=False
+            )
+            self.bot.loop.create_task(guild_log.log_mod_action(embed=em))
+
     @commands.command()
     @checks.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
@@ -461,7 +477,7 @@ class Moderation(commands.Cog):
             human_friendly = f"`{str(user)}`"
         else:
             user_id = user
-            human_friendly = f"with an ID of `{user_id}`"
+            human_friendly = f"user with an ID of `{user_id}`"
 
         to_be_banned = discord.Object(id=user_id)
         reason = f"Ban by {ctx.author} (ID: {ctx.author.id}) with reason: {reason}"
@@ -471,7 +487,10 @@ class Moderation(commands.Cog):
         except discord.HTTPException:
             return await ctx.send(f"{ctx.tick(False)} I couldn't ban that user.")
 
-        await ctx.send(f"{ctx.tick(True)} Banned user {human_friendly}")
+        log_target = str(user) if user else f"User with ID {user_id}"
+        await self.log_mod_action(ctx, "Ban", "\N{HAMMER}", ctx.author, log_target, reason)
+
+        await ctx.send(f"{ctx.tick(True)} Banned {human_friendly}")
 
     @commands.command(description="Temporarily ban a user")
     @checks.has_permissions(ban_members=True)
@@ -490,14 +509,7 @@ class Moderation(commands.Cog):
                 "Sorry, that functionality isn't available right now. Try again later."
             )
 
-        if isinstance(user, discord.Member) and not role_hierarchy_check(
-            ctx, ctx.author, user
-        ):
-            return await ctx.send(
-                "You can't preform this action due to role hierarchy."
-            )
-
-        if isinstance(user, discord.User):
+        if isinstance(user, (discord.User, discord.Member)):
             if not role_hierarchy_check(ctx, ctx.author, user):
                 return await ctx.send(
                     "You can't preform this action due to role hierarchy."
@@ -511,10 +523,10 @@ class Moderation(commands.Cog):
         to_be_banned = discord.Object(id=user_id)
 
         friendly_time = humantime.timedelta(duration.dt)
-        reason = f"Tempban by {ctx.author} (ID: {ctx.author.id}) for {friendly_time} with reason: {reason}"
+        audit_reason = f"Tempban by {ctx.author} (ID: {ctx.author.id}) for {friendly_time} with reason: {reason}"
 
         try:
-            await ctx.guild.ban(to_be_banned, reason=reason)
+            await ctx.guild.ban(to_be_banned, reason=audit_reason)
             timer = await timers.create_timer(
                 duration.dt, "tempban", ctx.guild.id, ctx.author.id, user_id
             )
@@ -529,6 +541,11 @@ class Moderation(commands.Cog):
             raise
 
         friendly_time = humantime.timedelta(duration.dt, source=timer.created_at)
+
+        log_target = str(user) if user else f"User with ID {user_id}"
+        emoji = "\N{HOURGLASS} \N{HAMMER}"
+        await self.log_mod_action(ctx, "Tempban", emoji, ctx.author, log_target, reason, friendly_time)
+
         await ctx.send(
             f"{ctx.tick(True)} Banned user {human_friendly} for `{friendly_time}`."
         )
@@ -543,12 +560,41 @@ class Moderation(commands.Cog):
             return
 
         mod = guild.get_member(mod_id)
-        mod = f"{mod} (ID: {mod.id})" if mod else f"mod with ID {mod_id}"
+        mod_text = f"{mod} (ID: {mod.id})" if mod else f"mod with ID {mod_id}"
 
         reason = (
-            f"Automatic unban from tempban command. Command orignally invoked by {mod}"
+            f"Automatic unban from tempban command. Command orignally invoked by {mod_text}"
         )
         await guild.unban(discord.Object(id=user_id), reason=reason)
+
+        guild_log = await self.bot.get_guild_log(guild_id)
+        if guild_log:
+            emoji = "\N{HOURGLASS} \N{SPARKLES}"
+
+            user = self.bot.get_user(user_id)
+            if user:
+                target = str(user)
+            else:
+                target = f"User with ID {user_id}"
+
+            if mod:
+                moderator = f"{mod.mention} | {mod} (ID: {mod.id})"
+
+            else:
+                moderator = f"Unknown moderator with ID {mod_id}"
+
+            em = discord.Embed(title=f"{emoji} [Mod Action] Tempban Expiration", color=discord.Color.purple())
+            duration = humantime.fulltime(timer.created_at)
+            em.add_field(name="Original Tempban", value=duration, inline=False)
+            em.add_field(name="User", value=target, inline=False)
+            if reason:
+                em.add_field(name="Reason", value=reason, inline=False)
+            em.add_field(
+                name="Responsible Moderator",
+                value=moderator,
+                inline=False
+            )
+            await guild_log.log_mod_action(embed=em)
 
     @commands.command()
     @checks.has_permissions(ban_members=True)
@@ -562,6 +608,8 @@ class Moderation(commands.Cog):
         except discord.HTTPException:
             return await ctx.send(f"{ctx.tick(False)} I couldn't unban that user.")
 
+        await self.log_mod_action(ctx, "Unban", "\N{SPARKLES}", ctx.author, user, reason)
+
         await ctx.send(f"{ctx.tick(True)} Unbanned user `{user}`")
 
     @commands.command()
@@ -573,12 +621,14 @@ class Moderation(commands.Cog):
                 "You can't preform this action due to role hierarchy."
             )
 
-        reason = f"Kick by {ctx.author} (ID: {ctx.author.id}) with reason: {reason}"
+        audit_reason = f"Kick by {ctx.author} (ID: {ctx.author.id}) with reason: {reason}"
 
         try:
-            await ctx.guild.kick(user, reason=reason)
+            await ctx.guild.kick(user, reason=audit_reason)
         except discord.HTTPException:
             return await ctx.send(f"{ctx.tick(False)} I couldn't kick that user.")
+
+        await self.log_mod_action(ctx, "Kick", "\N{BOXING GLOVE}", ctx.author, user, reason)
 
         await ctx.send(f"{ctx.tick(True)} Kicked user `{user}`")
 
@@ -674,9 +724,12 @@ class Moderation(commands.Cog):
         if member.id in settings.muted_members:
             return await ctx.send(f"{ctx.tick(False)} That member is already muted")
 
-        reason = f"Mute by {ctx.author} (ID: {ctx.author.id}) with reason: {reason}"
-        await settings.mute_member(member, reason)
+        audit_reason = f"Mute by {ctx.author} (ID: {ctx.author.id}) with reason: {reason}"
+        await settings.mute_member(member, audit_reason)
         self.get_guild_settings.invalidate(self, ctx.guild.id)
+
+        emoji = "\N{SPEAKER WITH CANCELLATION STROKE}"
+        await self.log_mod_action(ctx, "Mute", emoji, ctx.author, member, reason)
 
         await ctx.send(f"{ctx.tick(True)} Muted `{member}`")
 
@@ -710,9 +763,12 @@ class Moderation(commands.Cog):
         if member.id not in settings.muted_members:
             return await ctx.send(f"{ctx.tick(False)} That member isn't muted")
 
-        reason = f"Unmute by {ctx.author} (ID: {ctx.author.id}) with reason: {reason}"
-        await settings.unmute_member(member, reason)
+        audit_reason = f"Unmute by {ctx.author} (ID: {ctx.author.id}) with reason: {reason}"
+        await settings.unmute_member(member, audit_reason)
         self.get_guild_settings.invalidate(self, ctx.guild.id)
+
+        emoji = "\N{SPEAKER WITH THREE SOUND WAVES}"
+        await self.log_mod_action(ctx, "Unmute", emoji, ctx.author, member, reason)
 
         await ctx.send(f"{ctx.tick(True)} Unmuted `{member}`")
 
@@ -765,8 +821,11 @@ class Moderation(commands.Cog):
         friendly_time = humantime.timedelta(
             duration.dt, source=ctx.message.created_at
         )
-        reason = f"Tempmute by {ctx.author} (ID: {ctx.author.id}) for {friendly_time} with reason: {reason}"
-        await self.tempmute_member(settings, member, duration.dt, reason)
+        audit_reason = f"Tempmute by {ctx.author} (ID: {ctx.author.id}) for {friendly_time} with reason: {reason}"
+        await self.tempmute_member(settings, member, duration.dt, audit_reason)
+
+        emoji = "\N{HOURGLASS} \N{SPEAKER WITH CANCELLATION STROKE}"
+        await self.log_mod_action(ctx, "Tempmute", emoji, ctx.author, member, reason, duration=friendly_time)
 
         await ctx.send(f"{ctx.tick(True)} Muted `{member}` for `{friendly_time}`.")
 
@@ -791,7 +850,7 @@ class Moderation(commands.Cog):
             return
 
         mod = guild.get_member(mod_id)
-        mod = f"{mod} (ID: {mod.id})" if mod else f"mod with ID {mod_id}"
+        mod_text = f"{mod} (ID: {mod.id})" if mod else f"mod with ID {mod_id}"
         role = guild.get_role(role_id)
         if not role:
             return
@@ -800,8 +859,37 @@ class Moderation(commands.Cog):
         if not member:
             return
 
-        reason = f"Automatic unmute from mute timer. Command orignally invoked by {mod}"
+        reason = f"Automatic unmute from mute timer. Command orignally invoked by {mod_text}"
         await settings.unmute_member(member, reason=reason, execute_db=False)
+
+        guild_log = await self.bot.get_guild_log(guild_id)
+        if guild_log:
+            emoji = "\N{HOURGLASS} \N{SPEAKER WITH THREE SOUND WAVES}"
+
+            user = self.bot.get_user(member_id)
+            if user:
+                target = str(user)
+            else:
+                target = f"User with ID {member_id}"
+
+            if mod:
+                moderator = f"{mod.mention} | {mod} (ID: {mod.id})"
+
+            else:
+                moderator = f"Unknown moderator with ID {mod_id}"
+
+            em = discord.Embed(title=f"{emoji} [Mod Action] Tempmute Expiration", color=discord.Color.purple())
+            duration = humantime.fulltime(timer.created_at)
+            em.add_field(name="Original Tempmute", value=duration, inline=False)
+            em.add_field(name="User", value=target, inline=False)
+            if reason:
+                em.add_field(name="Reason", value=reason, inline=False)
+            em.add_field(
+                name="Responsible Moderator",
+                value=moderator,
+                inline=False
+            )
+            await guild_log.log_mod_action(embed=em)
 
     @commands.command()
     @commands.guild_only()

@@ -63,6 +63,17 @@ class GuildLog:
 
         await channel.send(**message_kwargs)
 
+    async def log_mod_action(self, **message_kwargs):
+        channel = self.channel
+
+        if not channel:
+            return
+
+        if not self.log_mod_actions:
+            return
+
+        await channel.send(**message_kwargs)
+
 
 class Log(commands.Cog):
     def __init__(self, bot):
@@ -231,15 +242,18 @@ class Log(commands.Cog):
         """
         await self.toggle_logging_option(ctx, "log_mod_actions", "mod action")
 
-    # EVENTS
+    # ====== #
+    # EVENTS #
+    # ====== #
 
     # MOD ACTIONS
 
-    async def log_audit_log_entry(self, guild_log, entry):
-        action = entry.action.name.replace("_", " ").capitalize()
-        em = discord.Embed(title=f"[Mod Action] {action}", color=discord.Color.purple())
+    async def log_audit_log_entry(self, guild_log, entry, emoji, *, action=None):
+        action = action or entry.action.name.replace("_", " ").capitalize()
+        em = discord.Embed(title=f"{emoji} [Mod Action] {action}", color=discord.Color.purple())
         em.add_field(name="User", value=entry.target, inline=False)
-        em.add_field(name="Reason", value=entry.reason, inline=False)
+        if entry.reason:
+            em.add_field(name="Reason", value=entry.reason, inline=False)
         em.add_field(
             name="Responsible Moderator",
             value=f"{entry.user.mention} | {entry.user} (ID: {entry.user.id})",
@@ -249,7 +263,7 @@ class Log(commands.Cog):
         if guild_log.channel:
             await guild_log.channel.send(embed=em)
 
-    async def log_member_action(self, guild, valid_actions, *, can_be_me=True):
+    async def log_mod_action(self, guild, emoji, valid_actions, *, action=None, can_be_me=True):
         guild_log = await self.get_guild_log(guild.id)
         if not guild_log or not guild_log.log_mod_actions:
             return
@@ -267,19 +281,51 @@ class Log(commands.Cog):
         if not can_be_me and entry.user == self.bot.user:
             return
 
-        await self.log_audit_log_entry(guild_log, entry)
+        await self.log_audit_log_entry(guild_log, entry, emoji, action=action)
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
-        await self.log_member_action(guild, (discord.AuditLogAction.ban,), can_be_me=False)
+        await self.log_mod_action(guild, "\N{HAMMER}", (discord.AuditLogAction.ban,), can_be_me=False)
 
     @commands.Cog.listener()
     async def on_member_unban(self, guild, user):
-        await self.log_member_action(guild, (discord.AuditLogAction.unban,), can_be_me=False)
+        await self.log_mod_action(guild, "\N{SPARKLES}", (discord.AuditLogAction.unban,), can_be_me=False)
 
     @commands.Cog.listener("on_member_remove")
     async def on_member_kick(self, member):
-        await self.log_member_action(member.guild, (discord.AuditLogAction.kick,), can_be_me=False)
+        await self.log_mod_action(member.guild, "\N{BOXING GLOVE}", (discord.AuditLogAction.kick,), can_be_me=False)
+
+    @commands.Cog.listener("on_member_update")
+    async def on_member_update(self, before, after):
+        if before.roles != after.roles:
+            mod = self.bot.get_cog("Moderation")
+            if not mod:
+                return
+
+            settings = await mod.get_guild_settings(before.guild.id)
+            if not settings or not settings.mute_role:
+                return
+
+            # unmute (mute role removed)
+            if set(before.roles) - set(after.roles) == {settings.mute_role}:
+                emoji = "\N{SPEAKER WITH THREE SOUND WAVES}"
+                await self.log_mod_action(
+                    before.guild, emoji,
+                    (discord.AuditLogAction.member_role_update,),
+                    action="Unmute",
+                    can_be_me=False
+                )
+
+            # mute (mute role added)
+            elif set(after.roles) - set(before.roles) == {settings.mute_role}:
+                emoji = "\N{SPEAKER WITH CANCELLATION STROKE}"
+                await self.log_mod_action(
+                    before.guild,
+                    emoji,
+                    (discord.AuditLogAction.member_role_update,),
+                    action="Mute",
+                    can_be_me=False
+                )
 
     # MEMBER ACTIONS
 
