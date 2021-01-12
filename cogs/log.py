@@ -352,8 +352,8 @@ class Log(commands.Cog):
             return
 
         em = discord.Embed(
-            title="Message Deleted",
-            color=discord.Color.dark_gold(),
+            title="\N{WASTEBASKET} Message Deleted",
+            color=discord.Color.orange(),
             timestamp=message.created_at,
         )
 
@@ -389,7 +389,7 @@ class Log(commands.Cog):
             return
 
         em = discord.Embed(
-            title="Message Edited",
+            title="\N{MEMO} Message Edited",
             description=f"[Jump to message!]({before.jump_url})",
             color=discord.Color.blue(),
             timestamp=before.created_at,
