@@ -178,6 +178,14 @@ class BadSongPosition(commands.BadArgument):
         super().__init__('Invalid time provided, try e.g. "90", "1:05", or "3m".')
 
 
+class NotDJ(commands.CommandError):
+    def __init__(self, *, only_member=False):
+        message = f"{RED_TICK} You must have a role named 'DJ' to use this command. "
+        addition = "having the manage server permission also works."
+        message += f"Being in the channel alone or {addition}" if only_member else addition.capitalize()
+        super().__init__(message)
+
+
 class SongPosition(commands.Converter):
     async def convert(self, ctx, arg):
         # we want to be able to convert 3:00 into 180, but also 3m2s into 182
@@ -240,14 +248,18 @@ def is_dj(*, only_member_check=False):
 
         is_only_member = len(members) == 1 and ctx.author in members
 
-        return (
+        only_member_condition = only_member_check and is_only_member
+
+        if (
             author.guild_permissions.manage_guild
             or upper in author.roles
             or lower in author.roles
             or author.id == ctx.bot.owner_id
-            or only_member_check
-            and is_only_member
-        )
+            or only_member_condition
+        ):
+            return True
+
+        raise NotDJ(only_member=only_member_check)
 
     return commands.check(predicate)
 
@@ -339,6 +351,7 @@ class Music(commands.Cog):
             NotListeningError,
             CannotJoinVoice,
             AlreadyActivePlayer,
+            NotDJ,
         )
 
         if isinstance(error, overridden_errors):
