@@ -1050,12 +1050,16 @@ class Music(commands.Cog):
         async def skipto_song(total, required):
             song = ctx.player.songs[position - 1]
 
+            if ctx.player.loop_queue:
+                await ctx.player.songs.put(ctx.player.current)
+
             for i in range(position - 1):
-                current = await ctx.player.songs.get()
+                skipped_song = await ctx.player.songs.get()
 
                 if ctx.player.loop_queue:
-                    await ctx.player.songs.put(current)
+                    await ctx.player.songs.put(skipped_song)
 
+            ctx.player.startover = True
             ctx.player.skip()
 
             votes = (
