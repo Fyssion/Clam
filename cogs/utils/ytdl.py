@@ -277,6 +277,10 @@ class Song:
             self.source.volume = volume
 
     def make_source(self):
+        if self.source:
+            self.source.cleanup()
+            self.source = None
+
         source = discord.FFmpegPCMAudio(self.filename, **self.ffmpeg_options)
         self.source = discord.PCMVolumeTransformer(source, self.volume)
 
