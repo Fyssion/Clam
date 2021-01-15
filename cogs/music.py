@@ -571,16 +571,26 @@ class Music(commands.Cog):
             return m == self.bot.user and a.channel
 
         if before.channel and not after.channel:
-            try:
-                await self.bot.wait_for("voice_state_update", check=check, timeout=5)
+            log.info(f"{member.guild}: Disconnected from voice, waiting to rejoin...")
 
-            except asyncio.TimeoutError:
-                if player.voice and player.voice.is_playing:
+            # Attempt to wait for the player to reconnect
+            connected = False
+            for i in range(5):
+                await asyncio.sleep(1)
+                if player.voice and player.voice.is_connected():
+                    connected = True
+                    break
+
+            if connected:
+                log.info(f"{member.guild}: Looks like I rejoined")
+
+            else:
+                if player.voice and player.voice.is_playing():
                     return
 
                 if not player.closed:
                     log.info(
-                        f"{member.guild}: Bot left voice for 5 seconds, killing player."
+                        f"{member.guild}: Bot left voice for 5 seconds, killing player..."
                     )
                     await player.stop()
                     del self.players[member.guild.id]
