@@ -99,7 +99,7 @@ class QueuePages(menus.ListPageSource):
         queue.append("Key:")
         queue.append(f"`#` {hover} `Duration` @Requester\n")
 
-        if menu.current_page == 0:
+        if menu.current_page == 0 and player.current and player.status != music_player.PlayerStatus.WAITING:
             queue.append(f"**Now Playing:**\n{self.format_song(player.current)}\n")
 
         if ctx.player.songs:
