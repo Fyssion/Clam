@@ -20,9 +20,10 @@ class TodoTaskSource(menus.ListPageSource):
         if self.list_type == "all":
             for i, (todo_id, name, created_at, completed_at) in enumerate(entries, start=offset):
                 if completed_at:
-                    human_friendly = humantime.timedelta(completed_at, brief=True, accuracy=1)
+                    created = human_friendly = humantime.timedelta(created_at, brief=True, accuracy=1)
+                    completed = humantime.timedelta(completed_at, brief=True, accuracy=1)
                     all_todos.append(
-                        f":ballot_box_with_check: ~~{name}~~ - {human_friendly} `(ID: {todo_id})`"
+                        f":ballot_box_with_check: ~~{name}~~ - {created} ({completed}) `(ID: {todo_id})`"
                     )
                 else:
                     human_friendly = humantime.timedelta(created_at, brief=True, accuracy=1)
@@ -33,7 +34,7 @@ class TodoTaskSource(menus.ListPageSource):
                 all_todos.append(f":black_large_square: {name} - {human_friendly} `(ID: {todo_id})`")
 
         # "created/completed at" or "created at"
-        friendly = "created" + ("/completed" if self.list_type == "all" else "") + " at"
+        friendly = "created at" + " (completed at)" if self.list_type == "all" else ""
 
         description = (
             f"Total tasks: **{len(self.entries)}**\nKey: name - {friendly} `(ID: id)`\n\n"
@@ -223,11 +224,11 @@ class Todo(commands.Cog):
 
         if completed_at:
             description = f":ballot_box_with_check: ~~{name}~~ `({todo_id})`"
-            description += f"\nCreated {humanize.naturaldate(created_at)}."
-            description += f"\nCompleted {humanize.naturaldate(completed_at)}."
+            description += f"\nCreated {humantime.fulltime(created_at, humanize_date=True)}."
+            description += f"\nCompleted {humantime.fulltime(completed_at, humanize_date=True)}."
         else:
             description = f":black_large_square: {name} `({todo_id})`"
-            description += f"\nCreated {humanize.naturaldate(created_at)}."
+            description += f"\nCreated {humantime.fulltime(created_at, humanize_date=True)}."
 
         em = discord.Embed(
             title="Task Info",
