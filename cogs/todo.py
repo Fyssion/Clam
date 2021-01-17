@@ -247,7 +247,7 @@ class Todo(commands.Cog):
         await ctx.send(embed=em)
 
     @todo.command(
-        name="list", description="List all incomplete tasks", aliases=["incomplete"],
+        name="list", description="List all tasks, regardless of completion", aliases=["incomplete"],
     )
     async def todo_list(self, ctx):
         query = """SELECT id, name, created_at
