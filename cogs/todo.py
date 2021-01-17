@@ -8,6 +8,10 @@ from .utils import colors, db, humantime
 from .utils.menus import MenuPages
 
 
+INCOMPLETE_EMOJI = "\N{BLACK LARGE SQUARE}"
+COMPLETE_EMOJI = "\N{BALLOT BOX WITH CHECK}"
+
+
 class TodoTaskSource(menus.ListPageSource):
     def __init__(self, data, ctx, list_type):
         super().__init__(data, per_page=10)
@@ -23,15 +27,15 @@ class TodoTaskSource(menus.ListPageSource):
                     created = human_friendly = humantime.timedelta(created_at, brief=True, accuracy=1)
                     completed = humantime.timedelta(completed_at, brief=True, accuracy=1)
                     all_todos.append(
-                        f":ballot_box_with_check: ~~{name}~~ - {created} ({completed}) `(ID: {todo_id})`"
+                        f"{COMPLETE_EMOJI} ~~{name}~~ - {created} ({completed}) `(ID: {todo_id})`"
                     )
                 else:
                     human_friendly = humantime.timedelta(created_at, brief=True, accuracy=1)
-                    all_todos.append(f":black_large_square: {name} - {human_friendly} `(ID: {todo_id})`")
+                    all_todos.append(f"{INCOMPLETE_EMOJI} {name} - {human_friendly} `(ID: {todo_id})`")
         else:
             for i, (todo_id, name, created_at) in enumerate(entries, start=offset):
                 human_friendly = humantime.timedelta(created_at, brief=True, accuracy=1)
-                all_todos.append(f":black_large_square: {name} - {human_friendly} `(ID: {todo_id})`")
+                all_todos.append(f"{INCOMPLETE_EMOJI} {name} - {human_friendly} `(ID: {todo_id})`")
 
         # "created/completed at" or "created at"
         friendly = "created at" + " (completed at)" if self.list_type == "all" else ""
@@ -94,7 +98,7 @@ class Todo(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.log = bot.log
-        self.emoji = ":ballot_box_with_check:"
+        self.emoji = f"{COMPLETE_EMOJI}"
 
     @commands.group(invoke_without_command=True)
     async def todo(self, ctx):
@@ -168,7 +172,7 @@ class Todo(commands.Cog):
         if result.split(" ")[1] == "0":
             raise commands.BadArgument("Task was not found.")
 
-        await ctx.send(":ballot_box_with_check: Task marked as done")
+        await ctx.send(f"{COMPLETE_EMOJI} Task marked as done")
 
     @todo.command(
         name="uncheck",
@@ -193,7 +197,7 @@ class Todo(commands.Cog):
         if result.split(" ")[1] == "0":
             raise commands.BadArgument("Task was not found.")
 
-        await ctx.send(":black_large_square: Task marked as not done")
+        await ctx.send(f"{INCOMPLETE_EMOJI} Task marked as not done")
 
     @todo.command(
         name="delete",
@@ -223,11 +227,11 @@ class Todo(commands.Cog):
         todo_id, name, created_at, completed_at = task
 
         if completed_at:
-            description = f":ballot_box_with_check: ~~{name}~~ `({todo_id})`"
+            description = f"{COMPLETE_EMOJI} ~~{name}~~ `(ID: {todo_id})`"
             description += f"\nCreated {humantime.fulltime(created_at, humanize_date=True)}."
             description += f"\nCompleted {humantime.fulltime(completed_at, humanize_date=True)}."
         else:
-            description = f":black_large_square: {name} `({todo_id})`"
+            description = f"{INCOMPLETE_EMOJI} {name} `(ID: {todo_id})`"
             description += f"\nCreated {humantime.fulltime(created_at, humanize_date=True)}."
 
         em = discord.Embed(
