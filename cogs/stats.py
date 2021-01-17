@@ -642,8 +642,11 @@ class Stats(commands.Cog):
 
         value = []
         for (index, (guild_id, uses)) in enumerate(records):
-            guild = self.bot.get_guild(guild_id)
-            formatted = str(guild) if guild else f"Unknown guild with ID {guild_id}"
+            if not guild_id:
+                formatted = "None (DMs)"
+            else:
+                guild = self.bot.get_guild(guild_id)
+                formatted = str(guild) if guild else f"Unknown guild with ID {guild_id}"
             value.append(f"{places[index]} **{formatted}** ({plural(uses, pretty=True):use})")
 
         em.add_field(
@@ -665,8 +668,11 @@ class Stats(commands.Cog):
 
         value = []
         for (index, (guild_id, uses)) in enumerate(records):
-            guild = self.bot.get_guild(guild_id)
-            formatted = str(guild) if guild else f"Unknown guild with ID {guild_id}"
+            if not guild_id:
+                formatted = "None (DMs)"
+            else:
+                guild = self.bot.get_guild(guild_id)
+                formatted = str(guild) if guild else f"Unknown guild with ID {guild_id}"
             value.append(f"{places[index]} **{formatted}** ({plural(uses, pretty=True):use})")
 
         em.add_field(
@@ -714,8 +720,11 @@ class Stats(commands.Cog):
 
         value = []
         for (index, (guild_id, uses)) in enumerate(records):
-            guild = self.bot.get_guild(guild_id)
-            formatted = str(guild) if guild else f"Unknown guild with ID {guild_id}"
+            if not guild_id:
+                formatted = "None (DMs)"
+            else:
+                guild = self.bot.get_guild(guild_id)
+                formatted = str(guild) if guild else f"Unknown guild with ID {guild_id}"
             value.append(f"{places[index]} **{formatted}** ({plural(uses, pretty=True):use})")
 
         em.add_field(
@@ -737,8 +746,11 @@ class Stats(commands.Cog):
 
         value = []
         for (index, (guild_id, uses)) in enumerate(records):
-            guild = self.bot.get_guild(guild_id)
-            formatted = str(guild) if guild else f"Unknown guild with ID {guild_id}"
+            if not guild_id:
+                formatted = "None (DMs)"
+            else:
+                guild = self.bot.get_guild(guild_id)
+                formatted = str(guild) if guild else f"Unknown guild with ID {guild_id}"
             value.append(f"{places[index]} **{formatted}** ({plural(uses, pretty=True):use})")
 
         em.add_field(
