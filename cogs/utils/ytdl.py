@@ -301,6 +301,7 @@ class Song:
         self.registered_at = registered_at
         self.last_updated = last_updated
         self.db_id = record["id"]
+        self.plays = record["plays"]
 
         return self
 

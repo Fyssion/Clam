@@ -181,6 +181,7 @@ class Player:
             em.timestamp = song.last_updated
 
             if db_info:
+                em.add_field(name="Plays", value=f"{song.plays:,}")
                 em.add_field(name="First cached", value=humantime.fulltime(song.registered_at))
                 em.add_field(name="Filename", value=f"`{song.filename}`")
                 em.add_field(name="Platform ID", value=song.id)
