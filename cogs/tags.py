@@ -470,6 +470,17 @@ class TagPageSource(menus.ListPageSource):
 
 
 class Tags(commands.Cog):
+    """Tag stuff and retrieve it later.
+
+    Tags are essentially bits of text stored with a name.
+    You can use `{prefix}tag <tag name>` to send the stored text
+    to the current channel.
+
+    A varient to tags are FAQ tags. FAQ tags are similar to
+    regular tags, except FAQ tags are embeds, and they can
+    only be created by admins and members with a role called "faq".
+    """
+
     def __init__(self, bot):
         self.bot = bot
         self.emoji = ":bookmark:"
@@ -486,11 +497,15 @@ class Tags(commands.Cog):
 
     @commands.group(usage="[tag]", invoke_without_command=True)
     async def tag(self, ctx, *, name=None):
-        """Tag stuff and retrieve it later
+        """Tag stuff and retrieve it later.
+
+        Tags are essentially bits of text stored with a name.
+        You can use `{prefix}tag <tag name>` to send the stored text
+        to the current channel.
 
         You can create, edit, delete, and alias
-        tags. Note that server moderators can delete
-        any tags.
+        tags with the subcommands below.
+        Note that server moderators can manage tags.
         """
         if not name:
             return await ctx.send_help(ctx.command)
@@ -895,9 +910,12 @@ class Tags(commands.Cog):
         await ctx.db.execute(query, tag.name, ctx.guild.id)
 
     @tag.command(
-        name="all", description="List all tags for this server", aliases=["list"]
+        name="all", description="List all tags for this server or for a member", aliases=["list"]
     )
-    async def tag_all(self, ctx):
+    async def tag_all(self, ctx, *, member: discord.Member = None):
+        if member:
+            return await ctx.invoke(self.tag_member, member=member)
+
         query = """SELECT id, name, uses, faq
                    FROM tags
                    WHERE guild_id=$1;
@@ -912,10 +930,10 @@ class Tags(commands.Cog):
         await pages.start(ctx)
 
     @commands.command(
-        description="[Alias for `tag all`] List all tags for this server",
+        description="[Alias for `tag all`] List all tags for this server or for a member",
     )
-    async def tags(self, ctx):
-        await ctx.invoke(self.tag_all)
+    async def tags(self, ctx, *, member: discord.Member = None):
+        await ctx.invoke(self.tag_all, member=member)
 
     @tag.command(
         name="top",
@@ -954,7 +972,7 @@ class Tags(commands.Cog):
         await ctx.send(embed=em)
 
     @tag.command(
-        name="member", description="Get top ten tags for a member", aliases=["user"],
+        name="member", description="Get all tags owned by a member", aliases=["user"],
     )
     async def tag_member(self, ctx, *, member: discord.Member):
         query = """SELECT id, name, uses, faq
@@ -967,29 +985,10 @@ class Tags(commands.Cog):
         results = await ctx.db.fetch(query, ctx.guild.id, member.id)
 
         if not results:
-            return await ctx.send("This member has no tags.")
+            return await ctx.send(f"{member} has no tags.")
 
-        em = discord.Embed(
-            title=f"Top Tags For {member.display_name}", color=colors.PRIMARY
-        )
-
-        em.set_author(name=str(member), icon_url=member.avatar_url)
-
-        tags = []
-        for i, (tag_id, name, uses, faq) in enumerate(results):
-            tag_line = f"`{i+1}.` **{name}** - {uses} uses `(ID: {tag_id})`"
-            if faq:
-                tag_line += " [FAQ]"
-            tags.append(tag_line)
-
-        desc = "\n".join(tags)
-
-        if len(results) == 10:
-            desc += "\n Only showing top ten tags."
-
-        em.description = desc
-
-        await ctx.send(embed=em)
+        pages = MenuPages(source=TagPageSource(results, title=f"Tags for {member}"), clear_reactions_after=True,)
+        await pages.start(ctx)
 
     @tag.command(
         name="search", description="Search for a tag", usage="<tag>", aliases=["find"],
@@ -1036,13 +1035,13 @@ class Tags(commands.Cog):
 
         return em
 
-    @commands.group(invoke_without_command=True, usage="<FAQ tag>")
+    @commands.group(invoke_without_command=True, usage="[FAQ tag]")
     async def faq(self, ctx, *, name=None):
-        """Varient of tags for server admins
+        """Varient of tags for server admins.
 
         FAQ tags are similar to regular tags, except FAQ tags
         are embeds, and they can only be created by admins
-        and members with a role called "faq"
+        and members with a role called "faq".
 
         Since tags and FAQ tags use the same system, you can
         still use most of the tag subcommands for FAQ tags.
