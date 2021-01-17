@@ -772,7 +772,7 @@ class Stats(commands.Cog):
 
         value = []
         for (index, (author_id, uses)) in enumerate(records):
-            author = guild.get_member(author_id)
+            author = self.bot.get_user(author_id)
             authorf = str(author) if author else f"<@!{author_id}>"
             value.append(f"{places[index]} **{authorf}** ({plural(uses, pretty=True):use})")
 
@@ -795,7 +795,7 @@ class Stats(commands.Cog):
 
         value = []
         for (index, (author_id, uses)) in enumerate(records):
-            author = guild.get_member(author_id)
+            author = self.bot.get_user(author_id)
             authorf = str(author) if author else f"<@!{author_id}>"
             value.append(f"{places[index]} **{authorf}** ({plural(uses, pretty=True):use})")
 
