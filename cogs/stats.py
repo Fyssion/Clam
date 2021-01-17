@@ -705,7 +705,7 @@ class Stats(commands.Cog):
             timestamp=count[1] or datetime.datetime.utcnow(),
         )
 
-        em.description = f"{command} has **{plural(count[0], pretty=True):use}**."
+        em.description = f"`{command}` has **{plural(count[0], pretty=True):use}**."
         em.set_footer(text="Tracking command usage since")
 
         query = """SELECT guild_id,
