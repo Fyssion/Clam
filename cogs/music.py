@@ -1836,7 +1836,7 @@ class Music(commands.Cog):
         cache_size = await self.bot.loop.run_in_executor(None, self.get_cache_size)
 
         await ctx.send(
-            f"Music database contains **{count} songs** with a total of **{total_plays} plays**.\n"
+            f"Music database contains **{count:,} songs** with a total of **{total_plays:,} plays**.\n"
             f"That's **{duration}** of music cached, and **{duration_with_plays}** of music played!\n"
             f"The total size of the cache folder is {humanize.naturalsize(cache_size, binary=True)}."
         )
@@ -1852,7 +1852,7 @@ class Music(commands.Cog):
         for song_id, title, plays, last_updated in records:
             formatted = humantime.timedelta(last_updated, brief=True, accuracy=1)
             songs.append(
-                f"{title} # ID: {song_id} ({plays } plays) last updated {formatted}"
+                f"{title} # ID: {song_id} ({plays:,} plays) last updated {formatted}"
             )
 
         pages = ctx.pages(songs, per_page=10, title="Music Database")
@@ -1878,7 +1878,7 @@ class Music(commands.Cog):
             formatted = humantime.timedelta(last_updated, brief=True, accuracy=1)
             dur = ytdl.Song.timestamp_duration(round(duration))
             songs.append(
-                f"{title} # ID: {song_id} ({plays } plays) duration: {dur} last updated {formatted}"
+                f"{title} # ID: {song_id} ({plays:,} plays) duration: {dur} last updated {formatted}"
             )
 
         pages = ctx.pages(songs, per_page=10, title=f"Results for '{song}'")
@@ -2037,8 +2037,8 @@ class Music(commands.Cog):
             timestamp=count[2] or datetime.datetime.utcnow(),
         )
 
-        em.description = f"Music database contains **{count[0]} songs** with a total of **{count[1]} plays**."
-        em.set_footer(text=f"First song registered")
+        em.description = f"Music database contains **{count[0]:,} songs** with a total of **{count[1]:,} plays**."
+        em.set_footer(text="First song registered")
 
         query = """SELECT title, plays
             FROM songs
@@ -2050,7 +2050,7 @@ class Music(commands.Cog):
 
         formatted = []
         for (i, (title, plays)) in enumerate(records):
-            formatted.append(f"{places[i]} **{title}** ({plays} plays)")
+            formatted.append(f"{places[i]} **{title}** ({plays:,} plays)")
 
         value = "\n".join(formatted) or "None"
         em.add_field(name=":trophy: Top Songs", value=value, inline=False)
