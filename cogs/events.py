@@ -169,15 +169,15 @@ class EventSource(menus.ListPageSource):
 class EventConverter(commands.Converter):
     async def convert(self, ctx, arg):
         try:
-            message = await commands.MessageConverter().convert(arg)
+            message = await commands.MessageConverter().convert(ctx, arg)
         except Exception:
             pass
         else:
             query = """SELECT *
                        FROM events
-                       WHERE channel_id=$1 AND message_id=$2;
+                       WHERE guild_id=$1 AND channel_id=$2 AND message_id=$3;
                     """
-            record = await ctx.db.fetchrow(query, message.channel.id, message.id)
+            record = await ctx.db.fetchrow(query, message.guild.id, message.channel.id, message.id)
 
             if record:
                 return Event.from_record(record)
