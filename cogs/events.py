@@ -400,7 +400,7 @@ class Events(commands.Cog):
         if not timers:
             return await role.delete()
 
-        when = datetime.datetime.datetime.utcnow() + datetime.timedelta(hours=5)
+        when = datetime.datetime.utcnow() + datetime.timedelta(hours=5)
 
         await timers.create_timer(when, "event_role_delete", role.guild.id, role.id)
 
