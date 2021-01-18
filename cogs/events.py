@@ -144,13 +144,15 @@ class EventSource(menus.ListPageSource):
             else:
                 guild = ""
 
-            all_events.append(f"{joined}{guild}{event.name} `({event.id})` - {formatted}{reminded}")
+            all_events.append(f"- {joined}{guild}{event.name} `(ID: {event.id})` - {formatted}{reminded}")
 
         emoji_key = ":white_check_mark: | RSVP'd\n:alarm_clock: | Reminder set"
 
         description = (
-            f"Total: **{len(self.entries)}**\nKey: name `(id)` - date\n{emoji_key}\n\n"
+            f"Total: **{len(self.entries)}**\nKey: name `(ID: id)` - date\n{emoji_key}\n\n"
             + "\n".join(all_events)
+            + f"\n\nTo join an event, use `{ctx.prefix}event join <event>`.\n"
+            + f"To view details about an event, use `{ctx.prefix}event view <event>`."
         )
 
         em = discord.Embed(
