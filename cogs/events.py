@@ -73,7 +73,8 @@ class EditOptionMenu(menus.Menu):
         super().__init__(timeout=30.0)
         self.result = None
         description = "\n".join([
-            "\N{CLOCK FACE ONE OCLOCK} | timezone",
+            "\N{CLOCK FACE ONE OCLOCK} | time",
+            "\N{AIRPLANE} | timezone",
             "\N{LEFT SPEECH BUBBLE} | name",
             "\N{PAGE FACING UP} | description",
         ])
@@ -88,6 +89,11 @@ class EditOptionMenu(menus.Menu):
         return await channel.send(embed=self.embed)
 
     @menus.button("\N{CLOCK FACE ONE OCLOCK}")
+    async def do_time(self, payload):
+        self.result = "time"
+        self.stop()
+
+    @menus.button("\N{AIRPLANE}")
     async def do_timezone(self, payload):
         self.result = "timezone"
         self.stop()
@@ -255,6 +261,31 @@ class PromptResponse(enum.Enum):
     CANCELLED = 1
 
 
+def future_time(timezone):
+    def func(ctx, arg):
+        try:
+            result = humantime.ShortTime(arg)
+            shorttime = True
+        except Exception:
+            result = humantime.Time(arg)
+            shorttime = False
+
+        if shorttime:
+            return result.dt
+
+        when = result.dt
+
+        offset = datetime.datetime.now(timezone).utcoffset()
+        comparison = when - offset
+
+        if comparison < datetime.datetime.utcnow() + offset:
+            raise commands.BadArgument("That time is in the past.")
+
+        return when - offset
+
+    return func
+
+
 class Events(commands.Cog):
     """Create and manage events on Discord.
 
@@ -281,6 +312,9 @@ class Events(commands.Cog):
     def cog_unload(self):
         # self._event_dispatch_task.cancel()
         self.event_task.cancel()
+
+    def cog_check(self, ctx):
+        return commands.guild_only().predicate(ctx)
 
     async def get_all_active_events(self, *, connection=None, seconds=30):
         query = """SELECT *
@@ -668,29 +702,8 @@ class Events(commands.Cog):
 
         timezone, timezone_name = timezone
 
-        def future_time(ctx, arg):
-            try:
-                result = humantime.ShortTime(arg)
-                shorttime = True
-            except Exception:
-                result = humantime.Time(arg)
-                shorttime = False
-
-            if shorttime:
-                return result.dt
-
-            when = result.dt
-
-            offset = datetime.datetime.now(timezone).utcoffset()
-            comparison = when - offset
-
-            if comparison < datetime.datetime.utcnow() + offset:
-                raise commands.BadArgument("That time is in the past.")
-
-            return when - offset
-
         await ctx.send("When will the event start?")
-        when = await self.prompt(ctx, converter=future_time)
+        when = await self.prompt(ctx, converter=future_time(timezone))
 
         if isinstance(when, PromptResponse):
             return
@@ -794,19 +807,18 @@ class Events(commands.Cog):
         else:
             await ctx.send("You have not joined that event.")
 
-    async def update_event_name_or_description(self, event, option, ctx, check):
+    async def update_event_name_or_description(self, event, option, ctx):
         await ctx.send(f"What would you like to change the {option} to?")
 
-        try:
-            message = await self.bot.wait_for("message", timeout=60.0, check=check)
+        result = await self.prompt(ctx)
 
-        except asyncio.TimeoutError:
-            return await ctx.send("You took too long. Aborting.")
+        if isinstance(result, PromptResponse):
+            return
 
-        if len(message.content) > 60 and option == "name":
+        if len(result) > 60 and option == "name":
             return await ctx.send("The name must be under 60 characters.")
 
-        if len(message.content) > 120 and option == "description":
+        if len(result) > 120 and option == "description":
             return await ctx.send("The description must be under 120 characters.")
 
         query = f"""UPDATE events
@@ -814,7 +826,7 @@ class Events(commands.Cog):
                     WHERE id=$2
                 """
 
-        await self.bot.pool.execute(query, message.content, event.id)
+        await self.bot.pool.execute(query, result, event.id)
 
         event_channel = self.bot.get_channel(event.channel_id)
 
@@ -835,24 +847,29 @@ class Events(commands.Cog):
             else:
                 em = event_message.embeds[0]
                 if option == "name":
-                    em.title = message.content
+                    em.title = result
                     old = em.title
                 elif option == "description":
                     if event.description:
-                        em.description.replace(event.description, message.content)
+                        em.description.replace(event.description, result)
                     else:
-                        em.description = message.content + "\n\n" + em.description
+                        em.description = result + "\n\n" + em.description
                     old = event.description or "No description"
                 await event_message.edit(embed=em)
 
             await ctx.send(
-                ctx.tick(True, f" Updated event {option} from `{old}` to `{message.content}`")
+                ctx.tick(True, f" Updated event {option} from `{old}` to `{result}`")
             )
 
     @event.command(
-        name="edit", description="Edit an event",
+        name="edit"
     )
     async def event_edit(self, ctx, *, event: EventConverter):
+        """Edit an event.
+
+        You can edit an event's starting time, timezone, name, and description.
+        You must own the event to edit it.
+        """
         member = ctx.author
 
         if member.id != event.owner_id:
@@ -860,38 +877,49 @@ class Events(commands.Cog):
 
         option = await EditOptionMenu().prompt(ctx)
 
-        def check(ms):
-            return ms.author == member and ms.channel == ctx.channel
-
         if option in ["name", "description"]:
-            await self.update_event_name_or_description(event, option, ctx, check)
+            await self.update_event_name_or_description(event, option, ctx)
+
+        elif option == "time":
+            timezone = pytz.timezone(event.timezone)
+
+            await ctx.send("Enter the new time for the event.")
+            converter = future_time(timezone)
+            when = await self.prompt(ctx, converter=converter)
+
+            if isinstance(when, PromptResponse):
+                return
+
+            query = """UPDATE events
+                       SET starts_at=$1
+                       WHERE id=$2;
+                    """
+
+            await self.bot.pool.execute(query, when, event.id)
+
+            event.starts_at = when
+
+            await self.update_event_field(event, 0, self.format_event_time(event))
+            await ctx.send(ctx.tick(True, "Updated your event's time."))
 
         elif option == "timezone":
             tz_embed = self.get_tz_embed()
             await ctx.send(embed=tz_embed)
-            try:
-                message = await self.bot.wait_for("message", timeout=60.0, check=check)
+            result = await self.prompt(ctx, converter=TimezoneValidator().convert)
 
-            except asyncio.TimeoutError:
-                return await ctx.send("You took too long. Aborting.")
+            if isinstance(result, PromptResponse):
+                return
 
-            timezone = message.content
-
-            # make sure the timezone is valid
-            try:
-                pytz.timezone(timezone)
-            except Exception:
-                return await ctx.send("I couldn't find a timezone by that name. "
-                                      "Please make sure you have the correct timezone name.")
+            timezone, timezone_name = result
 
             query = """UPDATE events
                         SET timezone=$1
                         WHERE id=$2;
                     """
 
-            await self.bot.pool.execute(query, timezone, event.id)
+            await self.bot.pool.execute(query, timezone_name, event.id)
 
-            event.timezone = timezone
+            event.timezone = timezone_name
 
             await self.update_event_field(event, 0, self.format_event_time(event))
 
@@ -899,20 +927,17 @@ class Events(commands.Cog):
 
     @event.command(
         name="delete",
-        description="Delete an event",
         aliases=["remove", "cancel"],
     )
     async def event_delete(self, ctx, *, event: EventConverter):
-        query = "DELETE FROM events WHERE id=$1 AND owner_id=$2 AND guild_id=$3;"
+        """Delete an event.
 
-        if ctx.author.id != event.owner_id:
-            return await ctx.send("You do not own this event.")
-
-        result = await ctx.db.execute(query, event.id, ctx.author.id, ctx.guild.id)
-        if result.split(" ")[1] == "0":
-            return await ctx.send(
-                f"An event called `{event}` with you as the owner was not found."
-            )
+        You must own the event to delete it.
+        Moderators can delete any event.
+        """
+        if not ctx.author.guild_permissions.manage_guild:
+            if ctx.author.id != event.owner_id:
+                return await ctx.send("You do not own this event.")
 
         channel = self.bot.get_channel(event.channel_id)
         try:
@@ -925,15 +950,18 @@ class Events(commands.Cog):
             em.color = discord.Color.orange()
 
             await message.edit(embed=em)
-        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+        except discord.HTTPException:
             pass
 
         if event.notify_role:
             role = ctx.guild.get_role(event.notify_role)
             if role:
-                await role.delete()
+                try:
+                    await role.delete()
+                except discord.HTTPException:
+                    pass
 
-        await ctx.send(":wastebasket: Event cancelled and deleted.")
+        await ctx.send("\N{WASTEBASKET} Event cancelled and deleted.")
 
     @event.command(
         name="view",
