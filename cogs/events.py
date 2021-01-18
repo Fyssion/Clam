@@ -299,7 +299,7 @@ class Events(commands.Cog):
         return events
 
     async def dispatch_event(self, event):
-        now = datetime.datetime.datetime.utcnow()
+        now = datetime.datetime.utcnow()
 
         if event.starts_at >= now:
             to_sleep = (event.starts_at - now).total_seconds()
