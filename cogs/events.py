@@ -284,7 +284,7 @@ class Events(commands.Cog):
     async def get_all_active_events(self, *, connection=None, seconds=30):
         query = """SELECT *
                    FROM events
-                   WHERE starts_at < (CURRENT_TIMESTAMP + $1::interval)
+                   WHERE starts_at < ((now() at time zone 'utc') + $1::interval)
                    ORDER BY starts_at;
                 """
         con = connection or self.bot.pool
