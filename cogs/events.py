@@ -1,4 +1,5 @@
 import asyncio
+import calendar
 import datetime
 
 import discord
@@ -242,11 +243,11 @@ class EventNameValidator(commands.Converter):
 class TimezoneValidator(commands.Converter):
     async def convert(self, ctx, arg):
         try:
-            pytz.timezone(arg)
+            timezone = pytz.timezone(arg)
         except Exception:
             raise commands.BadArgument("I couldn't find a timezone by that name. "
                                        "Please make sure you have the correct timezone name.")
-        return arg
+        return timezone, arg
 
 
 class PromptResponse(enum.Enum):
@@ -444,10 +445,10 @@ class Events(commands.Cog):
             participants += ("\nView all the participants with "
                              f"`{self.bot.guild_prefix(guild.id)}event participants {event.id}`")
 
-        when = pytz.timezone(event.timezone).localize(event.starts_at)
+        when = self.format_event_time(event)
 
         em.add_field(
-            name="When", value=when.strftime("%b %d, %Y at %#I:%M %p %Z"), inline=False
+            name="When", value=when, inline=False
         )
 
         em.add_field(name="Participants", value=participants or "No participants yet")
@@ -665,16 +666,34 @@ class Events(commands.Cog):
         if isinstance(timezone, PromptResponse):
             return
 
+        timezone, timezone_name = timezone
+
         def future_time(ctx, arg):
-            return humantime.FutureTime(arg)
+            try:
+                result = humantime.ShortTime(arg)
+                shorttime = True
+            except Exception:
+                result = humantime.Time(arg)
+                shorttime = False
+
+            if shorttime:
+                return result.dt
+
+            when = result.dt
+
+            offset = datetime.datetime.now(timezone).utcoffset()
+            comparison = when - offset
+
+            if comparison < datetime.datetime.utcnow() + offset:
+                raise commands.BadArgument("That time is in the past.")
+
+            return when - offset
 
         await ctx.send("When will the event start?")
         when = await self.prompt(ctx, converter=future_time)
 
         if isinstance(when, PromptResponse):
             return
-
-        when = when.dt
 
         await ctx.send("What is the description of the event? Enter 'None' to skip.")
         description = await self.prompt(ctx)
@@ -691,7 +710,7 @@ class Events(commands.Cog):
         if isinstance(channel, PromptResponse):
             return
 
-        return name, timezone, when, description, channel
+        return name, timezone_name, when, description, channel
 
     @event.command(
         name="create", aliases=["new"],
@@ -920,7 +939,6 @@ class Events(commands.Cog):
         name="view",
         description="Get a link to jump to the event message",
         aliases=["show", "info"],
-        hidden=True,
     )
     async def event_info(self, ctx, *, event: EventConverter):
         jump_url = f"https://discord.com/channels/{event.guild_id}/{event.channel_id}/{event.message_id}"
@@ -943,6 +961,17 @@ class Events(commands.Cog):
 
         pages = MenuPages(source=EventSource(records, ctx), clear_reactions_after=True,)
         await pages.start(ctx)
+
+    @event.command(name="participants", aliases=["members"])
+    async def event_participants(self, ctx, *, event: EventConverter):
+        participants = []
+
+        for user_id in event.participants:
+            participants.append(f"<@{user_id}>")
+
+        em = discord.Embed(title=f"{event.name} Participants", color=colors.PRIMARY)
+        menu = ctx.embed_pages(participants, em)
+        await menu.start(ctx)
 
     @event.command(name="all", description="View all events")
     @commands.is_owner()
