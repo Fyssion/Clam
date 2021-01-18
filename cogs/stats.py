@@ -563,6 +563,7 @@ class Stats(commands.Cog):
         await ctx.send(embed=em)
 
     @stats.command(name="user")
+    @commands.is_owner()
     async def stats_user(self, ctx, *, user: discord.User):
         """Get stats for a specific user"""
         places = (
@@ -684,6 +685,7 @@ class Stats(commands.Cog):
         await ctx.send(embed=em)
 
     @stats.command(name="command")
+    @commands.is_owner()
     async def stats_command(self, ctx, *, command=None):
         """Get command usage stats for a specific command"""
         places = (
