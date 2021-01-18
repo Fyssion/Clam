@@ -276,12 +276,12 @@ def future_time(timezone):
         when = result.dt
 
         offset = datetime.datetime.now(timezone).utcoffset()
-        comparison = when - offset
+        when = when - offset
 
-        if comparison < datetime.datetime.utcnow() + offset:
+        if when < datetime.datetime.utcnow():
             raise commands.BadArgument("That time is in the past.")
 
-        return when - offset
+        return when
 
     return func
 
