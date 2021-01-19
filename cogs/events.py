@@ -634,6 +634,8 @@ class Events(commands.Cog):
         Note that the bot needs the manage roles permission in order
         to allow people to set a reminder. This is because the bot creates
         an event role and assigns it to people who want to be notified.
+        The event's role will be deleted five hours after the event is over
+        or is cancelled.
         """
         await ctx.send_help(ctx.command)
 
