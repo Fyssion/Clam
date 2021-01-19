@@ -240,7 +240,7 @@ class EventNameValidator(commands.Converter):
             )
 
         query = "SELECT 1 FROM events WHERE LOWER(name)=$1;"
-        exists = await ctx.db.fetchval(query, arg)
+        exists = await ctx.db.fetchval(query, arg.lower().strip())
 
         if exists:
             raise commands.BadArgument("An event with that name already exists in this server.")
