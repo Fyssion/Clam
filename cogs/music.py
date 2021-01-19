@@ -282,7 +282,7 @@ def is_listening():
                 "You must be connected to voice to use this command."
             )
 
-        if await is_dj().predicate(ctx):
+        if await is_dj(only_member_check=True).predicate(ctx):
             return True
 
         if author.voice.self_deaf or author.voice.deaf:
