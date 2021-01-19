@@ -282,8 +282,10 @@ def is_listening():
                 "You must be connected to voice to use this command."
             )
 
-        if await is_dj(only_member_check=True).predicate(ctx):
-            return True
+        try:
+            return await is_dj().predicate(ctx)
+        except NotDJ:
+            pass
 
         if author.voice.self_deaf or author.voice.deaf:
             raise NotListeningError("You must be undeafened to use this command.")
