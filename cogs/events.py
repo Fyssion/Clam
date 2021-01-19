@@ -381,23 +381,24 @@ class Events(commands.Cog):
 
         em = message.embeds[0]
         em.color = discord.Color.orange()
-        em.description = (event.description or "") + "\n\nSorry, the event has started."
+        em.description = (event.description or "") + "\n\nThis event has already started."
         em.set_footer(text="Event time")
 
         await message.edit(embed=em)
 
+        mention = f"<@{event.owner_id}>"
+        notify_role = None
+
         if event.notify_role:
             notify_role = guild.get_role(event.notify_role)
             if notify_role:
-                await channel.send(
-                    f"{notify_role.mention}\nEvent `{event.name}` has started!"
-                )
-                await self.delete_event_role(notify_role)
+                mention = notify_role.mention
 
-        else:
-            await channel.send(
-                f"<@{event.owner_id}>\nEvent `{event.name}` has started!"
-            )
+        jump_url = f"https://discord.com/channels/{event.guild_id}/{event.channel_id}/{event.message_id}"
+        await channel.send(f"{mention}: {event.name} has started!\nView event: {jump_url}")
+
+        if notify_role:
+            await self.delete_event_role(notify_role)
 
     async def get_event(self, event_id):
         query = """SELECT * FROM events WHERE id=$1;"""
@@ -457,6 +458,19 @@ class Events(commands.Cog):
 
         await role.delete()
 
+    def format_participants(self, event, guild):
+        shortened = event.participants[:10] if len(event.participants) > 10 else event.participants
+        participants = "\n".join(
+            [guild.get_member(m).mention for m in shortened]
+        )
+
+        if len(event.participants) > 10:
+            participants += f"\n...and {len(event.participants) - 10} more."
+            participants += ("\nView all the participants with "
+                             f"`{self.bot.guild_prefix(guild)}event participants {event.name}`")
+
+        return participants or "\u200b"
+
     def create_event_embed(self, event):
         em = discord.Embed(
             title=event.name,
@@ -471,21 +485,13 @@ class Events(commands.Cog):
 
         guild = self.bot.get_guild(event.guild_id)
 
-        shortened = event.participants[20:] if len(event.participants) > 20 else event.participants
-        participants = "\n".join(
-            [guild.get_member(m).mention for m in shortened]
-        )
-
-        if len(event.participants) > 20:
-            participants += f"\n...and {len(event.participants) - 20} more."
-            participants += ("\nView all the participants with "
-                             f"`{self.bot.guild_prefix(guild.id)}event participants {event.id}`")
-
         when = self.format_event_time(event)
 
         em.add_field(
             name="When", value=when, inline=False
         )
+
+        participants = self.format_participants(event, guild)
 
         em.add_field(name="Participants", value=participants or "No participants yet")
         em.set_footer(text=f"ID: {event.id} | Event starts")
@@ -558,8 +564,8 @@ class Events(commands.Cog):
 
         em = message.embeds[0]
 
-        members_mentioned = "\n".join([f"<@{m}>" for m in event.participants])
-        em.set_field_at(1, name="Participants", value=members_mentioned or "\u200b")
+        participants = self.format_participants(event, guild)
+        em.set_field_at(1, name="Participants", value=participants)
 
         query = """UPDATE events
                    SET participants=$1
@@ -649,13 +655,13 @@ class Events(commands.Cog):
         em = discord.Embed(description=description, color=colors.PRIMARY)
 
         examples = [
-            "America/Chicago",
-            "Europe/Amsterdam",
-            "America/Los_Angeles",
-            "UTC"
+            "- America/Chicago",
+            "- Europe/Amsterdam",
+            "- America/Los_Angeles",
+            "- UTC"
         ]
 
-        em.add_field(name="Examples", value="\n- ".join(examples))
+        em.add_field(name="Examples", value="\n".join(examples))
 
         return em
 
@@ -942,6 +948,9 @@ class Events(commands.Cog):
         if not ctx.author.guild_permissions.manage_guild:
             if ctx.author.id != event.owner_id:
                 return await ctx.send("You do not own this event.")
+
+        query = "DELETE FROM events WHERE id=$1"
+        await ctx.db.execute(query, event.id)
 
         channel = self.bot.get_channel(event.channel_id)
         try:
