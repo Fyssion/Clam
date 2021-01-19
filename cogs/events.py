@@ -759,7 +759,7 @@ class Events(commands.Cog):
 
         event_args = (
             name,
-            None,
+            description,
             ctx.author.id,
             when,
             msg.id,
