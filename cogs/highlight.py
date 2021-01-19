@@ -221,8 +221,6 @@ class Highlight(commands.Cog):
                     log.debug(f"{message.channel} is in {user}'s blocked list, aborting")
                     return
 
-        self.bot.dispatch("highlight", message, highlight)
-
         log.debug(f"Building notification for message {message.id}")
 
         log.debug(f"Getting list of previous messages for message {message.id}")
@@ -333,6 +331,7 @@ class Highlight(commands.Cog):
 
         try:
             await user.send(msg, embed=em)
+            self.bot.dispatch("highlight", message, highlight)
             log.info(
                 f"{user} was highlighted by {message.author} for word {word}: {message.content}"
             )
