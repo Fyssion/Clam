@@ -649,13 +649,13 @@ class Events(commands.Cog):
         em = discord.Embed(description=description, color=colors.PRIMARY)
 
         examples = [
-            '"America/Chicago"',
-            '"Europe/Amsterdam"',
-            '"America/Los_Angeles"'
-            '"UTC"'
+            "America/Chicago",
+            "Europe/Amsterdam",
+            "America/Los_Angeles",
+            "UTC"
         ]
 
-        em.add_field(name="Examples", value="\n".join(examples))
+        em.add_field(name="Examples", value="\n- ".join(examples))
 
         return em
 
