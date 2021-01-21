@@ -903,6 +903,11 @@ class Moderation(commands.Cog):
     @commands.command()
     @commands.guild_only()
     async def selfmute(self, ctx, duration: humantime.ShortTime, *, reason=None):
+        """Mute yourself for a duration of time.
+
+        The duration can't be less than 5 minutes or more than 24 hours.
+        Do not bother a moderator to unmute you. You have been warned.
+        """
         timers = self.bot.get_cog("Timers")
         if not timers:
             return await ctx.send(
