@@ -613,7 +613,7 @@ class Internet(commands.Cog):
                 else:
                     card = self.parse_google_card(card_node[0])
 
-            search_results = root.findall(".//div[@class='rc']")
+            search_results = root.xpath(".//div[@class='g' or @class='tF2Cxc']")
             # print(len(search_results))
             for node in search_results:
                 link = node.find("./div[@class='yuRUbf']/a")
