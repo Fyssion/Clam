@@ -113,6 +113,47 @@ class WolframResultSource(menus.ListPageSource):
         return em
 
 
+class UrbanDictionarySource(menus.ListPageSource):
+    def __init__(self, data):
+        super().__init__(data, per_page=1)
+
+    BRACKET_REGEX = re.compile(r"(\[(.+?)\])")
+
+    def format_definition(self, text):
+        def repl(m):
+            word = m.group(2)
+            return f"[{word}](http://{word.replace(' ', '-')}.urbanup.com)"
+
+        result = self.BRACKET_REGEX.sub(repl, text)
+        if len(result) >= 2048:
+            return result[0:2000] + "..."
+
+        return result
+
+    def format_page(self, menu, entry):
+        word = entry["word"]
+        max_pages = self.get_max_pages()
+
+        title = f"{word}: {menu.current_page+1} of {max_pages}" if max_pages else word
+        em = discord.Embed(title=title, color=0xE86222, url=entry["permalink"])
+        em.description = self.format_definition(entry["definition"])
+        em.set_footer(text=f"Written by {entry['author']}")
+
+        up = entry["thumbs_up"]
+        down = entry["thumbs_down"]
+        votes = f"\N{THUMBS UP SIGN} **{up}** \N{THUMBS DOWN SIGN} **{down}**"
+        em.add_field(name="Votes", value=votes)
+
+        try:
+            date = discord.utils.parse_time(entry["written_on"][0:-1])
+        except (ValueError, KeyError):
+            pass
+        else:
+            em.timestamp = date
+
+        return em
+
+
 class Internet(commands.Cog):
     """Various commands that use the internet.
 
@@ -699,6 +740,23 @@ class Internet(commands.Cog):
         menu = MenuPages(
             WolframResultSource(result, question), clear_reactions_after=True
         )
+        await menu.start(ctx)
+
+    @commands.command()
+    @commands.cooldown(2, 10, commands.BucketType.user)
+    async def urban(self, ctx, *, word):
+        """Search Urban Dictionary for definitions"""
+        url = "http://api.urbandictionary.com/v0/define"
+        async with self.bot.session.get(url, params={"term": word}) as resp:
+            if resp.status != 200:
+                return await ctx.send(f"An error occurred: {resp.status} {resp.reason}")
+
+            raw_data = await resp.json()
+            data = raw_data.get("list", [])
+            if not data:
+                return await ctx.send("No results found, sorry.")
+
+        menu = MenuPages(UrbanDictionarySource(data), clear_reactions_after=True)
         await menu.start(ctx)
 
     @commands.group(
