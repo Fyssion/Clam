@@ -916,7 +916,7 @@ class Internet(commands.Cog):
                 continue
 
             seconds = timestamp / 1000
-            date = datetime.fromtimestamp(seconds + (timestamp % 1000.0) / 1000.0)
+            date = datetime.datetime.fromtimestamp(seconds + (timestamp % 1000.0) / 1000.0)
 
             date_str = date.strftime("%m/%d/%y")
             human_friendly = f"{p_name} ({date_str})"
