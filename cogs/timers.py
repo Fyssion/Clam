@@ -149,7 +149,6 @@ class Timers(commands.Cog):
         # delete the timer
         query = "DELETE FROM timers WHERE id=$1;"
         await self.bot.pool.execute(query, timer.id)
-        print(2)
 
         # dispatch the event
         event_name = f"{timer.event}_timer_complete"
@@ -157,8 +156,6 @@ class Timers(commands.Cog):
 
     async def dispatch_timer(self, timer):
         now = datetime.datetime.utcnow()
-
-        print(1)
 
         if timer.expires >= now:
             to_sleep = (timer.expires - now).total_seconds()
@@ -169,8 +166,6 @@ class Timers(commands.Cog):
     @tasks.loop(seconds=30)
     async def timer_task(self):
         timers = await self.get_active_timers()
-
-        print(0, timers)
 
         for timer in timers:
             if timer is not None:
