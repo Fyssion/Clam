@@ -410,7 +410,7 @@ class Timers(commands.Cog):
         )
 
         if message_id:
-            em.description += f"\n\n[Jump to message!](https://discord.com/channels/{guild_id}/{channel.id}/{message_id})"
+            em.description += f"\n\n[Jump to message](https://discord.com/channels/{guild_id}/{channel.id}/{message_id})"
 
         try:
             await channel.send(f"<@{author_id}>, here is your reminder.", embed=em)
