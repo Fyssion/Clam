@@ -33,6 +33,7 @@ import discord
 from discord.ext import commands, tasks, menus
 
 from .utils import colors, db, humantime
+from .utils.formats import plural
 from .utils.menus import MenuPages
 
 
@@ -52,8 +53,8 @@ class TimerPageSource(menus.ListPageSource):
     def format_page(self, menu, entries):
         offset = menu.current_page * self.per_page
         em = discord.Embed(
-            title="Your Timers",
-            description=f"Total timers: **{len(self.entries)}**\n\nTimers:\n",
+            title="Your Reminders",
+            description=f"Total reminders: **{len(self.entries)}**\n\nReminders:\n",
             color=colors.PRIMARY,
         )
 
@@ -129,7 +130,10 @@ class Timers(commands.Cog):
         self.timer_task.cancel()
 
     async def get_active_timers(self, *, connection=None, seconds=30):
-        query = "SELECT * FROM timers WHERE expires < (CURRENT_TIMESTAMP + $1::interval) ORDER BY expires;"
+        query = """SELECT * FROM timers
+                   WHERE expires < ((now() at time zone 'utc') + $1::interval)
+                   ORDER BY expires;
+                """
         con = connection or self.bot.pool
 
         records = await con.fetch(query, datetime.timedelta(seconds=seconds))
@@ -145,6 +149,7 @@ class Timers(commands.Cog):
         # delete the timer
         query = "DELETE FROM timers WHERE id=$1;"
         await self.bot.pool.execute(query, timer.id)
+        print(2)
 
         # dispatch the event
         event_name = f"{timer.event}_timer_complete"
@@ -152,6 +157,8 @@ class Timers(commands.Cog):
 
     async def dispatch_timer(self, timer):
         now = datetime.datetime.utcnow()
+
+        print(1)
 
         if timer.expires >= now:
             to_sleep = (timer.expires - now).total_seconds()
@@ -162,6 +169,8 @@ class Timers(commands.Cog):
     @tasks.loop(seconds=30)
     async def timer_task(self):
         timers = await self.get_active_timers()
+
+        print(0, timers)
 
         for timer in timers:
             if timer is not None:
@@ -252,31 +261,30 @@ class Timers(commands.Cog):
         return timer
 
     @commands.group(
-        aliases=["reminder", "remind"], invoke_without_command=True
+        aliases=["reminder", "timer"], invoke_without_command=True
     )
-    async def timer(
+    async def remind(
         self,
         ctx,
         *,
         when: humantime.UserFriendlyTime(commands.clean_content, default=""),
     ):
-        """Create a timer that will notify you when completed
+        """Create a reminder that will notify you when completed
 
         Note that times are in UTC.
-        To create a timer, specify the time and/or a message
-        associated with the timer.
+        To create a reminder, specify a time and an optional
+        message to go with it.
 
         Examples:
-        - 2d do laundry
-        - Meet with friends in five hours
-
-        Note that this was taken from R. Danny.
-        I plan on expanding it.
+        `{prefix}remind 2d do laundry`
+        `{prefix}remind Meet with friends in five hours`
+        `{prefix}remind 1 hour`
+        `{prefix}remind attend the tourney on may 25th`
         """
 
         timer = await self.create_timer(
             when.dt,
-            "timer",
+            "reminder",
             ctx.author.id,
             ctx.channel.id,
             when.arg,
@@ -285,17 +293,17 @@ class Timers(commands.Cog):
             message_id=ctx.message.id,
         )
         delta = humantime.timedelta(when.dt, source=timer.created_at)
-        friendly_message = f"message `{when.arg}`" if when.arg else "no message"
+        friendly_message = f"message: {when.arg}" if when.arg else "no message"
         await ctx.send(
-            f"{ctx.tick(True)} Set a timer for **`{delta}`** with {friendly_message}"
+            f"{ctx.tick(True)} Set a reminder for **`{delta}`** with {friendly_message}"
         )
 
-    @timer.command(name="list", aliases=["all"], ignore_extra=False)
-    async def timer_list(self, ctx):
-        """Shows your currently running timers."""
+    @remind.command(name="list", aliases=["all"], ignore_extra=False)
+    async def remind_list(self, ctx):
+        """View your currently running reminders."""
         query = """SELECT id, expires, extra #>> '{args,2}'
                    FROM timers
-                   WHERE event = 'timer'
+                   WHERE event = 'reminder'
                    AND extra #>> '{args,0}' = $1
                    ORDER BY expires
                    LIMIT 10;
@@ -304,17 +312,17 @@ class Timers(commands.Cog):
         records = await ctx.db.fetch(query, str(ctx.author.id))
 
         if len(records) == 0:
-            return await ctx.send("No currently running timers.")
+            return await ctx.send("No currently running reminders.")
 
         pages = MenuPages(source=TimerPageSource(records), clear_reactions_after=True,)
         await pages.start(ctx)
 
-    @timer.command(name="here", ignore_extra=False)
-    async def timer_here(self, ctx):
-        """Shows your currently running timers in the current channel."""
+    @remind.command(name="here", ignore_extra=False)
+    async def remind_here(self, ctx):
+        """View your currently running reminders in the current channel."""
         query = """SELECT id, expires, extra #>> '{args,2}'
                    FROM timers
-                   WHERE event = 'timer'
+                   WHERE event = 'reminder'
                    AND extra #>> '{args,0}' = $1
                    AND extra #>> '{args,1}' = $2
                    ORDER BY expires
@@ -324,47 +332,41 @@ class Timers(commands.Cog):
         records = await ctx.db.fetch(query, str(ctx.author.id), str(ctx.channel.id))
 
         if len(records) == 0:
-            return await ctx.send("No currently running timers in this channel.")
+            return await ctx.send("No currently running reminders in this channel.")
 
         pages = MenuPages(source=TimerPageSource(records), clear_reactions_after=True,)
         await pages.start(ctx)
 
-    @timer.command(name="delete", aliases=["remove", "cancel"], ignore_extra=False)
-    async def timer_delete(self, ctx, *, id: int):
-        """Deletes a timer by its ID.
-        To get a timer ID, use the timer list command.
+    @remind.command(name="delete", aliases=["remove", "cancel"], ignore_extra=False)
+    async def remind_delete(self, ctx, *, id: int):
+        """Deletes a reminder by its ID.
+        To get a reminder ID, use `{prefix}remind list`
         """
 
         query = """DELETE FROM timers
                    WHERE id=$1
-                   AND event = 'timer'
+                   AND event = 'reminder'
                    AND extra #>> '{args,0}' = $2;
                 """
 
         status = await ctx.db.execute(query, id, str(ctx.author.id))
         if status == "DELETE 0":
             raise commands.BadArgument(
-                "Could not delete any timers with that ID."
-                "\nDoes that timer exist and do you own it?"
+                "Could not delete any reminders with that ID."
+                "\nDoes that reminder exist and do you own it?"
             )
 
-        # # if the current timer is being deleted
-        # if self._current_timer and self._current_timer.id == id:
-        #     # cancel the task and re-run it
-        #     self._task.cancel()
-        #     self._task = self.bot.loop.create_task(self.dispatch_timers())
+        await ctx.send(f"{ctx.tick(True)} Successfully deleted reminder.")
 
-        await ctx.send(f"{ctx.tick(True)} Successfully deleted timer.")
-
-    @timer.command(name="clear", ignore_extra=False)
-    async def timer_clear(self, ctx):
-        """Clears all timer you have set."""
+    @remind.command(name="clear", ignore_extra=False)
+    async def remind_clear(self, ctx):
+        """Clears all reminders you have set."""
 
         # For UX purposes this has to be two queries.
 
         query = """SELECT COUNT(*)
                    FROM timers
-                   WHERE event = 'timer'
+                   WHERE event = 'reminder'
                    AND extra #>> '{args,0}' = $1;
                 """
 
@@ -372,25 +374,21 @@ class Timers(commands.Cog):
         total = await ctx.db.fetchrow(query, author_id)
         total = total[0]
         if total == 0:
-            return await ctx.send("You don't have any timers.")
+            return await ctx.send("You don't have any reminders.")
 
         confirm = await ctx.confirm(
-            f"Are you sure you want to delete {total} timer(s)?"
+            f"Are you sure you want to delete {plural(total):reminder}?"
         )
         if not confirm:
             return await ctx.send("Aborting")
 
-        query = """DELETE FROM timers WHERE event = 'timer' AND extra #>> '{args,0}' = $1;"""
+        query = """DELETE FROM timers WHERE event = 'reminder' AND extra #>> '{args,0}' = $1;"""
         await ctx.db.execute(query, author_id)
 
-        # # Restart the task in case one of the timers is being waited for
-        # self._task.cancel()
-        # self._task = bot.loop.create_task(self.dispatch_timers())
-
-        await ctx.send(f"{ctx.tick(True)} Successfully deleted {total} timer(s).")
+        await ctx.send(f"{ctx.tick(True)} Successfully deleted {plural(total):reminder}.")
 
     @commands.Cog.listener()
-    async def on_timer_timer_complete(self, timer):
+    async def on_reminder_timer_complete(self, timer):
         author_id, channel_id, message = timer.args
 
         try:
@@ -406,16 +404,16 @@ class Timers(commands.Cog):
         message_id = timer.kwargs.get("message_id")
 
         em = discord.Embed(
-            title="Timer Completed",
-            description=f"When: {timer.human_delta}\nMessage: {message or 'None'}",
+            title="Reminder",
+            description=f"**When:** {timer.human_delta}\n**Message:** {message or 'None'}",
             color=colors.PRIMARY,
         )
 
         if message_id:
-            em.description += f"\n\n[Jump](https://discord.com/channels/{guild_id}/{channel.id}/{message_id})"
+            em.description += f"\n\n[Jump to message!](https://discord.com/channels/{guild_id}/{channel.id}/{message_id})"
 
         try:
-            await channel.send(f"<@{author_id}>", embed=em)
+            await channel.send(f"<@{author_id}>, here is your reminder.", embed=em)
         except discord.HTTPException:
             return
 
