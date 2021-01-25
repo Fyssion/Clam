@@ -190,7 +190,6 @@ class BannedUser(commands.Converter):
 
 # Spam detector
 
-# TODO: add this to d.py maybe
 class CooldownByContent(commands.CooldownMapping):
     def _bucket_key(self, message):
         return (message.channel.id, message.content)
@@ -317,10 +316,7 @@ def can_mute():
 
 
 class Moderation(commands.Cog):
-    """
-    Moderation commands that help you moderate your server.
-    If you are looking for raid protection, see the `Raid Shield` category.
-    """
+    """Moderation commands that help you moderate your server."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -345,7 +341,7 @@ class Moderation(commands.Cog):
 
         self.ver_messages = {}
 
-        # Raid shield stuff
+        # AutoMod stuff
 
         # guild_id: SpamChecker
         self._spam_check = defaultdict(SpamChecker)
@@ -389,8 +385,8 @@ class Moderation(commands.Cog):
     @commands.command(aliases=["su"])
     @checks.has_permissions(administrator=True)
     async def runas(self, ctx, target: discord.Member, *, command):
-        """
-        Run a command as someone else.
+        """Run a command as someone else.
+
         You must have the administrator permission, and you cannot run
         a command as someone with a higher role than you.
         """
