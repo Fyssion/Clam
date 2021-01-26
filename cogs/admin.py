@@ -17,6 +17,7 @@ from discord.ext import commands, menus, tasks
 from jishaku.codeblocks import codeblock_converter
 
 from .utils import aiopypi, colors, humantime
+from .utils.emojis import OK_SIGN
 from .utils.formats import plural, TabularData
 from .utils.menus import MenuPages
 
@@ -374,7 +375,7 @@ class Admin(commands.Cog):
                 try:
                     self.bot.reload_extension(ext)
                     msg += (
-                        f"**<a:cool_ok_sign:699837382433701998> Reloaded** `{ext}`\n\n"
+                        f"**{OK_SIGN} Reloaded** `{ext}`\n\n"
                     )
                     self.log.info(f"Extension '{cog.lower()}' successfully reloaded.")
 
@@ -391,7 +392,7 @@ class Admin(commands.Cog):
 
         try:
             self.bot.reload_extension(cog.lower())
-            await ctx.send(f"<a:cool_ok_sign:699837382433701998>")
+            await ctx.send(f"{OK_SIGN}")
             self.log.info(f"Extension '{cog.lower()}' successfully reloaded.")
         except Exception as e:
             traceback_data = "".join(

@@ -16,6 +16,7 @@ from jishaku.models import copy_context_with
 
 from .utils import colors
 from .utils.checks import has_manage_guild
+from .utils.emojis import OK_SIGN
 from .utils.errors import Blacklisted, PrivateCog
 from .utils.menus import MenuPages
 from .utils.utils import get_lines_of_code
@@ -997,7 +998,7 @@ class Meta(commands.Cog):
                 try:
                     self.bot.reload_extension(ext)
                     msg += (
-                        f"**<a:cool_ok_sign:699837382433701998> Reloaded** `{ext}`\n\n"
+                        f"**{OK_SIGN} Reloaded** `{ext}`\n\n"
                     )
                     self.log.info(f"Extension '{cog.lower()}' successfully reloaded.")
 
@@ -1018,7 +1019,7 @@ class Meta(commands.Cog):
         try:
             self.bot.reload_extension(cog.lower())
             await ctx.send(
-                f"**<a:cool_ok_sign:699837382433701998> Reloaded** `{cog.lower()}`"
+                f"**{OK_SIGN} Reloaded** `{cog.lower()}`"
             )
             self.log.info(f"Extension '{cog.lower()}' successfully reloaded.")
         except Exception as e:
