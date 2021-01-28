@@ -897,7 +897,7 @@ class Stats(commands.Cog):
 
         async with ctx.typing():
             repo = git.Repo(".")
-            count = repo.git.rev_list("--count", "HEAD")
+            count = int(repo.git.rev_list("--count", "HEAD"))
 
         description = (
             f"Each change is a [git commit.](https://git-scm.com/docs/git-commit)\n"
