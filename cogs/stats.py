@@ -902,7 +902,7 @@ class Stats(commands.Cog):
         description = (
             f"Each change is a [git commit.](https://git-scm.com/docs/git-commit)\n"
             f"{revisions}\n"
-            f"[...view all {count} commits](https://github.com/Fyssion/Clam/commits/main)"
+            f"[...view all {count:,} commits](https://github.com/Fyssion/Clam/commits/main)"
         )
 
         em = discord.Embed(
