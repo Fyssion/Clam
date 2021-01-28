@@ -386,11 +386,14 @@ class Fun(commands.Cog):
         await ctx.send(f"You flipped **{result}**.")
 
     @commands.group(
-        description=("Roll a die or two"),
         aliases=["diceroll", "rolldie"],
         invoke_without_command=True,
     )
     async def rolldice(self, ctx, dice: int = 1, sides: int = 6):
+        """Roll a die or two
+
+        You can roll up to 10 dice with up to 99 sides.
+        """
         if dice > 10:
             raise commands.BadArgument("Too many dice. You can roll up to 10 dice.")
         if sides < 2:
@@ -411,17 +414,29 @@ class Fun(commands.Cog):
             f"total of **{self.number(sum(rolls))}**."
         )
 
-    @commands.command(description="Choose a random option", aliases=["choice"])
+    @commands.command(aliases=["choice"])
     async def choose(self, ctx, *choices):
+        """Choose a random option.
+
+        You can have up to 20 choices.
+        """
+        if len(choices) > 20:
+            raise commands.BadArgument(f"You can have up to 20 choices ({len(choices)}/20).")
+
         await ctx.send(random.choice(choices))
 
     @commands.command(
-        description="Similar to choose, except it's the best of a specified number",
         aliases=["bo"],
     )
     async def bestof(self, ctx, number: int, *choices):
+        """Similar to choose, except it's the best of a specified number.
+
+        The number can be up to 100, and you can have up to 20 choices.
+        """
+        if number > 100:
+            raise commands.BadArgument("The number can only be up to 100.")
         if len(choices) > 20:
-            raise commands.BadArgument("You can have up to 20 choices.")
+            raise commands.BadArgument(f"You can have up to 20 choices ({len(choices)}/20).")
 
         Outcome = collections.namedtuple("Outcome", "choice occurrences")
 
