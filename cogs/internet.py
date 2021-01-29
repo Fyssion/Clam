@@ -378,7 +378,6 @@ class Internet(commands.Cog):
 
         # time in has an alternative form without spans
         time = node.find("./div[@class='vk_bk vk_ans _nEd']")
-        print("time2", time)
         if time is not None:
             converted = "".join(time.itertext()).strip()
             try:
@@ -401,14 +400,15 @@ class Internet(commands.Cog):
             # this one is derived if we were based on the position from lex
             xpath = etree.XPath(
                 "../../../../../ol[@class='eQJLDd']//"
-                "div[not(@class and @class='lr_dct_sf_subsen')]/"
-                "div[@class='QIclbb']/div[@data-dobid='dfn']/span"
+                "div[not(@class and @class='thODed ZWrtef')]/"
+                "div[@class='ZWrtef QIclbb']/div[@data-dobid='dfn']/span"
             )
             for word in words:
                 # we must go three parents up to get the root node
                 root = word.getparent().getparent().getparent().getparent()
 
-                pronunciation = root.find(".//span[@class='XpoqFe']/span")
+                pronunciation = root.find(".//div[@class='S23sjd']/span/span")
+                print(pronunciation)
                 if pronunciation is None:
                     continue
 
