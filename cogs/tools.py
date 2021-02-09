@@ -1037,7 +1037,21 @@ class Tools(commands.Cog):
             members = ctx.guild.members
             members.sort(key=lambda x: x.joined_at)
             position = members.index(user)
-            em.add_field(name=":family: Join Position", value=position + 1)
+
+            escape = discord.utils.escape_markdown
+            joins = []
+
+            if position > 0:
+                joins.append(escape(f"{members[position - 1]} (#{position})"))
+
+            user_pos = f"{user} (#{position + 1})"
+            joins.append(f"**{escape(user_pos)}**")
+
+            if position < len(members) - 1:
+                joins.append(escape(f"{members[position + 1]} (#{position + 2})"))
+
+            join_order = " \u2192 ".join(joins)
+            em.add_field(name=":busts_in_silhouette: Join Position and Order", value=join_order, inline=False)
 
             if user.roles[1:]:
                 roles = ""
