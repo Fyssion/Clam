@@ -258,6 +258,25 @@ class TimezoneValidator(commands.Converter):
         return timezone, arg
 
 
+class ChannelValidator(commands.Converter):
+    async def convert(self, ctx, arg):
+        channel = await commands.TextChannelConverter().convert(ctx, arg)
+
+        them_perms = channel.permissions_for(ctx.author)
+        if not all((them_perms.send_messages, them_perms.embed_links, them_perms.add_reactions)):
+            raise commands.BadArgument(
+                "You do not have permissions to either send messages, embed links, or add reactions in that channel."
+            )
+
+        me_perms = channel.permissions_for(ctx.guild.me)
+        if not all((me_perms.send_messages, me_perms.embed_links, me_perms.add_reactions)):
+            raise commands.BadArgument(
+                "I do not have permissions to either send messages, embed links, or add reactions in that channel."
+            )
+
+        return channel
+
+
 class PromptResponse(enum.Enum):
     TIMED_OUT = 0
     CANCELLED = 1
@@ -728,7 +747,7 @@ class Events(commands.Cog):
             description = None
 
         await ctx.send("Which channel should I send the event message to?")
-        channel = await self.prompt(ctx, converter=commands.TextChannelConverter().convert)
+        channel = await self.prompt(ctx, converter=ChannelValidator().convert)
 
         if isinstance(channel, PromptResponse):
             return
