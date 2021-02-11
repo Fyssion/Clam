@@ -1319,6 +1319,11 @@ class Internet(commands.Cog):
         )
         await ctx.send(embed=em)
 
+    @commands.command()
+    async def pep(self, ctx, number: int):
+        """Sends the URL for a given Python PEP."""
+        await ctx.send(f"https://www.python.org/dev/peps/pep-{number:04}")
+
     # https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/api.py#L198-L345
     def parse_object_inv(self, stream, url):
         # key: URL
