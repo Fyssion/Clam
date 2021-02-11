@@ -11,6 +11,7 @@ import traceback
 import typing
 
 import discord
+import humanize
 import pkg_resources
 import psutil
 from discord.ext import commands, menus, tasks
@@ -529,26 +530,27 @@ class Admin(commands.Cog):
             return f"{megs}mb"
         return f"{gigs}gb"
 
-    @commands.group(name="process", aliases=["computer", "comp", "cpu", "ram"])
+    @commands.command(aliases=["process"])
     @commands.is_owner()
-    async def _process(self, ctx):
+    async def host(self, ctx):
+        """View host stats"""
         em = discord.Embed(
-            title="Current Process Stats",
+            title="Host Stats",
             color=discord.Color.teal(),
         )
         em.add_field(
             name="CPU",
-            value=f"{psutil.cpu_percent()}% used with {psutil.cpu_count()} CPU(s)",
+            value=f"{psutil.cpu_percent()}% used with {plural(psutil.cpu_count()):CPU}",
         )
         mem = psutil.virtual_memory()
         em.add_field(
-            name="Virtual Memory",
-            value=f"{mem.percent}% used\n{self.readable(mem.used)}/{self.readable(mem.total)}",
+            name="Memory",
+            value=f"{mem.percent}% used\n{humanize.naturalsize(mem.used)}/{humanize.naturalsize(mem.total)}",
         )
         disk = psutil.disk_usage("/")
         em.add_field(
             name="Disk",
-            value=f"{disk.percent}% used\n{self.readable(disk.used)}/{self.readable(disk.total)}",
+            value=f"{disk.percent}% used\n{humanize.naturalsize(disk.used)}/{humanize.naturalsize(disk.total)}",
         )
 
         await ctx.send(embed=em)
