@@ -77,14 +77,14 @@ class HelpPages(menus.ListPageSource):
 class ClamHelpCommand(commands.HelpCommand):
     def i_category(self, ctx):
         return (
-            "For **more info** on a **specific category**, "
-            f"use: **`{self.context.bot.guild_prefix(self.context.guild)}help <category>`‍**"
+            "For more info on a specific category, "
+            f"use: `{self.context.bot.guild_prefix(self.context.guild)}help <category>`‍"
         )
 
     def i_cmd(self, ctx):
         return (
-            "For **more info** on a **specific command**, "
-            f"use: **`{self.context.bot.guild_prefix(self.context.guild)}help <command>`‍**"
+            "For more info on a specific command, "
+            f"use: `{self.context.bot.guild_prefix(self.context.guild)}help <command>`‍"
         )
 
     def get_command_signature(self, command):
@@ -101,7 +101,7 @@ class ClamHelpCommand(commands.HelpCommand):
 
     @property
     def arg_help(self):
-        return "**Key:** `<required>` `[optional]`\n**Remove `<>` and `[]` when using the command.**"
+        return "Key: `<required>` `[optional]`\nRemove `<>` and `[]` when using the command."
 
     def get_base_embed(self):
         ctx = self.context
@@ -122,7 +122,7 @@ class ClamHelpCommand(commands.HelpCommand):
         em.description = (
             f"{bot.description}\n\n"
             f"**Default Prefix: `{bot.guild_prefix(ctx.guild)}`** "
-            f"Ex: `{bot.guild_prefix(ctx.guild)}help`\n"
+            f"Example: `{bot.guild_prefix(ctx.guild)}help`\n"
             f"Use `{bot.guild_prefix(ctx.guild)}prefixes` to view all prefixes for this server.\n"
             f"{self.i_category(ctx)}\n"
         )
@@ -433,14 +433,14 @@ class Meta(commands.Cog):
 
     def i_category(self, ctx):
         return (
-            "For **more info** on a **specific category**, "
-            f"use: **`{self.bot.guild_prefix(ctx.guild)}help [category]`‍**"
+            "For more info on a specific category, "
+            f"use: `{self.bot.guild_prefix(ctx.guild)}help [category]`‍"
         )
 
     def i_cmd(self, ctx):
         return (
-            "For **more info** on a **specific command**, "
-            f"use: **`{self.bot.guild_prefix(ctx.guild)}help [command]`‍**"
+            "For more info on a specific command, "
+            f"use: `{self.bot.guild_prefix(ctx.guild)}help [command]`‍"
         )
 
     @commands.Cog.listener("on_message")
