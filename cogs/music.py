@@ -1418,7 +1418,7 @@ class Music(commands.Cog):
             except ytdl.YTDLError as e:
                 print(e)
                 await ctx.send(
-                    f"An error occurred while processing this request: ```py {str(e)}```"
+                    f"An error occurred while processing this request:\n{str(e)}"
                 )
 
             except asyncio.TimeoutError:
@@ -1528,7 +1528,7 @@ class Music(commands.Cog):
                 )
             except ytdl.YTDLError as e:
                 await ctx.send(
-                    f"An error occurred while processing this request: ```py {str(e)}```"
+                    f"An error occurred while processing this request:\n{str(e)}"
                 )
             else:
                 if song:
@@ -1721,7 +1721,7 @@ class Music(commands.Cog):
         except ytdl.YTDLError as e:
             print(e)
             await ctx.send(
-                f"An error occurred while processing this request: ```py {str(e)}```"
+                f"An error occurred while processing this request:\n{str(e)}"
             )
 
         else:
