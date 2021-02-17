@@ -1324,7 +1324,7 @@ class Music(commands.Cog):
         except ytdl.YTDLError as e:
             print(e)
             await ctx.send(
-                f"An error occurred while processing this request: ```py\n{str(e)}\n```"
+                f"An error occurred while processing this request:\n{str(e)}"
             )
             progress_message.change_label(0, emoji=ctx.tick(False))
             progress_message.change_label(1, emoji=ctx.tick(False))
