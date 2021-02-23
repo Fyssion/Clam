@@ -552,6 +552,12 @@ class Admin(commands.Cog):
             name="Disk",
             value=f"{disk.percent}% used\n{humanize.naturalsize(disk.used)}/{humanize.naturalsize(disk.total)}",
         )
+        uptime = datetime.datetime.fromtimestamp(psutil.boot_time())
+        em.add_field(
+            name="Boot Time",
+            value=f"{humantime.timedelta(uptime)}",
+            inline=False,
+        )
 
         await ctx.send(embed=em)
 
