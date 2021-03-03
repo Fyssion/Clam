@@ -978,8 +978,7 @@ class Tags(commands.Cog):
         query = """SELECT id, name, uses, faq
                    FROM tags
                    WHERE guild_id=$1 AND owner_id=$2
-                   ORDER BY uses DESC
-                   LIMIT 10;
+                   ORDER BY uses DESC;
                 """
 
         results = await ctx.db.fetch(query, ctx.guild.id, member.id)
