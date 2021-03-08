@@ -1424,6 +1424,7 @@ class Moderation(commands.Cog):
     )
     @commands.guild_only()
     @has_manage_guild()
+    @commands.is_owner()
     async def verification(self, ctx):
         if str(ctx.guild.id) in self.verifications.keys():
             return await ctx.send("**Verification is ON** for this server.")
