@@ -129,7 +129,7 @@ class ClamHelpCommand(commands.HelpCommand):
 
         if bot.debug:
             em.description = (
-                f"```css\n[DEBUG mode {bot.debug} is active]\n```\n" + em.description
+                f"```yml\n[DEBUG mode {bot.debug} is active]\n```\n" + em.description
             )
 
         settings = bot.get_cog("Settings")

@@ -33,7 +33,7 @@ class SongSelector(menus.Menu):
         def format_page(self, menu, song):
             em = discord.Embed(
                 title="Select a song to continue",
-                description=f"```css\n{song.get('title')}\n```",
+                description=f"```yml\n{song.get('title')}\n```",
                 color=discord.Color.green(),
             )
 

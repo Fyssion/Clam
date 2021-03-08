@@ -154,7 +154,7 @@ class Player:
     def now_playing_embed(song, title="Now playing", *, duration=None, db_info=False, filesize=None):
         em = discord.Embed(
             title=title,
-            description=f"```css\n{song.title}\n```",
+            description=f"```yml\n{song.title}\n```",
             color=discord.Color.green(),
         )
         if not duration:
