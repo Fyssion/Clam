@@ -2043,7 +2043,7 @@ class Moderation(commands.Cog):
     @automod.command(name="high")
     @checks.has_permissions(manage_guild=True)
     async def automod_high(self, ctx):
-        """Enables medium AutoMod on this server.
+        """Enables high AutoMod on this server.
 
         High AutoMod auto-bans spammers without muting them first.
         The threshold for spamming depends on a per-content basis
