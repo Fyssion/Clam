@@ -978,7 +978,7 @@ class Music(commands.Cog):
 
         if ctx.player.voice.is_paused():
             em = ctx.player.now_playing_embed(
-                ctx.player.current, "Currently Paused", ctx.player.duration.get_time()
+                ctx.player.current, "Currently Paused", duration=ctx.player.duration.get_time()
             )
 
         else:
