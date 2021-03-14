@@ -662,8 +662,14 @@ class Internet(commands.Cog):
                     # print(etree.tostring(link, pretty_print=True).decode())
                     span = link.find("./h3/div[@class='ellip']/span")
                     if span is None and link.text is None:
-                        span = link.find(".//h3[@class='LC20lb DKV0Md']/span")
-                        text = span.text if span is not None else "???"
+                        h3 = link.find(".//h3[@class='LC20lb DKV0Md']")
+                        if h3 is None:
+                            text = "???"
+                        span = h3.find("./span")
+                        if span is not None:
+                            text = span.text if span is not None else "???"
+                        else:
+                            text = h3.text if h3.text is not None else "???"
                     else:
                         text = span.text if span is not None else link.text
                     entries.append((link.get("href"), text))
