@@ -76,38 +76,7 @@ class AmongUs(commands.Cog, name="Among Us"):
 
         return AmongGame.from_record(record)
 
-    @commands.group(
-        description="A set of commands that make Among Us easier to play",
-        aliases=["amongus"],
-        invoke_without_command=True,
-    )
-    async def among(self, ctx):
-        await ctx.invoke(self.among_code)
-
-    @among.group(name="code", invoke_without_command=True)
-    async def among_code(self, ctx):
-        """View the current Among Us code for this server
-
-        To set a code, use `among code set`
-        """
-        game = await self.get_game(ctx.guild.id)
-
-        if not game or not game.code:
-            return await ctx.send("A code has not been set for this server.")
-
-        code = game.code
-        author = self.bot.get_user(code.author)
-        formatted = str(author) if author else "[unknown user]"
-
-        await ctx.send(
-            f"Among Us code: `{code}` (region: `{code.region}`)\n"
-            f"Set by `{formatted}` {humantime.timedelta(code.set_at, accuracy=1)}."
-        )
-
-    @among_code.command(
-        name="set", description="Set the current code for Among Us", aliases=["create"]
-    )
-    async def among_code_set(self, ctx, code, *, region="North America"):
+    async def set_among_code(self, ctx, code, region="North America"):
         query = """INSERT INTO among_games (id, code, code_region, code_author, code_set_at)
                    VALUES ($1, $2, $3, $4, (now() at time zone 'utc')) ON CONFLICT (id) DO UPDATE SET
                         code=EXCLUDED.code,
@@ -141,12 +110,44 @@ class AmongUs(commands.Cog, name="Among Us"):
             )
         )
 
-    @among_code.command(
+    @commands.group(
+        description="Retrieves or saves an Among Us game code.",
+        aliases=["amongus", "amogus"],
+        invoke_without_command=True,
+    )
+    async def among(self, ctx, code=None, *, region="North America"):
+        """View or set the current Among Us code for this server.
+
+        To set a code, use `{prefix}among <code> [region]`
+        """
+        if code:
+            return await self.set_among_code(ctx, code, region)
+
+        game = await self.get_game(ctx.guild.id)
+
+        if not game or not game.code:
+            return await ctx.send("A code has not been set for this server.")
+
+        code = game.code
+        author = self.bot.get_user(code.author)
+        formatted = str(author) if author else "[unknown user]"
+
+        await ctx.send(
+            f"Among Us code: `{code}` (region: `{code.region}`)\n"
+            f"Set by `{formatted}` {humantime.timedelta(code.set_at, accuracy=1)}."
+        )
+
+    @among.command(name="us")
+    async def among_us(self, ctx, code=None, *, region="North America"):
+        """Alias for `among`."""
+        await ctx.invoke(self.among, code=code, region=region)
+
+    @among.command(
         name="clear",
-        description="Clear the current code for Among Us",
+        description="Clears the current Among Us code.",
         aliases=["reset"],
     )
-    async def among_code_clear(self, ctx):
+    async def among_clear(self, ctx):
         query = """INSERT INTO among_games (id, code, code_region, code_author, code_set_at)
                    VALUES ($1, NULL, NULL, NULL, NULL) ON CONFLICT (id) DO UPDATE SET
                         code=EXCLUDED.code,
@@ -165,57 +166,6 @@ class AmongUs(commands.Cog, name="Among Us"):
         self.get_game.invalidate(self, ctx.guild.id)
 
         await ctx.send(ctx.tick(True, "Cleared code."))
-
-    @among.command(
-        name="start",
-        description="Start the Among Us game and mute everyone in the channel",
-    )
-    @commands.is_owner()
-    async def among_start(self, ctx):
-        result = await ctx.confirm(
-            "Start the Among Us game?\n**This will mute `num` members in the voice channel.**"
-        )
-        if not result:
-            return await ctx.send("Aborted")
-
-    @among.command(
-        name="stop",
-        description="Stop the Among Us game and unmute everyone",
-        aliases=["end"],
-    )
-    @commands.is_owner()
-    async def among_stop(self, ctx):
-        pass
-
-    @among.command(name="mute", description="Mute all members in the voice channel")
-    @commands.is_owner()
-    async def among_mute(self, ctx):
-        pass
-
-    @among.command(
-        name="unmute",
-        description="Umute all undead members in the voice channel (discussion)",
-        aliases=["discuss"],
-    )
-    @commands.is_owner()
-    async def among_unmute(self, ctx):
-        pass
-
-    @among.command(name="dead")
-    @commands.is_owner()
-    async def among_dead(self, ctx, *, member: discord.Member = None):
-        """Mark yourself or someone else as dead (mutes you/them)
-
-        This mutes you until the game is over or until you leave the game
-        """
-        pass
-
-    @among.command(
-        name="leave", description="Leave the current Among Us game (unmutes you)"
-    )
-    @commands.is_owner()
-    async def among_leave(self, ctx):
-        pass
 
 
 def setup(bot):
