@@ -612,12 +612,12 @@ class Admin(commands.Cog):
         )
         await pages.start(ctx)
 
-    @commands.command(name="logout", description="Logs out and shuts down bot")
+    @commands.command(aliases=["shutdown"])
     @commands.is_owner()
-    async def logout_command(self, ctx):
-        self.log.info("Logging out of Discord.")
+    async def logout(self, ctx):
+        """Shuts down the bot."""
         await ctx.send("Logging out :wave:")
-        await self.bot.logout()
+        await self.bot.close()
 
     @commands.group(
         description="DMs with the bot", aliases=["dms"], invoke_without_command=True
