@@ -238,26 +238,25 @@ class Clam(commands.Bot):
         return prefixes
 
     def private_cog_check(self, ctx):
-        if (
-            hasattr(ctx.command.cog, "private")
-            and ctx.guild.id not in [454469821376102410, 621123303343652867,]
-            and ctx.author.id not in [self.owner_id, 224513210471022592]
-        ):
-            if (
-                hasattr(ctx.command.cog, "private_user_overrides")
-                and ctx.author.id in ctx.command.cog.private_user_overrides
-            ):
-                return True
+        # TODO: make this configurable?
+        global_guild_overrides = [454469821376102410, 621123303343652867]
+        global_user_overrides = [self.owner_id, 224513210471022592, 224513210471022592]
 
-            if (
-                hasattr(ctx.command.cog, "private_guild_overrides")
-                and ctx.guild.id in ctx.command.cog.private_guild_overrides
-            ):
-                return True
+        cog = ctx.cog
 
-            raise PrivateCog("This is a private cog.")
+        if not getattr(cog, "private", False):
+            return True
 
-        return True
+        cog_guild_overrides = getattr(cog, "private_guild_overrides", [])
+        cog_user_overrides = getattr(cog, "private_user_overrides", [])
+
+        if ctx.author.id in global_user_overrides or ctx.author.id in cog_user_overrides:
+            return True
+
+        if ctx.guild and ctx.guild.id in global_guild_overrides or ctx.author.id in cog_guild_overrides:
+            return True
+
+        raise PrivateCog("This is a private cog.")
 
     async def get_context(self, message, *, cls=None):
         return await super().get_context(message, cls=cls or Context)
