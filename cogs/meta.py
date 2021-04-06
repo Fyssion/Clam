@@ -18,6 +18,7 @@ from .utils import colors
 from .utils.checks import has_manage_guild
 from .utils.emojis import OK_SIGN
 from .utils.errors import Blacklisted, PrivateCog
+from .utils.formats import plural
 from .utils.menus import MenuPages
 from .utils.utils import get_lines_of_code
 
@@ -769,172 +770,82 @@ class Meta(commands.Cog):
             )
 
     @commands.group(
-        description="View your prefixes.",
         invoke_without_command=True,
         aliases=["prefixes"],
     )
     @commands.guild_only()
     async def prefix(self, ctx):
-        if str(ctx.guild.id) not in self.bot.guild_prefixes.keys():
-            return await ctx.send("Prefix:\n`c.`")
-        prefixes = self.bot.guild_prefixes[str(ctx.guild.id)]
-        msg = "Prefixes:"
+        """Shows this server's prefixes."""
+        prefixes = self.bot.prefixes.get(ctx.guild.id)
+        formatted = [f"{plural(len(prefixes)):Prefix|Prefixes}:"]
+
         for i, prefix in enumerate(prefixes):
-            msg += f"\n{i+1}. **`{prefix}`**"
-        await ctx.send(msg)
+            formatted.append(f"{i+1}. `{prefix}`")
 
-    @prefix.command(name="add", description="Add a prefix.")
+        await ctx.send("\n".join(formatted))
+
+    @prefix.command(name="add")
     @commands.guild_only()
     @has_manage_guild()
-    async def _add_prefix(self, ctx, prefix: str):
-        if str(ctx.guild.id) not in self.bot.guild_prefixes.keys():
-            prefixes = ["c."]
-        else:
-            prefixes = self.bot.guild_prefixes[str(ctx.guild.id)]
+    async def prefix_add(self, ctx, prefix):
+        """Adds a prefix for this server."""
+        prefixes = self.bot.prefixes.get(ctx.guild.id)
+
         if prefix in prefixes:
-            return await ctx.send("You already have that prefix registered.")
-        prefixes.append(prefix)
-        self.bot.guild_prefixes[str(ctx.guild.id)] = prefixes
-        with open("prefixes.json", "w") as f:
-            json.dump(
-                self.bot.guild_prefixes,
-                f,
-                sort_keys=True,
-                indent=4,
-                separators=(",", ": "),
-            )
-        await ctx.send("Added prefix.")
+            return await ctx.send("That prefix is already registered.")
 
-    @prefix.command(name="remove", description="Remove a prefix.")
+        await self.bot.prefixes.add(ctx.guild.id, prefix)
+        await ctx.send(ctx.tick(True, f"Added prefix `{prefix}` for this server."))
+
+    @prefix.command(name="remove")
     @commands.guild_only()
     @has_manage_guild()
-    async def _remove_prefix(self, ctx, prefix):
-        if str(ctx.guild.id) not in self.bot.guild_prefixes.keys():
-            prefixes = ["c."]
-        else:
-            prefixes = self.bot.guild_prefixes[str(ctx.guild.id)]
-        try:
-            prefix_num = int(prefix)
-        except ValueError:
-            prefix_num = 100
-        if prefix not in prefixes and prefix_num > len(prefixes):
-            return await ctx.send(
-                f"{ctx.tick(True)} You don't have that prefix registered."
-            )
-        try:
-            int(prefix)
-            prefixes.pop(int(prefix) - 1)
-        except ValueError:
-            prefixes.remove(prefix)
-        self.bot.guild_prefixes[str(ctx.guild.id)] = prefixes
-        with open("prefixes.json", "w") as f:
-            json.dump(
-                self.bot.guild_prefixes,
-                f,
-                sort_keys=True,
-                indent=4,
-                separators=(",", ": "),
-            )
-        await ctx.send("Removed prefix.")
+    async def prefix_remove(self, ctx, prefix):
+        """Removes a prefix for this server."""
+        prefixes = self.bot.prefixes.get(ctx.guild.id)
 
-    @prefix.command(name="default", description="Set a default prefix.")
+        if prefix in prefixes:
+            await self.bot.prefixes.remove(ctx.guild.id, prefixes.index(prefix))
+
+        else:
+            # allow the user to input the index of the prefix
+            try:
+                prefix_index = int(prefix) - 1
+            except ValueError:
+                raise commands.BadArgument("That prefix is not registered for this server.")
+            else:
+                if len(prefixes) <= prefix_index:
+                    raise commands.BadArgument("That prefix is not registered for this server.")
+
+                prefix = await self.bot.prefixes.remove(ctx.guild.id, prefix_index)
+
+        await ctx.send(ctx.tick(True, f"Removed prefix `{prefix}` for this server."))
+
+    @prefix.command(name="default")
     @commands.guild_only()
     @has_manage_guild()
     async def _default_prefix(self, ctx, prefix):
-        if str(ctx.guild.id) not in self.bot.guild_prefixes.keys():
-            prefixes = ["c."]
-        else:
-            prefixes = self.bot.guild_prefixes[str(ctx.guild.id)]
-        try:
-            prefix_num = int(prefix)
-        except ValueError:
-            prefix_num = 100
-        if prefix not in prefixes and prefix_num > len(prefixes):
-            prefixes_ = [prefix]
-            prefixes_.extend(prefixes)
-            prefixes = prefixes_
-            self.bot.guild_prefixes[str(ctx.guild.id)] = prefixes
-            with open("prefixes.json", "w") as f:
-                json.dump(
-                    self.bot.guild_prefixes,
-                    f,
-                    sort_keys=True,
-                    indent=4,
-                    separators=(",", ": "),
-                )
-            return await ctx.send(f"{ctx.tick(True)} Set default prefix to `{prefix}`")
-        try:
-            int(prefix)
-            prefixes.pop(int(prefix) - 1)
-            prefixes_ = [prefix]
-            prefixes_.extend(prefixes)
-            prefixes = prefixes_
-        except ValueError:
-            prefixes.remove(prefix)
-            prefixes_ = [prefix]
-            prefixes_.extend(prefixes)
-            prefixes = prefixes_
-        self.bot.guild_prefixes[str(ctx.guild.id)] = prefixes
-        with open("prefixes.json", "w") as f:
-            json.dump(
-                self.bot.guild_prefixes,
-                f,
-                sort_keys=True,
-                indent=4,
-                separators=(",", ": "),
-            )
-        await ctx.send(f"{ctx.tick(True)} Set default prefix to `{prefix}`")
+        """Sets a default prefix for this server.
 
-    @prefix.command(name="reset", description="Reset prefixes to default.")
+        The default prefix is just the first prefix.
+        """
+        await self.bot.prefixes.set_default(ctx.guild.id, prefix)
+        await ctx.send(f"{ctx.tick(True)} Set default prefix to `{prefix}` for this server.")
+
+    @prefix.command(name="reset", aliases=["clear"])
     @commands.guild_only()
     @has_manage_guild()
-    async def _reset_prefix(self, ctx):
-        def check(reaction, user):
-            return (
-                reaction.message.id == bot_message.id
-                and reaction.emoji in ["✅", "❌"]
-                and user.id == ctx.author.id
-            )
-
-        if str(ctx.guild.id) not in self.bot.guild_prefixes.keys():
-            return await ctx.send("This server is already using the default prefixes.")
-
-        bot_message = await ctx.send(
-            "Are you sure you want to reset your server's prefixes?\n"
-            "**This change is irreversible.**"
+    async def prefixes_reset(self, ctx):
+        """Resets the prefixes for this server to the default."""
+        confirm = await ctx.confirm(
+            "Are you sure you want to reset this server's prefixes?\n"
+            "**This action is irreversible.**"
         )
+        if not confirm:
+            return await ctx.send("Aborted.")
 
-        await bot_message.add_reaction("✅")
-        await bot_message.add_reaction("❌")
-
-        try:
-            reaction, user = await self.bot.wait_for(
-                "reaction_add", check=check, timeout=120.0
-            )
-
-            if reaction.emoji == "✅":
-                self.bot.guild_prefixes.pop(str(ctx.guild.id))
-                with open("prefixes.json", "w") as f:
-                    json.dump(
-                        self.bot.guild_prefixes,
-                        f,
-                        sort_keys=True,
-                        indent=4,
-                        separators=(",", ": "),
-                    )
-                await bot_message.edit(content="**Reset prefixes**")
-                await bot_message.remove_reaction("✅", ctx.guild.me)
-                await bot_message.remove_reaction("❌", ctx.guild.me)
-                return
-
-            await bot_message.edit(content="**Canceled**")
-            await bot_message.remove_reaction("✅", ctx.guild.me)
-            await bot_message.remove_reaction("❌", ctx.guild.me)
-
-        except asyncio.TimeoutError:
-            await bot_message.edit(content="**Canceled**")
-            await bot_message.remove_reaction("✅", ctx.guild.me)
-            await bot_message.remove_reaction("❌", ctx.guild.me)
+        await self.bot.prefixes.clear(ctx.guild.id)
+        await ctx.send(ctx.tick(True, "Reset this server's prefixes."))
 
     @commands.command()
     async def source(self, ctx, *, command: str = None):

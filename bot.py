@@ -15,40 +15,23 @@ from config import Config
 from cogs.utils import db
 from cogs.utils.context import Context
 from cogs.utils.errors import PrivateCog
+from cogs.utils.prefixes import Prefixes
 
 
 log = logging.getLogger("clam")
 
 
-def get_prefix(bot, message):
+def get_command_prefix(bot, message):
+    prefixes = [bot.default_prefix]
 
-    prefixes = ["c."]
-
-    # Get prefixes from prefixes.json if the message is in a guild
-    if not isinstance(message.channel, discord.DMChannel) and message.guild:
-        if str(message.guild.id) in bot.guild_prefixes.keys():
-            prefixes = bot.guild_prefixes[str(message.guild.id)]
+    if message.guild:
+        prefixes = bot.prefixes.get(message.guild.id)
 
     # Add ! and ? to prefixes in DMs for easier use
-    elif isinstance(message.channel, discord.DMChannel):
-        prefixes.extend(["!", "?"])
+    else:
+        prefixes.extend(["!", "?", "! ", "? "])
 
     return commands.when_mentioned_or(*prefixes)(bot, message)
-
-
-def dev_prefix(bot, message):
-
-    prefixes = ["dev "]
-
-    if not isinstance(message.channel, discord.DMChannel):
-        if str(message.guild.id) in bot.guild_prefixes.keys():
-            prefixes = bot.guild_prefixes[str(message.guild.id)]
-
-    # Add ! and ? to prefixes in DMs for easier use
-    elif isinstance(message.channel, discord.DMChannel):
-        prefixes.extend(["!", "?"])
-
-    return prefixes
 
 
 initial_extensions = [
@@ -78,22 +61,21 @@ initial_extensions = [
 
 class Clam(commands.Bot):
     def __init__(self):
-        log.info("Starting bot...")
-
         log.info("Loading config...")
         self.config = Config("config.yml")
 
-        command_prefix = get_prefix
         self.debug = self.config.debug
 
-        if self.debug:
-            command_prefix = dev_prefix
+        self.default_prefix = "c." if not self.debug else "dev "
 
         intents = discord.Intents.all()
         intents.presences = False
 
+        debug_notice = f" in DEBUG mode {self.debug}" if self.debug else ""
+        log.info(f"Starting bot{debug_notice}...")
+
         super().__init__(
-            command_prefix=command_prefix,
+            command_prefix=get_command_prefix,
             description="A multi-purpose Discord bot. Likes to hide in its shell.",
             owner_id=224513210471022592,
             case_insensitive=True,
@@ -102,13 +84,8 @@ class Clam(commands.Bot):
         self.log = log
 
         log.info("Loading prefixes...")
-        if not os.path.isfile("prefixes.json"):
-            log.info("prefixes.json not found, creating...")
-            with open("prefixes.json", "w") as f:
-                json.dump({}, f)
-
-        with open("prefixes.json", "r") as f:
-            self.guild_prefixes = json.load(f)
+        self.prefixes = Prefixes(self)
+        self.prefixes._load()
 
         log.info("Loading blacklist...")
         if not os.path.isfile("blacklist.json"):
@@ -120,8 +97,6 @@ class Clam(commands.Bot):
 
         self.reddit_id = self.config.reddit_id
         self.reddit_secret = self.config.reddit_secret
-        self.prefixes = ["`c.`", "or when mentioned"]
-        self.default_prefix = "c."
         self.dev = self.get_user(224513210471022592)
         self.error_cache = collections.deque(maxlen=100)
         self.console = None
@@ -223,19 +198,12 @@ class Clam(commands.Bot):
 
     def guild_prefix(self, guild):
         if not guild:
-            return "c."
-        guild = guild.id
-        if str(guild) in self.guild_prefixes:
-            return self.guild_prefixes[str(guild)][0]
-        return "c."
+            return self.default_prefix
+
+        return self.prefixes.get(guild.id)[0]
 
     def get_guild_prefixes(self, guild):
-        prefixes = ["c."]
-
-        if str(guild.id) in self.guild_prefixes.keys():
-            prefixes = self.guild_prefixes[str(guild.id)]
-
-        return prefixes
+        return self.prefixes.get(guild.id)
 
     def private_cog_check(self, ctx):
         # TODO: make this configurable?
