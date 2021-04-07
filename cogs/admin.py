@@ -187,6 +187,16 @@ class Admin(commands.Cog):
     def cog_unload(self):
         self.dependancy_check_task.cancel()
 
+    @commands.command()
+    async def eval(self, ctx, *, argument: codeblock_converter):
+        """Alias for `jishaku python`. Direct evaluation of Python code."""
+        jishaku = self.bot.get_cog("Jishaku")
+
+        if not jishaku:
+            return await ctx.send("Jishaku is not loaded.")
+
+        await ctx.invoke(jishaku.jsk_python, argument=argument)
+
     # https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/admin.py#L353-L419
     @commands.command()
     async def sql(self, ctx, *, code: codeblock_converter):
