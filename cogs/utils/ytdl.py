@@ -505,6 +505,9 @@ class Song:
             if not result:
                 return
 
+            if isinstance(result, Song):
+                return result
+
             webpage_url, download = result
 
         else:
