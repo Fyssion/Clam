@@ -296,7 +296,25 @@ def future_time(timezone):
 
         when = result.dt
 
-        offset = datetime.datetime.now(timezone).utcoffset()
+        # unfortunatly there is a bug where the end time is one day ahead
+        # if the timezone time and the utc time are on different days.
+        # to fix this, I have to check if they are on different days and add/subtract
+        # a day to compensate.
+        # this has to be an awful solution but it is the only thing I could think of.
+        # I dislike working with timezones like this.
+
+        timezone_now = datetime.datetime.now(timezone)
+        offset = timezone_now.utcoffset()
+
+        utc_now = datetime.datetime.utcnow()
+        utc_now_day = utc_now.replace(hour=0, minute=0, second=0, microsecond=0)
+        timezone_now_day = timezone_now.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
+
+        if utc_now_day > timezone_now_day:
+            when = when - datetime.timedelta(days=1)
+        elif utc_now_day < timezone_now_day:
+            when = when + datetime.timedelta(days=1)
+
         when = when - offset
 
         if when < datetime.datetime.utcnow():
