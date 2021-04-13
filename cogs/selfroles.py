@@ -191,9 +191,9 @@ class Selfroles(commands.Cog):
         try:
             await ctx.author.add_roles(role.role, reason="Selfrole addition")
         except discord.HTTPException:
-            return await ctx.send("Failed to add role. Try again later?")
+            return await ctx.send("Failed to give you the role. Try again later?")
 
-        await ctx.send(ctx.tick(True, f"Successfully added role `{role.role.name}`"))
+        await ctx.send(ctx.tick(True, f"You now have the role `{role.role.name}`"))
 
     @selfrole.command(name="remove", aliases=["unsub"])
     @commands.bot_has_permissions(manage_roles=True)
@@ -211,9 +211,9 @@ class Selfroles(commands.Cog):
         try:
             await ctx.author.remove_roles(role.role, reason="Selfrole removal")
         except discord.HTTPException:
-            return await ctx.send("Failed to remove role. Try again later?")
+            return await ctx.send("Failed to remove the role from you. Try again later?")
 
-        await ctx.send(ctx.tick(True, f"Successfully removed role `{role.role.name}`"))
+        await ctx.send(ctx.tick(True, f"You no longer have the role `{role.role.name}`"))
 
     async def insert_selfrole(self, ctx, role, description):
         query = """INSERT INTO selfroles (guild_id, role_id, description)
