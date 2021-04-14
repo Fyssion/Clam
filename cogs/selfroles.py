@@ -1,5 +1,6 @@
 import asyncio
 import enum
+import inspect
 import json
 import logging
 
@@ -9,7 +10,8 @@ from discord.ext import commands, menus
 from jishaku.models import copy_context_with
 
 
-from .utils import db, checks, colors
+from .utils import db, checks, colors, converters
+from .utils.formats import human_join
 
 
 log = logging.getLogger("clam.reactionroles")
@@ -39,6 +41,7 @@ class ReactionRolesTable(db.Table, table_name="reactionroles"):
 
     # mapping of emojis to roles
     emojis_and_roles = db.Column(db.JSON, default="'{}'::jsonb")
+    title = db.Column(db.String(length=120), default="Reaction Roles")
 
 
 class SelfRole:
@@ -124,6 +127,26 @@ class ReactionroleEmojiConverter(commands.Converter):
         return emoji, role
 
 
+class RemoveEmojisConverter(commands.Converter):
+    def __init__(self, emojis_and_roles):
+        super().__init__()
+        self.emojis_and_roles = emojis_and_roles
+
+    async def convert(self, ctx, arg):
+        raw_emojis = arg.split()
+
+        emojis = []
+
+        for emoji in raw_emojis:
+            if emoji in [e[0] for e in self.emojis_and_roles]:
+                emojis.append(emoji)
+
+        if not emojis:
+            raise commands.BadArgument("Unrecognized emojis. Please make sure you are using the correct format with one space in between each emoji.")
+
+        return emojis
+
+
 class ReactionroleMenu(menus.Menu):
     def __init__(self, embed=None, **kwargs):
         self.embed = embed
@@ -139,9 +162,60 @@ class ReactionroleMenu(menus.Menu):
         return await channel.send(embed=self.embed)
 
 
-class PromptResponse(enum.Enum):
+class FailedPromptResponse(enum.Enum):
     TIMED_OUT = 0
     CANCELLED = 1
+
+
+class PromptResponse:
+    def __init__(self, message, result):
+        self.message = message
+        self.result = result
+
+
+class EditOptionMenu(menus.Menu):
+    def __init__(self):
+        super().__init__(timeout=30.0)
+        self.result = None
+        description = "\n".join([
+            "\N{MEMO} | title",
+            "\N{SQUARED NEW} | add roles",
+            "\N{CROSS MARK} | remove roles",
+            "🔁 | update message",
+        ])
+
+        self.embed = discord.Embed(
+            title="\N{MEMO} Edit Options",
+            description=f"Please press an option below.\n\n{description}",
+            color=discord.Color.orange(),
+        )
+
+    async def send_initial_message(self, ctx, channel):
+        return await channel.send(embed=self.embed)
+
+    @menus.button("\N{MEMO}")
+    async def do_time(self, payload):
+        self.result = "title"
+        self.stop()
+
+    @menus.button("\N{SQUARED NEW}")
+    async def do_timezone(self, payload):
+        self.result = "add roles"
+        self.stop()
+
+    @menus.button("\N{CROSS MARK}")
+    async def do_name(self, payload):
+        self.result = "remove roles"
+        self.stop()
+
+    @menus.button("🔁")
+    async def do_description(self, payload):
+        self.result = "update message"
+        self.stop()
+
+    async def prompt(self, ctx):
+        await self.start(ctx, wait=True)
+        return self.result
 
 
 class Selfroles(commands.Cog):
@@ -191,9 +265,9 @@ class Selfroles(commands.Cog):
         try:
             await ctx.author.add_roles(role.role, reason="Selfrole addition")
         except discord.HTTPException:
-            return await ctx.send("Failed to add role. Try again later?")
+            return await ctx.send("Failed to give you the role. Try again later?")
 
-        await ctx.send(ctx.tick(True, f"Successfully added role `{role.role.name}`"))
+        await ctx.send(ctx.tick(True, f"You now have the role `{role.role.name}`"))
 
     @selfrole.command(name="remove", aliases=["unsub"])
     @commands.bot_has_permissions(manage_roles=True)
@@ -211,9 +285,9 @@ class Selfroles(commands.Cog):
         try:
             await ctx.author.remove_roles(role.role, reason="Selfrole removal")
         except discord.HTTPException:
-            return await ctx.send("Failed to remove role. Try again later?")
+            return await ctx.send("Failed to remove the role from you. Try again later?")
 
-        await ctx.send(ctx.tick(True, f"Successfully removed role `{role.role.name}`"))
+        await ctx.send(ctx.tick(True, f"You no longer have the role `{role.role.name}`"))
 
     async def insert_selfrole(self, ctx, role, description):
         query = """INSERT INTO selfroles (guild_id, role_id, description)
@@ -447,8 +521,10 @@ class Selfroles(commands.Cog):
 
         return button
 
-    async def create_reactionrole_menu(self, ctx, emojis_and_roles):
-        menu = ReactionroleMenu(timeout=None)
+    async def create_reactionrole_embed(self, ctx, emojis_and_roles, title, menu=None):
+        """Creates a reactionrole embed to be sent or edited.
+        If a menu is provided, buttons will be added to the menu.
+        """
         description = (
             "Press a reaction to get the associated role!\n"
             "Press the reaction again to remove the role.\n\n"
@@ -474,21 +550,44 @@ class Selfroles(commands.Cog):
                     break
 
             options.append(f"{emoji} | {format_role(role.name, role_desc)}")
-            menu.add_button(self.create_button(ctx, emoji, role))
+            if menu:
+                menu.add_button(self.create_button(ctx, emoji, role))
 
         description += "\n".join(options)
         em = discord.Embed(
-            title="Reaction Roles", description=description, color=colors.PRIMARY
+            title=title, description=description, color=colors.PRIMARY
         )
         footer_text = (
             "If you cannot see the reactions, try reloading with CTRL+R.\n"
             "If nothing happens when you click a reaction, try clicking it again."
         )
         em.set_footer(text=footer_text)
-        menu.embed = em
 
+        return em
+
+    async def create_reactionrole_menu(self, ctx, emojis_and_roles, title):
+        """Creates and sends/starts a reactionrole menu."""
+        menu = ReactionroleMenu(timeout=None)
+        menu.embed = await self.create_reactionrole_embed(ctx, emojis_and_roles, title, menu=menu)
         await menu.start(ctx)
         return menu
+
+    async def update_reactionrole_menu(self, ctx, emojis_and_roles, title):
+        """Edits a reactionrole menu message, sends the emojis, and restarts the menu."""
+        old_menu = discord.utils.find(lambda m: m.ctx.channel == ctx.channel and m.ctx.message == ctx.message, self.active_menus)
+
+        new_menu = ReactionroleMenu(timeout=None, message=ctx.message)
+
+        em = await self.create_reactionrole_embed(ctx, emojis_and_roles, title, menu=new_menu)
+        await ctx.message.edit(embed=em)
+
+        if old_menu:
+            old_menu.stop()
+        self.active_menus.pop(self.active_menus.index(old_menu))
+
+        await new_menu.start(ctx, channel=ctx.channel)
+        self.active_menus.append(new_menu)
+        return new_menu
 
     async def start_reactionrole_menus(self):
         await self.bot.wait_until_ready()
@@ -545,7 +644,7 @@ class Selfroles(commands.Cog):
         """Commands to create and manage reactionrole messages."""
         await ctx.send_help(ctx.command)
 
-    async def prompt(self, ctx, *, converter=None, delete_after=None):
+    async def prompt(self, ctx, *, converter=None, delete_after=None, return_message=False, react=True):
         def check(m):
             return m.author == ctx.author and m.channel == ctx.channel
 
@@ -554,26 +653,77 @@ class Selfroles(commands.Cog):
                 message = await self.bot.wait_for("message", check=check, timeout=180)
             except asyncio.TimeoutError:
                 await ctx.send("You timed out. Aborting.")
-                return PromptResponse.TIMED_OUT
+                return FailedPromptResponse.TIMED_OUT
 
             if message.content == f"{ctx.prefix}abort":
                 await ctx.send("Aborted.")
-                return PromptResponse.CANCELLED
+                return FailedPromptResponse.CANCELLED
 
             if not converter:
                 result = message.content
                 break
 
             try:
-                result = await converter().convert(ctx, message.content)
+                if inspect.isclass(converter) and issubclass(converter, commands.Converter):
+                    result = await converter().convert(ctx, message.content)
+
+                else:
+                    result = await converter.convert(ctx, message.content)
             except commands.BadArgument as e:
                 await ctx.send(f"{e}\nPlease try again.", delete_after=delete_after)
+                if react:
+                    await message.add_reaction(ctx.tick(False))
                 continue
 
             else:
                 break
 
-        return result
+        if return_message:
+            return PromptResponse(message, result)
+        else:
+            return result
+
+    async def prompt_emojis_and_roles(self, ctx, *, existing_emojis_and_roles=None):
+        beginning = "Next, p" if existing_emojis_and_roles else "P"
+        await ctx.send(
+            f"{beginning}lease send messages with the emoji and selfrole in this format: `emoji selfrole`\n"
+            "Note that emojis must be default Discord emojis or an emoji in this server. "
+            "Other emojis will not be accepted.\n\n"
+            "Examples:\n - \N{VIDEO GAME} Video Gamer\n - \N{LOWER LEFT PAINTBRUSH} @Artist\n\n"
+            f"Use `{ctx.prefix}done` when you are done (or `{ctx.prefix}abort` to abort)."
+        )
+
+        emojis_and_roles = existing_emojis_and_roles or []
+
+        while True:
+            response = await self.prompt(
+                ctx, converter=ReactionroleEmojiConverter, delete_after=5.0, return_message=True, react=True
+            )
+
+            if not response.result:
+                if not emojis_and_roles:
+                    await ctx.send("You didn't provide any emojis or roles. Aborting.")
+                    return
+
+                await ctx.send("Alright!")
+                break
+
+            if isinstance(response.result, FailedPromptResponse):
+                return
+
+            if response.result[0] in [e for e, r in emojis_and_roles]:
+                await ctx.send(ctx.tick(False, "You have already used that emoji."), delete_after=5.0)
+                await response.message.add_reaction(ctx.tick(False))
+                continue
+
+            emojis_and_roles.append(response.result)
+            await response.message.add_reaction(ctx.tick(True))
+
+            if len(emojis_and_roles) >= 20:
+                await ctx.send("Maximum amount of reactions reached (20).")
+                break
+
+        return emojis_and_roles
 
     @reactionroles.command(name="create", aliases=["new"])
     @checks.has_permissions(manage_roles=True)
@@ -588,7 +738,7 @@ class Selfroles(commands.Cog):
         await ctx.send("Enter the channel to send the reactionrole message to.")
         channel = await self.prompt(ctx, converter=commands.TextChannelConverter)
 
-        if isinstance(channel, PromptResponse):
+        if isinstance(channel, FailedPromptResponse):
             return
 
         permissions = channel.permissions_for(ctx.me)
@@ -603,65 +753,132 @@ class Selfroles(commands.Cog):
                 "I cannot add reactions to messages in that channel. Aborting."
             )
 
-        await ctx.send(
-            "Next, please send messages with the emoji and selfrole in this format: `emoji selfrole`\n"
-            "Note that emojis must be default Discord emojis or an emoji in this server. "
-            "Other emojis will not be accepted.\n\n"
-            "Examples:\n - \N{VIDEO GAME} Video Gamer\n - \N{LOWER LEFT PAINTBRUSH} Artist\n\n"
-            f"Use `{ctx.prefix}done` when you are done (or `{ctx.prefix}abort` to abort)."
-        )
+        await ctx.send("Enter the title of the reaction roles menu or 'None' to use the default ('Reaction Roles').")
+        title = await self.prompt(ctx, converter=converters.StringMaxLengthConverter(120))
 
-        emojis_and_roles = []
+        if isinstance(title, FailedPromptResponse):
+            return
 
-        while True:
-            result = await self.prompt(
-                ctx, converter=ReactionroleEmojiConverter, delete_after=5.0
-            )
+        if title.lower().strip() == "none":
+            title = "Reaction Roles"
 
-            if not result:
-                if not emojis_and_roles:
-                    await ctx.send("You didn't provide any emojis or roles. Aborting.")
-                    return
+        emojis_and_roles = await self.prompt_emojis_and_roles(ctx)
 
-                await ctx.send("Alright! Creating reactionrole menu...")
-                break
+        if isinstance(title, FailedPromptResponse):
+            return
 
-            if isinstance(result, PromptResponse):
-                return
-
-            if result[0] in [e for e, r in emojis_and_roles]:
-                await ctx.send(ctx.tick(False, "You have already used that emoji."), delete_after=5.0)
-                await ctx.message.add_reaction(ctx.tick(False))
-                continue
-
-            emojis_and_roles.append(result)
-            await ctx.send(ctx.tick(True, "Added role"), delete_after=5.0)
-            await ctx.message.add_reaction(ctx.tick(True))
-
-            if len(emojis_and_roles) >= 20:
-                await ctx.send("Maximum amount of reactions reached (20). Creating reactionrole menu...")
-                break
+        await ctx.send("Creating reactionrole menu...")
 
         alt_ctx = await copy_context_with(ctx, channel=channel)
-        menu = await self.create_reactionrole_menu(alt_ctx, emojis_and_roles)
+        menu = await self.create_reactionrole_menu(alt_ctx, emojis_and_roles, title)
 
         self.active_menus.append(menu)
 
-        query = """INSERT INTO reactionroles (guild_id, channel_id, message_id, emojis_and_roles)
-                   VALUES ($1, $2, $3, $4::jsonb);
+        query = """INSERT INTO reactionroles (guild_id, channel_id, message_id, emojis_and_roles, title)
+                   VALUES ($1, $2, $3, $4::jsonb, $5);
                 """
 
         emojis_and_roles = [(e, r.id) for e, r in emojis_and_roles]
         await ctx.db.execute(
-            query, ctx.guild.id, channel.id, menu.message.id, emojis_and_roles
+            query, ctx.guild.id, channel.id, menu.message.id, emojis_and_roles, title
         )
 
         await ctx.send(
             ctx.tick(
                 True,
-                "Successfully created your reactionrole menu. To delete it, just delete the message.",
+                "Successfully created your reactionrole menu. To delete it, simply delete the message.",
             )
         )
+
+    @reactionroles.command(name="edit", aliases=["update"])
+    @checks.has_permissions(manage_roles=True)
+    @commands.bot_has_permissions(manage_messages=True)
+    async def reactionroles_edit(self, ctx, *, message: discord.Message):
+        """Edit a reaction role menu's title or roles."""
+        if not message.guild or message.guild != ctx.guild:
+            raise commands.BadArgument("The menu must be in this guild.")
+
+        query = """SELECT * FROM reactionroles
+                   WHERE guild_id=$1 AND channel_id=$2 AND message_id=$3;
+                """
+        record = await ctx.db.fetchrow(query, message.guild.id, message.channel.id, message.id)
+
+        if not record:
+            raise commands.BadArgument("That message is not a recognized reaction role menu.")
+
+        option = await EditOptionMenu().prompt(ctx)
+
+        title = record["title"]
+
+        emojis_and_roles = []
+        for emoji, role_id in record["emojis_and_roles"]:
+            emojis_and_roles.append((emoji, ctx.guild.get_role(role_id)))
+
+        if option == "title":
+            await ctx.send("Please enter a new title for the menu.")
+            title = await self.prompt(ctx, converter=converters.StringMaxLengthConverter(120))
+
+            if isinstance(title, FailedPromptResponse):
+                return
+
+            query = """UPDATE reactionroles
+                       SET title=$1 WHERE id=$2;
+                    """
+            await ctx.db.execute(query, title, record["id"])
+
+        elif option == "add roles":
+            emojis_and_roles = await self.prompt_emojis_and_roles(ctx, existing_emojis_and_roles=emojis_and_roles)
+
+            if isinstance(title, FailedPromptResponse):
+                return
+
+            query = """UPDATE reactionroles
+                       SET emojis_and_roles=$1::jsonb WHERE id=$2;
+                    """
+
+            id_emojis_and_roles = [(e, r.id) for e, r in emojis_and_roles]
+            await ctx.db.execute(query, id_emojis_and_roles, record["id"])
+
+        elif option == "remove roles":
+            await ctx.send(
+                "Please enter the reactions you would like to remove from the menu in a single message.\n"
+                "Example: \N{ROCKET} \N{GHOST} \N{GOLFER}"
+            )
+
+            emojis = await self.prompt(ctx, converter=RemoveEmojisConverter(emojis_and_roles))
+
+            if isinstance(title, FailedPromptResponse):
+                return
+
+            formatted = human_join(emojis, final="and")
+            confirm = await ctx.confirm(f"Are you sure you want to remove the reactions {formatted} from the menu?")
+            if not confirm:
+                return await ctx.send("Aborted.")
+
+            new_emojis_and_roles = []
+
+            for used_emoji, role in emojis_and_roles:
+                if used_emoji not in emojis:
+                    new_emojis_and_roles.append((used_emoji, role))
+                else:
+                    await message.clear_reaction(used_emoji)
+
+            emojis_and_roles = new_emojis_and_roles
+
+            query = """UPDATE reactionroles
+                       SET emojis_and_roles=$1::jsonb WHERE id=$2;
+                    """
+
+            id_emojis_and_roles = [(e, r.id) for e, r in emojis_and_roles]
+            await ctx.db.execute(query, id_emojis_and_roles, record["id"])
+
+        # this is so we can restart the menu
+        fake_ctx = await self.bot.get_context(message)
+
+        async with ctx.typing():
+            await self.update_reactionrole_menu(fake_ctx, emojis_and_roles, title)
+
+        await ctx.send(ctx.tick(True, "Successfully updated reaction role menu."))
 
 
 def setup(bot):
