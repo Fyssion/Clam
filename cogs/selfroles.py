@@ -543,13 +543,17 @@ class Selfroles(commands.Cog):
             return name
 
         for i, (emoji, role) in enumerate(emojis_and_roles):
+            if not role:
+                role_name = "deleted-role"
+            else:
+                role_name = role.name
             role_desc = None
             for role_id, desc in records:
                 if role.id == role_id:
                     role_desc = desc
                     break
 
-            options.append(f"{emoji} | {format_role(role.name, role_desc)}")
+            options.append(f"{emoji} | {format_role(role_name, role_desc)}")
             if menu:
                 menu.add_button(self.create_button(ctx, emoji, role))
 
