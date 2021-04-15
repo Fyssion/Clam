@@ -1067,10 +1067,10 @@ class Tools(commands.Cog):
         ]
 
         if not shared:
-            em.set_footer(text="No servers shared")
+            em.set_footer(text="No servers shared with the bot.")
 
         else:
-            em.set_footer(text=f"{plural(len(shared)):server} shared")
+            em.set_footer(text=f"{plural(len(shared)):server} shared with the bot.")
 
         await ctx.send(embed=em)
 
