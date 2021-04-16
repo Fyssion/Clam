@@ -824,7 +824,7 @@ class Meta(commands.Cog):
     @prefix.command(name="default")
     @commands.guild_only()
     @has_manage_guild()
-    async def _default_prefix(self, ctx, prefix):
+    async def prefix_default(self, ctx, prefix):
         """Sets a default prefix for this server.
 
         The default prefix is just the first prefix.

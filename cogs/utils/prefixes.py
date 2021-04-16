@@ -63,7 +63,7 @@ class Prefixes:
             prefixes.pop(prefixes.index(prefix))
 
         prefixes.insert(0, prefix)
-        await self.save()
+        await self.set(guild_id, prefixes)
 
     async def clear(self, guild_id):
         """Clears the prefixes for a guild."""
