@@ -943,7 +943,7 @@ class Moderation(commands.Cog):
 
         execute_db = False if ctx.author.id in settings.muted_members else True
 
-        reason = f"Selfmute by {ctx.author} (ID: {ctx.author.id}) for {human_friendly} with reason: {reason}"
+        reason = f"Selfmute by {ctx.author} (ID: {ctx.author.id}) for {human_friendly}"
 
         try:
             await settings.mute_member(ctx.author, reason, execute_db=execute_db)
