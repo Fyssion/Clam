@@ -898,7 +898,7 @@ class Moderation(commands.Cog):
 
     @commands.command()
     @commands.guild_only()
-    async def selfmute(self, ctx, duration: humantime.ShortTime, *, reason=None):
+    async def selfmute(self, ctx, *, duration: humantime.FutureTime):
         """Mute yourself for a duration of time.
 
         The duration can't be less than 5 minutes or more than 24 hours.
@@ -917,17 +917,6 @@ class Moderation(commands.Cog):
         if duration.dt < (created_at + datetime.timedelta(minutes=5)):
             raise commands.BadArgument("Duration cannot be less than 5 minutes.")
 
-        human_friendly = humantime.timedelta(
-            duration.dt, source=ctx.message.created_at
-        )
-        confirm = await ctx.confirm(
-            f"Are you sure you want to mute yourself for {human_friendly}?\n"
-            "You won't be able to unmute yourself unless you ask a mod."
-        )
-
-        if not confirm:
-            return await ctx.send("Aborted selfmute")
-
         settings = await self.get_guild_settings(ctx.guild.id)
 
         if not settings:
@@ -940,6 +929,17 @@ class Moderation(commands.Cog):
 
         if role in ctx.author.roles:
             return await ctx.send("You've already been muted.")
+
+        human_friendly = humantime.timedelta(
+            duration.dt, source=ctx.message.created_at
+        )
+        confirm = await ctx.confirm(
+            f"Are you sure you want to mute yourself for {human_friendly}?\n"
+            "You won't be able to unmute yourself unless you ask a mod."
+        )
+
+        if not confirm:
+            return await ctx.send("Aborted selfmute")
 
         execute_db = False if ctx.author.id in settings.muted_members else True
 
