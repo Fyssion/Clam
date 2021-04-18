@@ -221,7 +221,7 @@ class Clam(commands.Bot):
         if ctx.author.id in global_user_overrides or ctx.author.id in cog_user_overrides:
             return True
 
-        if ctx.guild and ctx.guild.id in global_guild_overrides or ctx.author.id in cog_guild_overrides:
+        if ctx.guild and ctx.guild.id in global_guild_overrides or ctx.guild.id in cog_guild_overrides:
             return True
 
         raise PrivateCog("This is a private cog.")
