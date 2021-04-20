@@ -1815,13 +1815,13 @@ class Music(commands.Cog):
 
         if ctx.voice_client:
             if ctx.voice_client.channel != ctx.author.voice.channel:
-                dj = await is_dj().predicate(ctx)
-                hint = (
-                    f" Use `{ctx.prefix}summon` to summon the bot to a channel."
-                    if dj
-                    else ""
-                )
-                raise NotListeningError(f"Bot is in another voice channel.{hint}")
+                try:
+                    await is_dj().predicate(ctx)
+                    hint = f" Use `{ctx.prefix}summon` to summon the bot to a channel."
+                except NotDJ:
+                    hint = ""
+
+                raise NotListeningError(f"{self.bot.user.name} is in another voice channel.{hint}")
 
     # music db management commands
 
