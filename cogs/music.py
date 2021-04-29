@@ -862,10 +862,10 @@ class Music(commands.Cog):
 
     @commands.command(
         name="leave",
-        aliases=["disconnect"],
+        aliases=["disconnect", "dc"],
     )
     @commands.guild_only()
-    @is_dj()
+    @is_dj(only_member_check=True)
     async def leave(self, ctx):
         """Clears the queue and leaves the voice channel."""
         if not ctx.player and ctx.voice_client:
