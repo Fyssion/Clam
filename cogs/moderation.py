@@ -2441,10 +2441,18 @@ class Moderation(commands.Cog):
                 """
         await ctx.db.execute(query, ctx.guild.id, [])
         self.get_guild_settings.invalidate(self, ctx.guild.id)
-        await ctx.send(ctx.tick(True, f"Members are now free to say anything they like."))
+        await ctx.send(ctx.tick(True, "Members are now free to say anything they like."))
 
     async def bonk_member(self, message, word):
         """Kicks a member for saying a forbidden word and sends an invite back to the server."""
+        # role hierarchy check
+        if (
+            await self.bot.is_owner(message.author)
+            or message.author == message.guild.owner
+            or (message.guild.me.top_role > message.author.top_role and message.guild.owner != message.author)
+           ):
+            return await message.channel.send(f"***{message.author.display_name} just said a forbidden word,*** but I was unable to bonk them :(")
+
         invite = await message.channel.create_invite(max_uses=1, max_age=86400, reason=f"Bonked for saying a forbidden word: {word}")
         try:
             await message.author.send(f"You were just bonked for saying a forbidden word in {message.guild}: `{word}`"
