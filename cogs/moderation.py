@@ -58,6 +58,7 @@ class GuildSettingsTable(db.Table, table_name="guild_settings"):
     ignored_roles = db.Column(db.Array(db.Integer(big=True)))
     ignored_members = db.Column(db.Array(db.Integer(big=True)))
     mention_count = db.Column(db.Integer(small=True))
+    forbidden_words = db.Column(db.Array(db.String))
 
 
 class GuildSettings:
@@ -77,6 +78,7 @@ class GuildSettings:
         self.ignored_roles = record["ignored_roles"] or []
         self.ignored_members = record["ignored_members"] or []
         self.mention_count = record["mention_count"]
+        self.forbidden_words = record["forbidden_words"] or []
 
         return self
 
@@ -2348,6 +2350,162 @@ class Moderation(commands.Cog):
         await ctx.send(
             f"Now auto-banning members that mention more than {count} users."
         )
+
+    # FORBIDDEN WORDS
+
+    @commands.command()
+    @commands.has_permissions(manage_guild=True)
+    @commands.bot_has_permissions(kick_members=True, create_instant_invite=True)
+    async def forbid(self, ctx, *, word):
+        """Forbid a word from being said in this server.
+
+        If a member says any of the forbidden words, they will be kicked from the server and sent an invite to join back.
+        To view the forbidden words, use `{prefix}forbidden`.
+
+        You must have the Manage Server permission to use this command.
+        """
+        settings = await self.get_guild_settings(ctx.guild.id)
+
+        if settings and word.lower().strip() in settings.forbidden_words:
+            return await ctx.send("That word is already forbidden.")
+
+        forbidden_words = settings.forbidden_words if settings else []
+        forbidden_words.append(word.lower().strip())
+
+        query = """INSERT INTO guild_settings (id, forbidden_words)
+                   VALUES ($1, $2)
+                   ON CONFLICT (id) DO UPDATE SET
+                       forbidden_words = $2;
+                """
+        await ctx.db.execute(query, ctx.guild.id, forbidden_words)
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
+        await ctx.send(ctx.tick(True, f"Members will now be kicked if they say `{word}`."))
+
+    @commands.command()
+    @commands.has_permissions(manage_guild=True)
+    async def unforbid(self, ctx, *, word):
+        """Remove a word from the forbidden words list.
+
+        You must have the Manage Server permission to use this command.
+        """
+        settings = await self.get_guild_settings(ctx.guild.id)
+
+        if not settings or word.lower().strip() not in settings.forbidden_words:
+            return await ctx.send("That word isn't forbidden.")
+
+        forbidden_words = settings.forbidden_words if settings else []
+        forbidden_words.pop(forbidden_words.index(word.lower().strip()))
+
+        query = """INSERT INTO guild_settings (id, forbidden_words)
+                   VALUES ($1, $2)
+                   ON CONFLICT (id) DO UPDATE SET
+                       forbidden_words = $2;
+                """
+        await ctx.db.execute(query, ctx.guild.id, forbidden_words)
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
+        await ctx.send(ctx.tick(True, f"Members are now free to say `{word}`."))
+
+    @commands.group(invoke_without_command=True)
+    async def forbidden(self, ctx):
+        """View the forbidden words in this server."""
+        settings = await self.get_guild_settings(ctx.guild.id)
+
+        if not settings or not settings.forbidden_words:
+            has_perms = ctx.author.guild_permissions.manage_guild or await self.bot.is_owner(ctx.author)
+            extra = f" You can forbid a word with `{ctx.prefix}forbid [word]`." if has_perms else ""
+            return await ctx.send(f"There are no forbidden words in this server.{extra}")
+
+        em = discord.Embed(title="Forbidden Words", color=discord.Color.red())
+        menu = ctx.embed_pages(settings.forbidden_words, em)
+        await menu.start(ctx)
+
+    @forbidden.command(name="clear")
+    async def forbidden_clear(self, ctx):
+        """Clears all forbidden words for this server.
+
+        You must have the Manage Server permission to use this command.
+        """
+        settings = await self.get_guild_settings(ctx.guild.id)
+
+        if not settings or not settings.forbidden_words:
+            return await ctx.send("There are no forbidden words in this server.")
+
+        confirm = await ctx.confirm(f"Are you sure you want to clear {plural(len(settings.forbidden_words)):word}?")
+        if not confirm:
+            return await ctx.send("Aborted.")
+
+        query = """INSERT INTO guild_settings (id, forbidden_words)
+                   VALUES ($1, $2)
+                   ON CONFLICT (id) DO UPDATE SET
+                       forbidden_words = $2;
+                """
+        await ctx.db.execute(query, ctx.guild.id, [])
+        self.get_guild_settings.invalidate(self, ctx.guild.id)
+        await ctx.send(ctx.tick(True, f"Members are now free to say anything they like."))
+
+    async def bonk_member(self, message, word):
+        """Kicks a member for saying a forbidden word and sends an invite back to the server."""
+        invite = await message.channel.create_invite(max_uses=1, max_age=86400, reason=f"Bonked for saying a forbidden word: {word}")
+        try:
+            await message.author.send(f"You were just bonked for saying a forbidden word in {message.guild}: `{word}`"
+                                      f"\n\nHere's an invite back: {invite}")
+            dmed = ""
+        except discord.HTTPException:
+            dmed = " I was not able to DM them with an invite back."
+
+        try:
+            await message.author.kick(reason=f"Bonked for saying a forbidden word: {word}")
+            kicked = True
+        except discord.HTTPException:
+            kicked = False
+            if not dmed:
+                try:
+                    message.author.send("Nevermind, I wasn't able to bonk you :(")
+                except discord.HTTPException:
+                    pass
+
+        if not kicked:
+            await message.channel.send(f"***{message.author.display_name} just said a forbidden word,*** but I was unable to bonk them :(")
+
+        else:
+            await message.channel.send(f"***{message.author.display_name} just got bonked for saying a forbidden word.***{dmed}")
+
+    async def detect_forbidden_word(self, message):
+        """Detects if a forbidden word is in a message and takes appropriate action."""
+        if not message.guild:
+            return
+
+        bot_permissions = message.guild.me.guild_permissions
+        if not bot_permissions.kick_members or not bot_permissions.create_instant_invite:
+            return
+
+        settings = await self.get_guild_settings(message.guild.id)
+
+        if not settings:
+            return
+
+        if not settings.forbidden_words:
+            return
+
+        # if await self.bot.is_owner(message.author):
+        #     return
+
+        # remove whitespace.
+        content = "".join(message.content.split())
+
+        for word in settings.forbidden_words:
+            if word in content.lower():
+                await self.bonk_member(message, word)
+                break
+
+
+    @commands.Cog.listener("on_message")
+    async def on_message_forbidden_detector(self, message):
+        await self.detect_forbidden_word(message)
+
+    @commands.Cog.listener("on_message_edit")
+    async def on_message_edit_forbidden_detector(self, before, after):
+        await self.detect_forbidden_word(after)
 
 
 def setup(bot):
