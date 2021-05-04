@@ -179,10 +179,7 @@ class Clam(commands.Bot):
         self.log.info(f"Added {user} to the blacklist.")
 
     def remove_from_blacklist(self, user_id):
-        try:
-            self.blacklist.pop(self.blacklist.index(str(user_id)))
-        except ValueError:
-            pass
+        self.blacklist.pop(self.blacklist.index(str(user_id)))
 
         with open("blacklist.json", "w") as f:
             json.dump(self.blacklist, f)

@@ -294,7 +294,10 @@ class Admin(commands.Cog):
         if str(user_id) not in self.bot.blacklist:
             return await ctx.send("That user isn't blacklisted.")
 
-        self.bot.remove_from_blacklist(user_id)
+        try:
+            self.bot.remove_from_blacklist(user_id)
+        except ValueError:
+            return await ctx.send("For some reason I couldn't index that user ID. Try again?")
 
         user = self.bot.get_user(user_id)
 
