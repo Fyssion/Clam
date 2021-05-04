@@ -156,7 +156,7 @@ class Admin(commands.Cog):
                 formatted += f"\nUpdate all: `!jsk sh venv/bin/pip install -U {' '.join(raw_oudated_list)}`"
 
             await console.send(
-                f"<@{owner_id}>, I have found {len(outdated_list)} package(s) that are oudated:\n{formatted}"
+                f"I have found {len(outdated_list)} package(s) that are oudated:\n{formatted}"
             )
 
     @dependancy_check_task.before_loop
