@@ -2451,32 +2451,61 @@ class Moderation(commands.Cog):
             or message.author == message.guild.owner
             or (message.guild.me.top_role > message.author.top_role and message.guild.owner != message.author)
            ):
-            return await message.channel.send(f"***{message.author.display_name} just said a forbidden word,*** but I was unable to bonk them :(")
-
-        invite = await message.channel.create_invite(max_uses=1, max_age=86400, reason=f"Bonked for saying a forbidden word: {word}")
-        try:
-            await message.author.send(f"You were just bonked for saying a forbidden word in {message.guild}: `{word}`"
-                                      f"\n\nHere's an invite back: {invite}")
-            dmed = ""
-        except discord.HTTPException:
-            dmed = " I was not able to DM them with an invite back."
-
-        try:
-            await message.author.kick(reason=f"Bonked for saying a forbidden word: {word}")
-            kicked = True
-        except discord.HTTPException:
-            kicked = False
-            if not dmed:
-                try:
-                    message.author.send("Nevermind, I wasn't able to bonk you :(")
-                except discord.HTTPException:
-                    pass
-
-        if not kicked:
             await message.channel.send(f"***{message.author.display_name} just said a forbidden word,*** but I was unable to bonk them :(")
 
         else:
-            await message.channel.send(f"***{message.author.display_name} just got bonked for saying a forbidden word.***{dmed}")
+            invite = await message.channel.create_invite(max_uses=1, max_age=86400, reason=f"Bonked for saying a forbidden word: {word}")
+            try:
+                await message.author.send(f"You were just bonked for saying a forbidden word in {message.guild}: `{word}`"
+                                        f"\n\nHere's an invite back: {invite}")
+                dmed = ""
+            except discord.HTTPException:
+                dmed = " I was not able to DM them with an invite back."
+
+            try:
+                await message.author.kick(reason=f"Bonked for saying a forbidden word: {word}")
+                kicked = True
+            except discord.HTTPException:
+                kicked = False
+                if not dmed:
+                    try:
+                        message.author.send("Nevermind, I wasn't able to bonk you :(")
+                    except discord.HTTPException:
+                        pass
+
+            if not kicked:
+                await message.channel.send(f"***{message.author.display_name} just said a forbidden word,*** but I was unable to bonk them :(")
+
+            else:
+                await message.channel.send(f"***{message.author.display_name} just got bonked for saying a forbidden word.***{dmed}")
+
+        log.info(f"[AutoMod] Bonked {message.author} (ID: {message.author.id}) for saying forbidden word: {word}")
+
+        guild_log = await self.bot.get_guild_log(message.guild.id)
+        if guild_log:
+            em = discord.Embed(
+                title="[AutoMod] Member Bonked",
+                description=message.author.mention,
+                color=discord.Color.purple()
+            )
+            em.set_author(name=str(message.author), icon_url=message.author.avatar_url)
+            em.add_field(name="Word", value=word)
+            em.add_field(name="Message", value=f"[Jump to message!]({message.jump_url})")
+            em.add_field(name="Account Created", value=humantime.fulltime(message.author.created_at), inline=False)
+
+            if message.author.roles[1:]:
+                roles = ""
+                for role in message.author.roles[1:]:
+                    if len(roles + f"{role.mention} ") > 1012:
+                        roles += "...and too many more to show"
+                        break
+                    roles += f"{role.mention} "
+            else:
+                roles = "No roles"
+
+            em.add_field(name="Roles", value=roles, inline=False)
+
+            await guild_log.log_automod_action(embed=em)
 
     async def detect_forbidden_word(self, message):
         """Detects if a forbidden word is in a message and takes appropriate action."""
@@ -2505,7 +2534,6 @@ class Moderation(commands.Cog):
             if word in content.lower():
                 await self.bonk_member(message, word)
                 break
-
 
     @commands.Cog.listener("on_message")
     async def on_message_forbidden_detector(self, message):
