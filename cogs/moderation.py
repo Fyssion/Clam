@@ -2449,7 +2449,7 @@ class Moderation(commands.Cog):
         if (
             await self.bot.is_owner(message.author)
             or message.author == message.guild.owner
-            or (message.guild.me.top_role > message.author.top_role and message.guild.owner != message.author)
+            or (message.guild.me.top_role < message.author.top_role and message.guild.owner != message.guild.me)
            ):
             await message.channel.send(f"***{message.author.display_name} just said a forbidden word,*** but I was unable to bonk them :(")
 
