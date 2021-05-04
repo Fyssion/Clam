@@ -2509,6 +2509,9 @@ class Moderation(commands.Cog):
 
     async def detect_forbidden_word(self, message):
         """Detects if a forbidden word is in a message and takes appropriate action."""
+        if message.author.bot:
+            return
+
         if not message.guild:
             return
 
