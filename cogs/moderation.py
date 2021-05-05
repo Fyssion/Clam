@@ -2443,6 +2443,26 @@ class Moderation(commands.Cog):
         self.get_guild_settings.invalidate(self, ctx.guild.id)
         await ctx.send(ctx.tick(True, "Members are now free to say anything they like."))
 
+    async def revert_member_on_rejoin(self, member):
+        """Gives the member their roles back and changes their nickname to what it was before (if applicable)."""
+        def check(m):
+            return m.guild == member.guild and m == member
+
+        try:
+            new_member = await self.bot.wait_for("member_join", check=check, timeout=3600)  # 1 hour
+        except asyncio.TimeoutError:
+            return
+
+        voice = None
+
+        if member.voice:
+            if member.voice.channel:
+                voice = member.voice.channel
+
+        await new_member.edit(roles=member.roles, nick=member.nick, voice_channel=voice, reason="Member rejoined from bonk")
+
+        log.info(f"Gave {member} their roles and nickname back in {member.guild} (they were bonked).")
+
     async def bonk_member(self, message, word):
         """Kicks a member for saying a forbidden word and sends an invite back to the server."""
         # role hierarchy check
@@ -2478,6 +2498,11 @@ class Moderation(commands.Cog):
 
             else:
                 await message.channel.send(f"***{message.author.display_name} just got bonked for saying a forbidden word.***{dmed}")
+
+                # Create a task that will re-add the member's roles if they rejoin.
+                bot_permissions = message.guild.me.guild_permissions
+                if bot_permissions.manage_nicknames and bot_permissions.manage_roles:
+                    self.bot.loop.create_task(self.revert_member_on_rejoin(message.author))
 
         log.info(f"[AutoMod] Bonked {message.author} (ID: {message.author.id}) for saying forbidden word: {word}")
 
