@@ -2569,6 +2569,10 @@ class Moderation(commands.Cog):
 
     @commands.Cog.listener("on_message_edit")
     async def on_message_edit_forbidden_detector(self, before, after):
+        # ignore other updates to messages (embeds, pins, etc)
+        if before.content == after.content:
+            return
+
         await self.detect_forbidden_word(after)
 
 
