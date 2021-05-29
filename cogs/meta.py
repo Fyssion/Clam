@@ -888,7 +888,7 @@ class Meta(commands.Cog):
             license_notice = (
                 "Please note that most of this code is subject to the [MPL-2.0 license.](https://www.mozilla.org/MPL/2.0)\n"
                 "This means you are required to license any copied or modified source code under MPL-2.0.\n"
-                "For move info, visit <https://www.mozilla.org/MPL/2.0/FAQ>"
+                "For more info, visit <https://www.mozilla.org/MPL/2.0/FAQ>"
             )
 
             license_notice_embed = discord.Embed(description=license_notice, color=0x2f3136)
