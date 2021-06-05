@@ -12,6 +12,7 @@ from urllib.parse import quote as uriquote
 import async_cse
 import dateparser
 import discord
+import humanize
 import mediawiki
 from discord.ext import commands, menus
 from lxml import etree
@@ -152,6 +153,16 @@ class UrbanDictionarySource(menus.ListPageSource):
             em.timestamp = date
 
         return em
+
+
+class ChessHTTPException(Exception):
+    def __init__(self, status_code):
+        super().__init__()
+        self.status_code = status_code
+
+
+class ChessNotFound(ChessHTTPException):
+    pass
 
 
 class Internet(commands.Cog):
@@ -1329,6 +1340,115 @@ class Internet(commands.Cog):
     async def pep(self, ctx, number: int):
         """Sends the URL for a given Python PEP."""
         await ctx.send(f"https://www.python.org/dev/peps/pep-{number:04}")
+
+    LICHESS_BASE_URL = "https://lichess.org/api/"
+    CHESSCOM_BASE_URL = "https://api.chess.com/"
+
+    async def make_chess_request(self, route, data=None):
+        """Makes a request to a chess website route with the provided data."""
+
+        async with self.bot.session.get(route, data=data) as resp:
+            if resp.status == 200:
+                return await resp.json()
+            elif resp.status == 404:
+                raise ChessNotFound(resp.status)
+            else:
+                raise ChessHTTPException(resp.status)
+
+    async def make_lichess_request(self, route, data=None):
+        """Makes a request to Lichess.org."""
+        return await self.make_chess_request(self.LICHESS_BASE_URL + route, data=data)
+
+    async def make_chesscom_request(self, route, data=None):
+        """Makes a request to chess.com."""
+        return await self.make_chess_request(self.CHESSCOM_BASE_URL + route, data=data)
+
+    @commands.group(invoke_without_command=True)
+    async def lichess(self, ctx, *, username):
+        """Gets info about a Lichess.org user and displays it."""
+        try:
+            data = await self.make_lichess_request(f"user/{username}")
+        except ChessNotFound:
+            return await ctx.send("Lichess user not found.")
+        except ChessHTTPException as e:
+            return await ctx.send(f"Lichess failed to respond with {e.status_code} status code.")
+
+        print(data)
+
+        # add the title in front of the username
+        username = data["username"] if not data.get("title") else f"`{data.get('title')}` {username}"
+
+        em = discord.Embed(title=username, url=data["url"], color=discord.Color.light_gray())
+
+        description = []
+        profile = data["profile"]
+
+        basic_info = ""
+        if profile.get("firstName"):
+            basic_info += f"{profile.get('firstName')} "
+        if profile.get("lastName"):
+            basic_info += f"{profile.get('lastName')} "
+        if profile.get("country"):
+            basic_info += f":flag_{profile.get('country').lower()}:"
+
+        if basic_info:
+            description.append(f"{basic_info}")
+
+        if profile.get("bio"):
+            description.append(profile.get("bio"))
+
+        if profile.get("links"):
+            description.append(profile.get("links"))
+
+        em.description = "\n".join(description)
+
+        status = "Offline"
+        if data["online"]:
+            status = "Online"
+        if data.get("playing"):
+            status = f"[**Currently Playing**]({data.get('playing')})"
+
+        # timestamp is in miliseconds
+        last_seen_datetime = datetime.datetime.fromtimestamp(data["seenAt"] // 1000)
+        last_seen = humanize.naturaltime(last_seen_datetime)
+
+        em.add_field(name="Status", value=f"{status}\nLast seen {last_seen}.", inline=True)
+
+        mode_order = ["bullet", "blitz", "rapid", "classical", "correspondence"]
+        performance = []
+
+        for mode in mode_order:
+            perf = data["perfs"][mode]
+            rating = str(perf["rating"])
+            games = perf["games"]
+            if perf.get("prov"):
+                rating += "?"
+            performance.append(f"**{mode.capitalize()}:** {rating} | {plural(games):game}")
+
+        em.add_field(name="Performance", value="\n".join(performance), inline=True)
+
+        ratings = []
+        if profile.get("fideRating"):
+            ratings.append(f"**FIDE:** {profile.get('fideRating')}")
+        if profile.get("uscfRating"):
+            ratings.append(f"**USCF:** {profile.get('uscfRating')}")
+        if profile.get("ecfRating"):
+            ratings.append(f"**ECF:** {profile.get('ecfRating')}")
+
+        if ratings:
+            em.add_field(name="Ratings", value="\n".join(ratings), inline=True)
+
+        total_play_time = humanize.naturaldelta(datetime.timedelta(seconds=data["playTime"]["total"]))
+        tv_play_time = humanize.naturaldelta(datetime.timedelta(seconds=data["playTime"]["tv"]))
+        em.add_field(name="Play Time", value=f"**Total:** {total_play_time}\n**TV:** {tv_play_time}")
+
+        followers = f"**Followers:** {data['nbFollowers']}\n**Following:** {data['nbFollowing']}"
+        em.add_field(name="Social", value=followers, inline=True)
+
+        em.set_footer(text="Account created")
+        em.timestamp = datetime.datetime.fromtimestamp(data["createdAt"] // 1000)
+
+        await ctx.send(embed=em)
 
     # https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/api.py#L198-L345
     def parse_object_inv(self, stream, url):
