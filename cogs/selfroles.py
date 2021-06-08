@@ -603,26 +603,15 @@ class Selfroles(commands.Cog):
         for record in records:
             guild = self.bot.get_guild(record["guild_id"])
             if not guild:
-                self.bot.loop.create_task(
-                    self.remove_guild_reactionroles(record["guild_id"])
-                )
                 continue
 
             channel = guild.get_channel(record["channel_id"])
             if not channel:
-                self.bot.loop.create_task(
-                    self.remove_channel_reactionroles(record["channel_id"])
-                )
                 continue
 
             try:
                 message = await channel.fetch_message(record["message_id"])
             except discord.NotFound:
-                self.bot.loop.create_task(
-                    self.remove_reactionroles(
-                        record["channel_id"], record["message_id"]
-                    )
-                )
                 continue
             except Exception:
                 continue
