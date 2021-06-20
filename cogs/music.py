@@ -311,6 +311,7 @@ class Music(commands.Cog):
             464484469215199243,
             800452213385461791,
             805273995191517214,
+            824268739939794964,
         ]
 
         # Check if the cache folder is created
