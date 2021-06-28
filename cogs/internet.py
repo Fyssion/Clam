@@ -419,7 +419,7 @@ class Internet(commands.Cog):
                 root = word.getparent().getparent().getparent().getparent()
 
                 pronunciation = root.find(".//div[@class='S23sjd']/span/span")
-                print(pronunciation)
+                # print(pronunciation)
                 if pronunciation is None:
                     continue
 
@@ -1373,7 +1373,7 @@ class Internet(commands.Cog):
         except ChessHTTPException as e:
             return await ctx.send(f"Lichess failed to respond with {e.status_code} status code.")
 
-        print(data)
+        # print(data)
 
         # add the title in front of the username
         username = data["username"] if not data.get("title") else f"`{data.get('title')}` {username}"
