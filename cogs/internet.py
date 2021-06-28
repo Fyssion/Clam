@@ -1528,8 +1528,8 @@ class Internet(commands.Cog):
 
     async def do_docs(self, ctx, key, obj):
         page_types = {
-            "latest": "https://discordpy.readthedocs.io/en/latest",
-            "stable": "https://discordpy.readthedocs.io/en/stable",
+            "dpy": "https://discordpy.readthedocs.io/en/latest",
+            "dpy-master": "https://discordpy.readthedocs.io/en/master",
             "python": "https://docs.python.org/3",
             "aiohttp": "https://docs.aiohttp.org/en/stable",
             "asyncpg": "https://magicstack.github.io/asyncpg/current",
@@ -1578,21 +1578,21 @@ class Internet(commands.Cog):
         invoke_without_command=True,
     )
     async def docs(self, ctx, *, obj: str = None):
-        """Searches discord.py documentation and returns a list of matching entities.
+        """Searches Python documentation and returns a list of matching entities.
         Events, objects, and functions are all supported through a
         a cruddy fuzzy algorithm.
         """
-        await self.do_docs(ctx, "latest", obj)
-
-    @docs.command(name="stable", aliases=["st"])
-    async def docs_stable(self, ctx, *, obj: str = None):
-        """Gives you a documentation link for a discord.py stable entity."""
-        await self.do_docs(ctx, "stable", obj)
-
-    @docs.command(name="python", aliases=["py"])
-    async def docs_python(self, ctx, *, obj: str = None):
-        """Gives you a documentation link for a Python entity."""
         await self.do_docs(ctx, "python", obj)
+
+    @docs.group(name="dpy", aliases=["d"], invoke_without_command=True)
+    async def docs_dpy(self, ctx, *, obj: str = None):
+        """Gives you a documentation link for a discord.py entity."""
+        await self.do_docs(ctx, "dpy", obj)
+
+    @docs_dpy.command(name="master", aliases=["ma"])
+    async def docs_dpy_master(self, ctx, *, obj: str = None):
+        """Gives you a documentation link for a discord.py master entity."""
+        await self.do_docs(ctx, "dpy-master", obj)
 
     @docs.command(name="aiohttp", aliases=["ah"])
     async def docs_aiohttp(self, ctx, *, obj: str = None):
