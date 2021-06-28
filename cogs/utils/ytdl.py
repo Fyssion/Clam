@@ -523,7 +523,7 @@ class Song:
             log.warning(f"Error while downloading '{webpage_url}': {e}")
             if send_errors:
                 await ctx.send(
-                    f"**:x: Error while downloading** `{webpage_url}`\n``\n{e}\n```"
+                    f"**:x: Error while downloading** `{webpage_url}`\n```\n{e}\n```"
                 )
                 return
         else:
