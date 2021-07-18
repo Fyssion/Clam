@@ -1,4 +1,5 @@
 import base64
+import contextlib
 import datetime
 import functools
 import json
@@ -14,6 +15,7 @@ import dateparser
 import discord
 import humanize
 import mediawiki
+import youtube_dl
 from discord.ext import commands, menus
 from lxml import etree
 from PIL import Image
@@ -1449,6 +1451,70 @@ class Internet(commands.Cog):
         em.timestamp = datetime.datetime.fromtimestamp(data["createdAt"] // 1000)
 
         await ctx.send(embed=em)
+
+    YTDL_OPTIONS = {
+        "format": "best[ext=mp4]",
+        "extractaudio": True,
+        "audioformat": "mp3",
+        "outtmpl": "%(extractor)s-%(id)s.%(ext)s",
+        "restrictfilenames": True,
+        "noplaylist": True,
+        "nocheckcertificate": True,
+        "ignoreerrors": False,
+        "logtostderr": False,
+        "quiet": True,
+        "no_warnings": True,
+        "default_search": "auto",
+        "source_address": "0.0.0.0",
+    }
+
+    ytdl = youtube_dl.YoutubeDL(YTDL_OPTIONS)
+
+    def _download_twitter_video(self, url: str):
+        return self.ytdl.extract_info(url)
+
+    async def download_twitter_video(self, url: str):
+        partial = functools.partial(self._download_twitter_video, url)
+        return await self.bot.loop.run_in_executor(None, partial)
+
+    TWITTER_MATCH = re.compile(r"^https?:\/\/twitter\.com\/(?:#!\/)?(\w+)\/status(es)?\/(\d+)")
+    TWITTER_SEARCH = re.compile(r"https?:\/\/twitter\.com\/(?:#!\/)?(?:\w+)\/status(?:es)?\/(?:\d+)")
+
+    @commands.command()
+    async def vtwitter(self, ctx: commands.Context, *, url: str = None):
+        """Downloads a video from Twitter and re-uploads it to Discord."""
+        # allow users to reply to a message with a twitter url
+        if not url:
+            ref = ctx.message.reference
+            if ref and isinstance(ref.resolved, discord.Message):
+                content = ref.resolved.content
+                match = self.TWITTER_SEARCH.search(content)
+                if not match:
+                    raise commands.BadArgument("Missing Tweet to download.")
+                url = match.group()
+
+        # remove <url> markdown
+        if url.startswith("<") and url.endswith(">"):
+            url = url.strip("<>")
+
+        if not self.TWITTER_MATCH.match(url):
+            raise commands.BadArgument("You must provide a Twitter URL.")
+
+        async with ctx.typing():
+            try:
+                tweet = await self.download_twitter_video(url)
+            except youtube_dl.DownloadError:
+                return await ctx.send("The video didn't download, sorry. This could be due to age restriction.")
+
+            filename = self.ytdl.prepare_filename(tweet)
+            file = discord.File(filename, filename=f"tweet_{tweet['id']}.mp4")
+
+            try:
+                await ctx.send(file=file)
+            except discord.HTTPException:
+                await ctx.send("Video is too big to upload to Discord. Sorry.")
+
+        os.remove(filename)
 
     # https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/api.py#L198-L345
     def parse_object_inv(self, stream, url):
