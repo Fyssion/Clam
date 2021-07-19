@@ -1492,6 +1492,8 @@ class Internet(commands.Cog):
                 if not match:
                     raise commands.BadArgument("Missing Tweet to download.")
                 url = match.group()
+            else:
+                raise commands.BadArgument("Missing Tweet to download.")
 
         # remove <url> markdown
         if url.startswith("<") and url.endswith(">"):
