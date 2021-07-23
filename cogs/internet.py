@@ -1477,6 +1477,13 @@ class Internet(commands.Cog):
         partial = functools.partial(self._download_twitter_video, url)
         return await self.bot.loop.run_in_executor(None, partial)
 
+    async def find_twitter_url(self, ctx: commands.Context):
+        async for message in ctx.history(limit=10, before=ctx.message):
+            match = self.TWITTER_SEARCH.search(message.content)
+
+            if match:
+                return message, match.group()
+
     TWITTER_MATCH = re.compile(r"^https?:\/\/twitter\.com\/(?:#!\/)?(\w+)\/status(es)?\/(\d+)")
     TWITTER_SEARCH = re.compile(r"https?:\/\/twitter\.com\/(?:#!\/)?(?:\w+)\/status(?:es)?\/(?:\d+)")
 
@@ -1484,16 +1491,23 @@ class Internet(commands.Cog):
     async def vtwitter(self, ctx: commands.Context, *, url: str = None):
         """Downloads a video from Twitter and re-uploads it to Discord."""
         # allow users to reply to a message with a twitter url
+        ref = None
+
         if not url:
             ref = ctx.message.reference
             if ref and isinstance(ref.resolved, discord.Message):
                 content = ref.resolved.content
                 match = self.TWITTER_SEARCH.search(content)
                 if not match:
-                    raise commands.BadArgument("Missing Tweet to download.")
+                    raise commands.BadArgument("Could not find a Tweet URL in that message.")
                 url = match.group()
             else:
-                raise commands.BadArgument("Missing Tweet to download.")
+                result = await self.find_twitter_url(ctx)
+
+                if not result:
+                    raise commands.BadArgument("Could not find a Tweet to download. Try replying to the message with the Tweet URL.")
+
+                ref, url = result
 
         # remove <url> markdown
         if url.startswith("<") and url.endswith(">"):
@@ -1512,7 +1526,7 @@ class Internet(commands.Cog):
             file = discord.File(filename, filename=f"tweet_{tweet['id']}.mp4")
 
             try:
-                await ctx.send(file=file)
+                await ctx.send(file=file, reference=ref, mention_author=False)
             except discord.HTTPException:
                 await ctx.send("Video is too big to upload to Discord. Sorry.")
 
