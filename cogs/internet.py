@@ -1488,6 +1488,7 @@ class Internet(commands.Cog):
     TWITTER_SEARCH = re.compile(r"https?:\/\/twitter\.com\/(?:#!\/)?(?:\w+)\/status(?:es)?\/(?:\d+)")
 
     @commands.command()
+    @commands.is_owner()
     async def vtwitter(self, ctx: commands.Context, *, url: str = None):
         """Downloads a video from Twitter and re-uploads it to Discord."""
         # allow users to reply to a message with a twitter url
