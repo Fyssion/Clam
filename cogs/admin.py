@@ -11,11 +11,11 @@ import traceback
 import typing
 
 import discord
-import humanize
 import pkg_resources
 import psutil
 from discord.ext import commands, menus, tasks
 from jishaku.codeblocks import codeblock_converter
+from jishaku.features.root_command import natural_size
 
 from .utils import aiopypi, colors, humantime
 from .utils.emojis import OK_SIGN
@@ -558,12 +558,12 @@ class Admin(commands.Cog):
         mem = psutil.virtual_memory()
         em.add_field(
             name="Memory",
-            value=f"{mem.percent}% used\n{humanize.naturalsize(mem.used)}/{humanize.naturalsize(mem.total)}",
+            value=f"{mem.percent}% used\n{natural_size(mem.used)}/{natural_size(mem.total)}",
         )
         disk = psutil.disk_usage("/")
         em.add_field(
             name="Disk",
-            value=f"{disk.percent}% used\n{humanize.naturalsize(disk.used)}/{humanize.naturalsize(disk.total)}",
+            value=f"{disk.percent}% used\n{natural_size(disk.used)}/{natural_size(disk.total)}",
         )
         uptime = datetime.datetime.fromtimestamp(psutil.boot_time())
         em.add_field(

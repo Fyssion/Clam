@@ -13,14 +13,13 @@ from urllib.parse import quote as uriquote
 import async_cse
 import dateparser
 import discord
-import humanize
 import mediawiki
 import youtube_dl
 from discord.ext import commands, menus
 from lxml import etree
 from PIL import Image
 
-from .utils import aiopypi, aioxkcd, colors, fuzzy
+from .utils import aiopypi, aioxkcd, colors, fuzzy, humantime
 from .utils.formats import plural
 from .utils.menus import MenuPages
 from .utils.utils import SphinxObjectFileReader
@@ -1412,7 +1411,7 @@ class Internet(commands.Cog):
 
         # timestamp is in miliseconds
         last_seen_datetime = datetime.datetime.fromtimestamp(data["seenAt"] // 1000)
-        last_seen = humanize.naturaltime(last_seen_datetime)
+        last_seen = humantime.timedelta(last_seen_datetime, accuracy=1)
 
         em.add_field(name="Status", value=f"{status}\nLast seen {last_seen}.", inline=True)
 
@@ -1440,8 +1439,10 @@ class Internet(commands.Cog):
         if ratings:
             em.add_field(name="Ratings", value="\n".join(ratings), inline=True)
 
-        total_play_time = humanize.naturaldelta(datetime.timedelta(seconds=data["playTime"]["total"]))
-        tv_play_time = humanize.naturaldelta(datetime.timedelta(seconds=data["playTime"]["tv"]))
+        total_play_time_dt = discord.utils.utcnow() - datetime.timedelta(seconds=data["playTime"]["total"])
+        total_play_time = humantime.timedelta(total_play_time_dt, accuracy=1, suffix=False)
+        tv_play_time_dt = discord.utils.utcnow() - datetime.timedelta(seconds=data["playTime"]["tv"])
+        tv_play_time = humantime.timedelta(tv_play_time_dt, accuracy=1, suffix=False)
         em.add_field(name="Play Time", value=f"**Total:** {total_play_time}\n**TV:** {tv_play_time}")
 
         followers = f"**Followers:** {data['nbFollowers']}\n**Following:** {data['nbFollowing']}"

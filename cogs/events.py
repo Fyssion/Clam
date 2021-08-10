@@ -7,7 +7,6 @@ from discord.ext import commands, menus, tasks
 
 import asyncpg
 import enum
-import humanize
 import pytz
 
 from .utils import colors, db, humantime

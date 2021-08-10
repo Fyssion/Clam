@@ -10,7 +10,6 @@ import re
 import os.path
 
 import discord
-import humanize
 from discord.ext import commands, menus
 from PIL import Image
 
@@ -1016,10 +1015,10 @@ class Tools(commands.Cog):
 
         em = discord.Embed(description=desc, color=color)
 
-        em.set_thumbnail(url=user.avatar_url)
-        em.set_author(name=author, icon_url=user.avatar_url)
+        em.set_thumbnail(url=user.avatar.url)
+        em.set_author(name=author, icon_url=user.avatar.url)
 
-        created_fmt = humantime.fulltime(user.created_at, humanize_date=True, accuracy=2)
+        created_fmt = humantime.fulltime(user.created_at, accuracy=2)
         em.add_field(
             name=":clock1: Account Created",
             value=created_fmt.capitalize(),
@@ -1027,7 +1026,7 @@ class Tools(commands.Cog):
         )
 
         if is_member:
-            joined_fmt = humantime.fulltime(user.joined_at, humanize_date=True, accuracy=2)
+            joined_fmt = humantime.fulltime(user.joined_at, accuracy=2)
             em.add_field(
                 name="<:join:649722959958638643> Joined Server",
                 value=joined_fmt.capitalize(),
@@ -1108,10 +1107,9 @@ class Tools(commands.Cog):
             value=guild.owner.mention,
             inline=True,
         )
-        humanized = humanize.naturaltime(guild.created_at)
         em.add_field(
             name=":clock1: Server Created",
-            value=f"{humanize.naturaldate(guild.created_at).capitalize()} ({humanized})",
+            value=f"{humantime.fulltime(guild.created_at)})",
             inline=True,
         )
         em.add_field(

@@ -12,9 +12,9 @@ from collections import Counter, defaultdict
 import asyncpg
 import discord
 import git
-import humanize
 import psutil
 from discord.ext import commands, tasks, flags
+from jishaku.features.root_command import natural_size
 
 from .utils import colors, db, humantime
 from .utils.emojis import VOICE_CHANNEL, TEXT_CHANNEL

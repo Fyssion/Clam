@@ -1,7 +1,6 @@
 import asyncpg
 import discord
 from discord.ext import commands, menus
-import humanize
 
 
 from .utils import colors, db, humantime
@@ -228,11 +227,11 @@ class Todo(commands.Cog):
 
         if completed_at:
             description = f"{COMPLETE_EMOJI} ~~{name}~~ `(ID: {todo_id})`"
-            description += f"\nCreated {humantime.fulltime(created_at, humanize_date=True)}."
-            description += f"\nCompleted {humantime.fulltime(completed_at, humanize_date=True)}."
+            description += f"\nCreated {humantime.fulltime(created_at, accuracy=1)}."
+            description += f"\nCompleted {humantime.fulltime(completed_at, accuracy=1)}."
         else:
             description = f"{INCOMPLETE_EMOJI} {name} `(ID: {todo_id})`"
-            description += f"\nCreated {humantime.fulltime(created_at, humanize_date=True)}."
+            description += f"\nCreated {humantime.fulltime(created_at, accuracy=1)}."
 
         em = discord.Embed(
             title="Task Info",

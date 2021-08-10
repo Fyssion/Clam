@@ -28,7 +28,6 @@ import collections
 import datetime
 import re
 
-import humanize
 import pytz
 from dateutil.relativedelta import relativedelta
 from discord.ext import commands
@@ -383,11 +382,8 @@ def date(dt):
     return dt.strftime("%b %d %Y at %H:%M:%S")
 
 
-def fulltime(dt, *, humanize_date=False, **timedelta_kwargs):
-    if humanize_date:
-        date_fmt = humanize.naturaldate(dt)
-    else:
-        date_fmt = date(dt)
+def fulltime(dt, *, **timedelta_kwargs):
+    date_fmt = date(dt)
 
     delta_fmt = timedelta(dt, **timedelta_kwargs)
 
