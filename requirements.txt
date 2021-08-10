@@ -21,3 +21,5 @@ wolframalpha
 pymediawiki
 python-dateutil
 rich
+lxml
+humanize
