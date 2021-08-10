@@ -7,6 +7,7 @@ import traceback
 from logging.handlers import RotatingFileHandler
 
 import click
+from rich.logging import RichHandler
 
 from bot import Clam, initial_extensions
 from config import Config
@@ -44,7 +45,6 @@ def setup_logging():
 
         log = logging.getLogger()
         log.setLevel(logging.INFO)
-        sh = logging.StreamHandler()
         handler = RotatingFileHandler(
             filename="clam.log",
             encoding="utf-8",
@@ -54,8 +54,9 @@ def setup_logging():
         )
         dt_fmt = "%Y-%m-%d %H:%M:%S"
         fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s", dt_fmt)
+        sh = RichHandler()
+        sh.setFormatter(logging.Formatter("[%(name)s] %(message)s"))
         handler.setFormatter(fmt)
-        sh.setFormatter(fmt)
         log.addHandler(handler)
         log.addHandler(sh)
 
