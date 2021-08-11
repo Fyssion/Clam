@@ -847,7 +847,6 @@ class Stats(commands.Cog):
         em.set_thumbnail(url=self.bot.user.avatar.url)
 
         dev = self.bot.get_user(224513210471022592)
-        up = datetime.datetime.utcnow() - self.bot.uptime
         em.add_field(name=":gear: Creator", value=str(dev))
         em.add_field(name=":adult: User Count", value=f"{len(self.bot.users):,}")
         em.add_field(name=":family: Server Count", value=f"{len(self.bot.guilds):,}")
@@ -872,13 +871,13 @@ class Stats(commands.Cog):
 
         em.add_field(
             name="<:online:649270802088460299> Uptime",
-            value=humanize.naturaldelta(up).capitalize(),
+            value=humantime.timedelta(self.bot.uptime, brief=True).capitalize(),
         )
         cpu = psutil.cpu_percent()
 
         proc = psutil.Process()
         mem = proc.memory_full_info()
-        used = humanize.naturalsize(mem.uss)
+        used = natural_size(mem.uss)
         em.add_field(name="Process", value=f"{cpu}% CPU\n{used} memory")
 
         partial = functools.partial(get_lines_of_code)

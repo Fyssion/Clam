@@ -143,7 +143,7 @@ class HumanTime:
     calendar = pdt.Calendar(version=pdt.VERSION_CONTEXT_STYLE)
 
     def __init__(self, argument, *, now=None):
-        now = now or datetime.datetime.utcnow()
+        now = now or datetime.datetime.now(datetime.timezone.utc)
         dt, status = self.calendar.parseDT(argument, sourceTime=now)
         if not status.hasDateOrTime:
             raise commands.BadArgument(
@@ -287,7 +287,7 @@ class UserFriendlyTime(commands.Converter):
             if status.accuracy == pdt.pdtContext.ACU_HALFDAY:
                 dt = dt.replace(day=now.day + 1)
 
-            result.dt = dt
+            result.dt = dt.replace(tzinfo=datetime.timezone.utc)
 
             if begin in (0, 1):
                 if begin == 1:
@@ -317,7 +317,13 @@ class UserFriendlyTime(commands.Converter):
 
 
 def timedelta(dt, *, source=None, accuracy=3, brief=False, suffix=True):
-    now = source or datetime.datetime.utcnow()
+    now = source or datetime.datetime.now(datetime.timezone.utc)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=datetime.timezone.utc)
+
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=datetime.timezone.utc)
+
     # Microsecond free zone
     now = now.replace(microsecond=0)
     dt = dt.replace(microsecond=0)

@@ -483,7 +483,7 @@ class Stars(commands.Cog):
         ) or msg.type is not discord.MessageType.default:
             raise StarError("\N{NO ENTRY SIGN} This message cannot be starred.")
 
-        oldest_allowed = datetime.datetime.utcnow() - starboard.max_age
+        oldest_allowed = discord.utils.utcnow() - starboard.max_age
         if msg.created_at < oldest_allowed:
             raise StarError("\N{NO ENTRY SIGN} This message is too old.")
 

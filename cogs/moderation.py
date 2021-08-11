@@ -230,7 +230,7 @@ class SpamChecker:
         )
 
     def is_new(self, member):
-        now = datetime.datetime.utcnow()
+        now = discord.utils.utcnow()
         seven_days_ago = now - datetime.timedelta(days=7)
         ninety_days_ago = now - datetime.timedelta(days=90)
         return member.created_at > ninety_days_ago and member.joined_at > seven_days_ago
@@ -239,7 +239,7 @@ class SpamChecker:
         if message.guild is None:
             return False
 
-        current = message.created_at.replace(tzinfo=datetime.timezone.utc).timestamp()
+        current = message.created_at.timestamp()
 
         if message.author.id in self.fast_joiners:
             bucket = self.hit_and_run.get_bucket(message)
@@ -262,7 +262,7 @@ class SpamChecker:
         return False
 
     def is_fast_join(self, member):
-        joined = member.joined_at or datetime.datetime.utcnow()
+        joined = member.joined_at or discord.utils.utcnow()
         if self.last_join is None:
             self.last_join = joined
             return False
