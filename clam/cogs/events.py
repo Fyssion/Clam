@@ -290,33 +290,9 @@ def future_time(timezone):
             result = humantime.Time(arg)
             shorttime = False
 
-        if shorttime:
-            return result.dt
+        when = result.dt.replace(tzinfo=datetime.timezone.utc).astimezone(timezone) 
 
-        when = result.dt
-
-        # unfortunatly there is a bug where the end time is one day ahead
-        # if the timezone time and the utc time are on different days.
-        # to fix this, I have to check if they are on different days and add/subtract
-        # a day to compensate.
-        # this has to be an awful solution but it is the only thing I could think of.
-        # I dislike working with timezones like this.
-
-        timezone_now = datetime.datetime.now(timezone)
-        offset = timezone_now.utcoffset()
-
-        utc_now = datetime.datetime.utcnow()
-        utc_now_day = utc_now.replace(hour=0, minute=0, second=0, microsecond=0)
-        timezone_now_day = timezone_now.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
-
-        if utc_now_day > timezone_now_day:
-            when = when - datetime.timedelta(days=1)
-        elif utc_now_day < timezone_now_day:
-            when = when + datetime.timedelta(days=1)
-
-        when = when - offset
-
-        if when < datetime.datetime.utcnow():
+        if when < discord.utils.utcnow():
             raise commands.BadArgument("That time is in the past.")
 
         return when
@@ -449,8 +425,10 @@ class Events(commands.Cog):
 
     def format_event_time(self, event):
         when = event.starts_at
-        localized = utc.localize(when).astimezone(pytz.timezone(event.timezone))
-        return localized.strftime("%b %d, %Y at %#I:%M %p %Z")
+        # localized = utc.localize(when).astimezone(pytz.timezone(event.timezone))
+        # return localized.strftime("%b %d, %Y at %#I:%M %p %Z")
+        when = when.replace(tzinfo=datetime.timezone.utc)
+        return f"{discord.utils.format_dt(when, style='F')} ({discord.utils.format_dt(when, style='R')})"
 
     async def update_event_field(self, event, field, value):
         channel = self.bot.get_channel(event.channel_id)
@@ -799,6 +777,9 @@ class Events(commands.Cog):
                    RETURNING id;
                 """
 
+        # Remove timezone information since the database does not deal with it
+        when = when.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+
         event_args = (
             name,
             description,
@@ -935,6 +916,8 @@ class Events(commands.Cog):
 
             if isinstance(when, PromptResponse):
                 return
+
+            when = when.astimezone(datetime.timezone.utc).replace(tzinfo=None)
 
             query = """UPDATE events
                        SET starts_at=$1

@@ -161,7 +161,7 @@ class HumanTime:
             )
 
         self.dt = dt
-        self._past = dt < now
+        self._past = dt < now.replace(tzinfo=None)
 
     @classmethod
     async def convert(cls, ctx, argument):
