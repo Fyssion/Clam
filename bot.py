@@ -157,13 +157,12 @@ class Clam(commands.Bot):
         self.pool = await db.Table.create_pool(self.config.database_uri)
         self.google_client = async_cse.Search(self.config.google_api_key)
         self.session = aiohttp.ClientSession(loop=self.loop)
-        self._adapter = discord.AsyncWebhookAdapter(self.session)
         self.cleverbot = cleverbot.Cleverbot(self.config.cleverbot_api_key, tweak1=0, tweak2=100, tweak3=100)
 
         log.info("Preparing status hook...")
         if self.config.status_hook:
             self.status_hook = discord.Webhook.from_url(
-                self.config.status_hook, adapter=self._adapter
+                self.config.status_hook, session=self.session
             )
             await self.status_hook.send("Starting Clam...")
 
