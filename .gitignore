@@ -1,4 +1,3 @@
-
 .vscode/settings.json
 *.sublime-project
 *.sublime-workspace
@@ -15,3 +14,4 @@ cache/
 venv/*
 !assets/emoji_map*.json
 google.html
+.python-version
