@@ -520,7 +520,7 @@ class Moderation(commands.Cog):
 
         to_be_banned = discord.Object(id=user_id)
 
-        friendly_time = humantime.timedelta(duration.dt)
+        friendly_time = humantime.timedelta(duration.dt, discord_fmt=False)
         audit_reason = f"Tempban by {ctx.author} (ID: {ctx.author.id}) for {friendly_time} with reason: {reason}"
 
         try:
@@ -537,8 +537,6 @@ class Moderation(commands.Cog):
                 to_be_banned, reason="Timer creation failed for previous tempban."
             )
             raise
-
-        friendly_time = humantime.timedelta(duration.dt, source=timer.created_at)
 
         log_target = str(user) if user else f"User with ID {user_id}"
         emoji = "\N{HOURGLASS} \N{HAMMER}"
@@ -817,7 +815,7 @@ class Moderation(commands.Cog):
         settings = await self.get_guild_settings(ctx.guild.id)
 
         friendly_time = humantime.timedelta(
-            duration.dt, source=ctx.message.created_at
+            duration.dt, source=ctx.message.created_at, discord_fmt=False
         )
         audit_reason = f"Tempmute by {ctx.author} (ID: {ctx.author.id}) for {friendly_time} with reason: {reason}"
         await self.tempmute_member(settings, member, duration.dt, audit_reason, mod=ctx.author)
@@ -933,7 +931,7 @@ class Moderation(commands.Cog):
             return await ctx.send("You've already been muted.")
 
         human_friendly = humantime.timedelta(
-            duration.dt, source=ctx.message.created_at
+            duration.dt, source=ctx.message.created_at, discord_fmt=False
         )
         confirm = await ctx.confirm(
             f"Are you sure you want to mute yourself for {human_friendly}?\n"
@@ -1792,7 +1790,7 @@ class Moderation(commands.Cog):
 
             await self.register_spam_violation(member, message)
 
-            friendly = humantime.timedelta(dt, brief=True)
+            friendly = humantime.timedelta(dt, brief=True, discord_fmt=False)
             reason = (
                 f"[AutoMod] Auto-tempmute for {friendly} "
                 f"({plural(len(violations)):previous violation|previous violations})"
@@ -1801,9 +1799,9 @@ class Moderation(commands.Cog):
             try:
                 await self.tempmute_member(settings, member, dt, reason)
             except Exception:
-                log.info(f"[AutoMod] Failed to tempmute {member} (ID: {member.id}) for {humantime.timedelta(dt)}")
+                log.info(f"[AutoMod] Failed to tempmute {member} (ID: {member.id}) for {humantime.timedelta(dt, discord_fmt=False)}")
             else:
-                log.info(f"[AutoMod] Tempmuted {member} (ID: {member.id}) for {humantime.timedelta(dt)}")
+                log.info(f"[AutoMod] Tempmuted {member} (ID: {member.id}) for {humantime.timedelta(dt, discord_fmt=False)}")
 
                 guild_log = await self.bot.get_guild_log(member.guild.id)
                 if guild_log:
@@ -1814,7 +1812,7 @@ class Moderation(commands.Cog):
                     )
                     em.set_author(name=str(member), icon_url=member.avatar.url)
                     em.add_field(name="Previous Spam Violations", value=len(violations))
-                    em.add_field(name="Mute Duration", value=humantime.timedelta(dt))
+                    em.add_field(name="Mute Duration", value=humantime.timedelta(dt, discord_fmt=False))
                     em.add_field(name="Account Created", value=humantime.fulltime(member.created_at))
 
                     await guild_log.log_automod_action(embed=em)

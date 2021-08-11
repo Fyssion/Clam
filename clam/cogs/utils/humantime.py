@@ -28,6 +28,7 @@ import collections
 import datetime
 import re
 
+import discord
 import pytz
 from dateutil.relativedelta import relativedelta
 from discord.ext import commands
@@ -316,10 +317,13 @@ class UserFriendlyTime(commands.Converter):
             raise
 
 
-def timedelta(dt, *, source=None, accuracy=3, brief=False, suffix=True):
+def timedelta(dt, *, discord_fmt=True, source=None, accuracy=3, brief=False, suffix=True):
     now = source or datetime.datetime.now(datetime.timezone.utc)
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=datetime.timezone.utc)
+
+    if discord_fmt:
+        return discord.utils.format_dt(dt, style="R")
 
     if now.tzinfo is None:
         now = now.replace(tzinfo=datetime.timezone.utc)
@@ -388,9 +392,16 @@ def date(dt):
     return dt.strftime("%b %d %Y at %H:%M:%S")
 
 
-def fulltime(dt, *, timedelta_kwargs):
-    date_fmt = date(dt)
+def fulltime(dt, *, discord_fmt=True, **timedelta_kwargs):
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=datetime.timezone.utc)
 
-    delta_fmt = timedelta(dt, **timedelta_kwargs)
+    if discord_fmt:
+        date_fmt = discord.utils.format_dt(dt)
+        delta_fmt = discord.utils.format_dt(dt, style="R")
+
+    else:
+        date_fmt = date(dt)
+        delta_fmt = timedelta(dt, discord_fmt=False, **timedelta_kwargs)
 
     return f"{date_fmt} ({delta_fmt})"

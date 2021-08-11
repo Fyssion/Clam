@@ -1875,7 +1875,7 @@ class Music(commands.Cog):
 
         songs = []
         for song_id, title, plays, last_updated in records:
-            formatted = humantime.timedelta(last_updated, brief=True, accuracy=1)
+            formatted = humantime.timedelta(last_updated, brief=True, accuracy=1, discord_fmt=False)
             songs.append(
                 f"{title} # ID: {song_id} ({plays:,} plays) last updated {formatted}"
             )
@@ -1900,7 +1900,7 @@ class Music(commands.Cog):
 
         songs = []
         for song_id, title, plays, last_updated, duration in records:
-            formatted = humantime.timedelta(last_updated, brief=True, accuracy=1)
+            formatted = humantime.timedelta(last_updated, brief=True, accuracy=1, discord_fmt=False)
             dur = ytdl.Song.timestamp_duration(round(duration))
             songs.append(
                 f"{title} # ID: {song_id} ({plays:,} plays) duration: {dur} last updated {formatted}"

@@ -1440,9 +1440,9 @@ class Internet(commands.Cog):
             em.add_field(name="Ratings", value="\n".join(ratings), inline=True)
 
         total_play_time_dt = discord.utils.utcnow() - datetime.timedelta(seconds=data["playTime"]["total"])
-        total_play_time = humantime.timedelta(total_play_time_dt, accuracy=1, suffix=False)
+        total_play_time = humantime.timedelta(total_play_time_dt, accuracy=1, suffix=False, discord_fmt=False)
         tv_play_time_dt = discord.utils.utcnow() - datetime.timedelta(seconds=data["playTime"]["tv"])
-        tv_play_time = humantime.timedelta(tv_play_time_dt, accuracy=1, suffix=False)
+        tv_play_time = humantime.timedelta(tv_play_time_dt, accuracy=1, suffix=False, discord_fmt=False)
         em.add_field(name="Play Time", value=f"**Total:** {total_play_time}\n**TV:** {tv_play_time}")
 
         followers = f"**Followers:** {data['nbFollowers']}\n**Following:** {data['nbFollowing']}"

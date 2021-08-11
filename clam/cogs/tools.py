@@ -1021,7 +1021,7 @@ class Tools(commands.Cog):
         created_fmt = humantime.fulltime(user.created_at, accuracy=2)
         em.add_field(
             name=":clock1: Account Created",
-            value=created_fmt.capitalize(),
+            value=created_fmt,
             inline=True,
         )
 
@@ -1029,7 +1029,7 @@ class Tools(commands.Cog):
             joined_fmt = humantime.fulltime(user.joined_at, accuracy=2)
             em.add_field(
                 name="<:join:649722959958638643> Joined Server",
-                value=joined_fmt.capitalize(),
+                value=joined_fmt,
                 inline=True,
             )
 

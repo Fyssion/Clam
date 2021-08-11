@@ -871,7 +871,7 @@ class Stats(commands.Cog):
 
         em.add_field(
             name="<:online:649270802088460299> Uptime",
-            value=humantime.timedelta(self.bot.uptime, brief=True).capitalize(),
+            value=humantime.timedelta(self.bot.uptime, brief=True, discord_fmt=False, suffix=False).capitalize(),
         )
         cpu = psutil.cpu_percent()
 
@@ -926,7 +926,7 @@ class Stats(commands.Cog):
     )
     async def uptime(self, ctx):
         uptime = humantime.timedelta(
-            self.bot.uptime, source=ctx.message.created_at
+            self.bot.uptime, source=ctx.message.created_at, discord_fmt=False
         )
         await ctx.send(f"<:online:649270802088460299> I booted up **{uptime}**")
 
