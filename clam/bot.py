@@ -1,4 +1,3 @@
-import asyncio
 import collections
 import datetime
 import json
@@ -61,9 +60,7 @@ initial_extensions = [
 
 
 class Clam(commands.Bot):
-    def __init__(self, loop=None):
-        loop = loop or asyncio.get_event_loop()
-
+    def __init__(self):
         log.info("Loading config...")
         self.config = Config("config.yml")
 
@@ -83,7 +80,6 @@ class Clam(commands.Bot):
             owner_id=224513210471022592,
             case_insensitive=True,
             intents=intents,
-            loop=loop,
         )
         self.log = log
 
@@ -158,7 +154,7 @@ class Clam(commands.Bot):
 
     async def prepare_bot(self):
         log.info("Preparing async features...")
-        # self.pool = await db.Table.create_pool(self.config.database_uri, loop=self.loop)
+        self.pool = await db.Table.create_pool(self.config.database_uri)
         self.google_client = async_cse.Search(self.config.google_api_key)
         self.session = aiohttp.ClientSession(loop=self.loop)
         self.cleverbot = cleverbot.Cleverbot(self.config.cleverbot_api_key, tweak1=0, tweak2=100, tweak3=100)
@@ -341,8 +337,8 @@ class Clam(commands.Bot):
 
         await super().close()
 
-    async def start(self):
-        await super().start(self.config.bot_token)
+    def run(self):
+        super().run(self.config.bot_token)
 
 
 if __name__ == "__main__":

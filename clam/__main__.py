@@ -69,7 +69,7 @@ def setup_logging():
             log.removeHandler(hdlr)
 
 
-async def run_bot():
+def run_bot():
     loop = asyncio.get_event_loop()
     log = logging.getLogger()
     kwargs = {
@@ -78,16 +78,15 @@ async def run_bot():
         "min_size": 10,
     }
     try:
-        pool = await Table.create_pool(config.database_uri, **kwargs)
+        pool = loop.run_until_complete(Table.create_pool(config.database_uri, **kwargs))
     except Exception:
         click.echo("Could not set up PostgreSQL. Exiting.", file=sys.stderr)
         log.exception("Could not set up PostgreSQL. Exiting.")
         return
 
-    async with Clam(loop=loop) as clam:
-        clam.pool = pool
-
-        await clam.start()
+    bot = Clam()
+    bot.pool = pool
+    bot.run()
 
 
 @click.group(invoke_without_command=True, options_metavar="[options]")
@@ -97,7 +96,7 @@ def main(ctx):
     if ctx.invoked_subcommand is None:
         loop = asyncio.get_event_loop()
         with setup_logging():
-            asyncio.run(run_bot())
+            run_bot()
 
 
 @main.group(short_help="database stuff", options_metavar="[options]")
