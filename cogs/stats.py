@@ -263,8 +263,8 @@ class Stats(commands.Cog):
                 timestamp=count[1] or datetime.datetime.utcnow(),
             )
 
-            em.set_author(name=f"{member} - {member.id}", icon_url=member.avatar_url)
-            em.set_thumbnail(url=member.avatar_url)
+            em.set_author(name=f"{member} - {member.id}", icon_url=member.avatar.url)
+            em.set_thumbnail(url=member.avatar.url)
             em.set_footer(text="First command used")
 
             query = """SELECT name, COUNT(*) AS "uses"
@@ -584,7 +584,7 @@ class Stats(commands.Cog):
             color=colors.PRIMARY,
             timestamp=count[1] or datetime.datetime.utcnow(),
         )
-        em.set_author(name=str(user), icon_url=user.avatar_url)
+        em.set_author(name=str(user), icon_url=user.avatar.url)
 
         em.description = f"{user} has used **{plural(count[0], pretty=True):command}**."
         em.set_footer(text="Tracking command usage since")
@@ -844,7 +844,7 @@ class Stats(commands.Cog):
             text=f"Made with \N{HEAVY BLACK HEART} using discord.py v{version}"
         )
 
-        em.set_thumbnail(url=self.bot.user.avatar_url)
+        em.set_thumbnail(url=self.bot.user.avatar.url)
 
         dev = self.bot.get_user(224513210471022592)
         up = datetime.datetime.utcnow() - self.bot.uptime

@@ -369,7 +369,7 @@ class Admin(commands.Cog):
         em.set_footer(text="Blacklist date")
 
         if user:
-            em.set_thumbnail(url=user.avatar_url)
+            em.set_thumbnail(url=user.avatar.url)
 
         console = self.bot.console
         await console.send(embed=em)
@@ -702,7 +702,7 @@ class Admin(commands.Cog):
         )
         em.set_author(
             name=f"To: {user} ({user.id})",
-            icon_url=user.avatar_url,
+            icon_url=user.avatar.url,
         )
         em.set_footer(text="Outgoing DM")
         await channel.send(embed=em)
@@ -734,7 +734,7 @@ class Admin(commands.Cog):
         )
         em.set_author(
             name=f"To: {dm_session.user} ({dm_session.user.id})",
-            icon_url=dm_session.user.avatar_url,
+            icon_url=dm_session.user.avatar.url,
         )
         em.set_footer(text="Outgoing DM")
         return await channel.send(embed=em)
@@ -755,7 +755,7 @@ class Admin(commands.Cog):
         )
         em.set_author(
             name=f"From: {message.author} ({message.author.id})",
-            icon_url=message.author.avatar_url,
+            icon_url=message.author.avatar.url,
         )
         em.set_footer(text="Incoming DM")
 

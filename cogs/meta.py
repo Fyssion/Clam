@@ -111,7 +111,7 @@ class ClamHelpCommand(commands.HelpCommand):
             title=f"Help for {bot.user.name}",
             color=colors.PRIMARY,
         )
-        em.set_thumbnail(url=ctx.bot.user.avatar_url)
+        em.set_thumbnail(url=ctx.bot.user.avatar.url)
         em.set_footer(text="Note that you can only view commands that you can use")
         return em
 
@@ -485,7 +485,7 @@ class Meta(commands.Cog):
         )
 
         em.description = description
-        em.set_footer(icon_url=self.bot.user.avatar_url)
+        em.set_footer(icon_url=self.bot.user.avatar.url)
 
         await ctx.send(embed=em)
 

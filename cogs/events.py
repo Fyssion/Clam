@@ -159,7 +159,7 @@ class EventSource(menus.ListPageSource):
             description=description,
             color=colors.PRIMARY,
         )
-        em.set_author(name=str(self.ctx.author), icon_url=self.ctx.author.avatar_url)
+        em.set_author(name=str(self.ctx.author), icon_url=self.ctx.author.avatar.url)
         em.set_footer(text=f"Page {menu.current_page + 1}/{self.get_max_pages()}")
 
         return em

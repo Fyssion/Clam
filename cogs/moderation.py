@@ -1812,7 +1812,7 @@ class Moderation(commands.Cog):
                         description=member.mention,
                         color=discord.Color.orange()
                     )
-                    em.set_author(name=str(member), icon_url=member.avatar_url)
+                    em.set_author(name=str(member), icon_url=member.avatar.url)
                     em.add_field(name="Previous Spam Violations", value=len(violations))
                     em.add_field(name="Mute Duration", value=humantime.timedelta(dt))
                     em.add_field(name="Account Created", value=humantime.fulltime(member.created_at))
@@ -1844,7 +1844,7 @@ class Moderation(commands.Cog):
                     description=member.mention,
                     color=discord.Color.red()
                 )
-                em.set_author(name=str(member), icon_url=member.avatar_url)
+                em.set_author(name=str(member), icon_url=member.avatar.url)
                 if mode == AutomodMode.medium.value:
                     em.add_field(name="Previous Spam Violations", value=len(violations))
 
@@ -1914,7 +1914,7 @@ class Moderation(commands.Cog):
                     description=author.mention,
                     color=discord.Color.red()
                 )
-                em.set_author(name=str(author), icon_url=author.avatar_url)
+                em.set_author(name=str(author), icon_url=author.avatar.url)
                 em.add_field(name="Account Created", value=humantime.fulltime(author.created_at))
 
                 await guild_log.log_automod_action(embed=em)
@@ -2127,7 +2127,7 @@ class Moderation(commands.Cog):
             violations.append(f"Channel: {channel} | {humantime.timedelta(when, brief=True)}")
 
         em = discord.Embed(title="Spam Violations", color=discord.Color.blurple())
-        em.set_author(name=str(member), icon_url=member.avatar_url)
+        em.set_author(name=str(member), icon_url=member.avatar.url)
         pages = ctx.embed_pages(violations, em)
         await pages.start(ctx)
 
@@ -2513,7 +2513,7 @@ class Moderation(commands.Cog):
                 description=message.author.mention,
                 color=discord.Color.purple()
             )
-            em.set_author(name=str(message.author), icon_url=message.author.avatar_url)
+            em.set_author(name=str(message.author), icon_url=message.author.avatar.url)
             em.add_field(name="Word", value=word)
             em.add_field(name="Message", value=f"[Jump to message!]({message.jump_url})")
             em.add_field(name="Account Created", value=humantime.fulltime(message.author.created_at), inline=False)

@@ -266,7 +266,7 @@ class Stars(commands.Cog):
         )
         embed.set_author(
             name=message.author.display_name,
-            icon_url=message.author.avatar_url_as(format="png"),
+            icon_url=message.author.avatar.replace(format="png").url,
         )
         embed.timestamp = message.created_at
         embed.colour = self.star_gradient_colour(stars)
@@ -1155,7 +1155,7 @@ class Stars(commands.Cog):
     async def star_member_stats(self, ctx, member):
         e = discord.Embed(colour=discord.Colour.gold())
         e.set_author(
-            name=member.display_name, icon_url=member.avatar_url_as(format="png")
+            name=member.display_name, icon_url=member.avatar.replace(format="png").url
         )
 
         # this query calculates

@@ -36,7 +36,7 @@ class TenSeconds(SinglePlayerGame):
             description="Click the reaction after 10 seconds!", color=colors.PRIMARY,
         )
 
-        em.set_author(name=str(ctx.author), icon_url=ctx.author.avatar_url)
+        em.set_author(name=str(ctx.author), icon_url=ctx.author.avatar.url)
 
         em.set_footer(text=f"Confused? Learn more with {ctx.guild_prefix}help 10s")
 

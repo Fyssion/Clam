@@ -1301,7 +1301,7 @@ class Internet(commands.Cog):
         )
         em.set_image(url=comic.image_url)
         em.set_footer(
-            text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url
+            text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar.url
         )
         await ctx.send(embed=em)
 
@@ -1318,7 +1318,7 @@ class Internet(commands.Cog):
         )
         em.set_image(url=comic.image_url)
         em.set_footer(
-            text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url
+            text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar.url
         )
         await ctx.send(embed=em)
 
@@ -1333,7 +1333,7 @@ class Internet(commands.Cog):
         )
         em.set_image(url=comic.image_url)
         em.set_footer(
-            text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar_url
+            text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar.url
         )
         await ctx.send(embed=em)
 

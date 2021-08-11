@@ -850,7 +850,7 @@ class Tags(commands.Cog):
         member = guild.get_member(owner_id)
         if not member:
             return {"name": owner_id}
-        return {"name": str(member), "icon_url": member.avatar_url}
+        return {"name": str(member), "icon_url": member.avatar.url}
 
     @tag.command(
         name="info",

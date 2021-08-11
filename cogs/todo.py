@@ -47,7 +47,7 @@ class TodoTaskSource(menus.ListPageSource):
         em = discord.Embed(
             title="Your Todo List", description=description, color=colors.PRIMARY,
         )
-        em.set_author(name=str(self.ctx.author), icon_url=self.ctx.author.avatar_url)
+        em.set_author(name=str(self.ctx.author), icon_url=self.ctx.author.avatar.url)
         em.set_footer(text=f"Page {menu.current_page + 1}/{self.get_max_pages()}")
 
         return em
@@ -240,7 +240,7 @@ class Todo(commands.Cog):
             timestamp=created_at,
         )
 
-        em.set_author(name=str(ctx.author), icon_url=ctx.author.avatar_url)
+        em.set_author(name=str(ctx.author), icon_url=ctx.author.avatar.url)
         em.set_footer(text="Task created")
 
         await ctx.send(embed=em)

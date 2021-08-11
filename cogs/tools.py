@@ -416,7 +416,7 @@ class Tools(commands.Cog):
         else:
             name = str(ctx.author)
 
-        em.set_author(name=name, icon_url=ctx.author.avatar_url)
+        em.set_author(name=name, icon_url=ctx.author.avatar.url)
 
         poll_message = await ctx.send("New Poll", embed=em)
 
@@ -476,7 +476,7 @@ class Tools(commands.Cog):
         else:
             name = str(ctx.author)
 
-        em.set_author(name=name, icon_url=ctx.author.avatar_url)
+        em.set_author(name=name, icon_url=ctx.author.avatar.url)
 
         poll_message = await ctx.send("New Poll", embed=em)
 
@@ -604,7 +604,7 @@ class Tools(commands.Cog):
             ):
                 em.set_image(url=data.url)
 
-        em.set_author(name=str(message.author), icon_url=message.author.avatar_url)
+        em.set_author(name=str(message.author), icon_url=message.author.avatar.url)
         formatted = humantime.timedelta(deleted_at, brief=True, accuracy=1)
         em.set_footer(text=f"Deleted {formatted} | Message sent")
         content = f"\N{WASTEBASKET} Deleted Message | ID: {message.id}"
@@ -663,7 +663,7 @@ class Tools(commands.Cog):
             ):
                 em.set_image(url=data.url)
 
-        em.set_author(name=str(after.author), icon_url=after.author.avatar_url)
+        em.set_author(name=str(after.author), icon_url=after.author.avatar.url)
         formatted = humantime.timedelta(edited_at, brief=True, accuracy=1)
         em.set_footer(text=f"Edited {formatted} | Message sent")
         content = f"\N{MEMO} Edited Message | ID: {after.id}"
@@ -927,8 +927,8 @@ class Tools(commands.Cog):
         if not member:
             member = ctx.author
 
-        icon = member.avatar_url
-        color = await self.get_average_color(icon) if icon else None
+        avatar = member.avatar
+        color = await self.get_average_color(avatar) if avatar else None
         color = color or member.color or colors.PRIMARY
 
         em = discord.Embed(color=color)
@@ -939,15 +939,15 @@ class Tools(commands.Cog):
             name = str(member)
 
         format_names = ["png", "jpeg", "webp"]
-        if member.is_avatar_animated():
+        if member.avatar.is_animated():
             format_names.append("gif")
 
-        formats = [f"[{f.upper()}]({member.avatar_url_as(format=f)})" for f in format_names]
+        formats = [f"[{f.upper()}]({member.avatar.replace(format=f).url})" for f in format_names]
 
         em.description = f"View as {human_join(formats)}"
 
-        em.set_author(name=name, icon_url=member.avatar_url_as(static_format="png"))
-        em.set_image(url=member.avatar_url)
+        em.set_author(name=name, icon_url=member.avatar.replace(static_format="png").url)
+        em.set_image(url=member.avatar.url)
 
         await ctx.send(embed=em)
 
@@ -1006,7 +1006,7 @@ class Tools(commands.Cog):
             author += f" ({user.nick})"
         author += f" - {str(user.id)}"
 
-        icon = user.avatar_url
+        icon = user.avatar
         try:
             color = await self.get_average_color(icon) if icon else None
         except discord.HTTPException:
@@ -1193,7 +1193,7 @@ class Tools(commands.Cog):
             return await ctx.send(embed=em)
 
         em.description = f"ID: `{user_id}`\nUsername: `{user}`\nBot: `{user.bot}`\nCreated: `{created}`"
-        em.set_thumbnail(url=user.avatar_url)
+        em.set_thumbnail(url=user.avatar.url)
         await ctx.send(embed=em)
 
     @commands.command(
