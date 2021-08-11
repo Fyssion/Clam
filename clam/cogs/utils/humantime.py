@@ -388,7 +388,7 @@ def date(dt):
     return dt.strftime("%b %d %Y at %H:%M:%S")
 
 
-def fulltime(dt, *, **timedelta_kwargs):
+def fulltime(dt, *, timedelta_kwargs):
     date_fmt = date(dt)
 
     delta_fmt = timedelta(dt, **timedelta_kwargs)

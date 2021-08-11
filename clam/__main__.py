@@ -9,9 +9,9 @@ from logging.handlers import RotatingFileHandler
 import click
 from rich.logging import RichHandler
 
-from bot import Clam, initial_extensions
-from config import Config
-from cogs.utils.db import Table
+from .bot import Clam, initial_extensions
+from .config import Config
+from .cogs.utils.db import Table
 
 config = Config("config.yml")
 

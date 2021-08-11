@@ -11,11 +11,11 @@ import wolframalpha
 from cleverbot import async_ as cleverbot
 from discord.ext import commands
 
-from config import Config
-from cogs.utils import db
-from cogs.utils.context import Context
-from cogs.utils.errors import PrivateCog
-from cogs.utils.prefixes import Prefixes
+from .config import Config
+from .cogs.utils import db
+from .cogs.utils.context import Context
+from .cogs.utils.errors import PrivateCog
+from .cogs.utils.prefixes import Prefixes
 
 
 log = logging.getLogger("clam")
@@ -35,27 +35,27 @@ def get_command_prefix(bot, message):
 
 
 initial_extensions = [
-    "cogs.admin",
-    "cogs.among",
-    "cogs.ccs",
-    "cogs.events",
-    "cogs.fun",
-    "cogs.games",
-    "cogs.highlight",
-    "cogs.internet",
-    "cogs.log",
-    "cogs.mathematics",
-    "cogs.meta",
-    "cogs.moderation",
-    "cogs.music",
-    "cogs.selfroles",
-    "cogs.settings",
-    "cogs.stars",
-    "cogs.stats",
-    "cogs.tags",
-    "cogs.timers",
-    "cogs.todo",
-    "cogs.tools",
+    "admin",
+    "among",
+    "ccs",
+    "events",
+    "fun",
+    "games",
+    "highlight",
+    "internet",
+    "log",
+    "mathematics",
+    "meta",
+    "moderation",
+    "music",
+    "selfroles",
+    "settings",
+    "stars",
+    "stats",
+    "tags",
+    "timers",
+    "todo",
+    "tools",
 ]
 
 
@@ -122,7 +122,7 @@ class Clam(commands.Bot):
 
         for cog in initial_extensions:
             log.info(f"Loading extension '{cog}'")
-            self.load_extension(cog)
+            self.load_extension(f"clam.cogs.{cog}")
 
         self.ordered_cogs = [c for c in self.cogs.keys()]
 
