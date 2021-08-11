@@ -222,7 +222,11 @@ class Timers(commands.Cog):
         try:
             now = kwargs.pop("created")
         except KeyError:
-            now = datetime.datetime.utcnow()
+            now = discord.utils.utcnow()
+
+            # Remove timezone information since the database does not deal with it
+            when = when.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+            now = now.astimezone(datetime.timezone.utc).replace(tzinfo=None)
 
         timer = Timer.temporary(
             event=event, args=args, kwargs=kwargs, expires=when, created=now
@@ -287,7 +291,7 @@ class Timers(commands.Cog):
             created=ctx.message.created_at,
             message_id=ctx.message.id,
         )
-        delta = humantime.timedelta(when.dt, source=timer.created_at)
+        delta = humantime.timedelta(when.dt, source=timer.created_at, discord_fmt=False)
         friendly_message = f"message: {when.arg}" if when.arg else "no message"
         await ctx.send(
             f"{ctx.tick(True)} Set a reminder for **`{delta}`** with {friendly_message}"
