@@ -1839,6 +1839,8 @@ class Music(commands.Cog):
         query = "SELECT COUNT(*), SUM(plays) FROM songs;"
         count, total_plays = await ctx.db.fetchrow(query)
 
+        total_plays = total_plays or 0
+
         query = "SELECT info->>'duration', plays FROM songs;"
         records = await ctx.db.fetch(query)
 
