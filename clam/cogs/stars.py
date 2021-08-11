@@ -263,7 +263,7 @@ class Stars(commands.Cog):
 
         ref = message.reference
         if ref and isinstance(ref.resolved, discord.Message):
-            embed.add_field(name='Replying to...', value=f'[Messge by {ref.resolved.author}]({ref.resolved.jump_url})', inline=False)
+            embed.add_field(name='Replying to...', value=f'[Message by {ref.resolved.author}]({ref.resolved.jump_url})', inline=False)
 
         embed.add_field(
             name="Original", value=f"[Jump!]({message.jump_url})", inline=False
