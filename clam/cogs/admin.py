@@ -381,42 +381,22 @@ class Admin(commands.Cog):
         invoke_without_command=True,
     )
     @commands.is_owner()
-    async def _reload(self, ctx, *, cog="all"):
-        if cog == "all":
-            msg = ""
-
-            for ext in self.bot.cogs_to_load:
-                try:
-                    self.bot.reload_extension(ext)
-                    msg += (
-                        f"**{OK_SIGN} Reloaded** `{ext}`\n\n"
-                    )
-                    self.log.info(f"Extension '{cog.lower()}' successfully reloaded.")
-
-                except Exception as e:
-                    traceback_data = "".join(
-                        traceback.format_exception(type(e), e, e.__traceback__, 1)
-                    )
-                    msg += (
-                        f"**{ctx.tick(False)} Extension `{ext}` not loaded.**\n"
-                        f"```py\n{traceback_data}```\n\n"
-                    )
-                    traceback.print_exception(type(e), e, e.__traceback__)
-            return await ctx.send(msg)
+    async def _reload(self, ctx, *, cog):
+        extension = f"clam.cogs.{cog.lower()}"
 
         try:
-            self.bot.reload_extension(cog.lower())
+            self.bot.reload_extension(extension)
             await ctx.send(f"{OK_SIGN}")
-            self.log.info(f"Extension '{cog.lower()}' successfully reloaded.")
+            self.log.info(f"Extension '{cog}' successfully reloaded.")
         except Exception as e:
             traceback_data = "".join(
                 traceback.format_exception(type(e), e, e.__traceback__, 1)
             )
             await ctx.send(
-                f"**{ctx.tick(False)} Extension `{cog.lower()}` not loaded.**\n```py\n{traceback_data}```"
+                f"**{ctx.tick(False)} Extension `{cog}` not loaded.**\n```py\n{traceback_data}```"
             )
             self.log.warning(
-                f"Extension 'cogs.{cog.lower()}' not loaded.\n{traceback_data}"
+                f"Extension 'cogs.{cog}' not loaded.\n{traceback_data}"
             )
 
     # https://github.com/Rapptz/RoboDanny/blob/6211293d8fe19ad46a266ded2464752935a3fb94/cogs/admin.py#L89-L97
@@ -445,7 +425,7 @@ class Admin(commands.Cog):
             if ext != ".py":
                 continue
 
-            if root.startswith("cogs/"):
+            if root.startswith("clam/cogs/"):
                 # A submodule is a directory inside the main cog directory for
                 # my purposes
                 ret.append((root.count("/") - 1, root.replace("/", ".")))
