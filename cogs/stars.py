@@ -261,6 +261,10 @@ class Stars(commands.Cog):
                     inline=False,
                 )
 
+        ref = message.reference
+        if ref and isinstance(ref.resolved, discord.Message):
+            embed.add_field(name='Replying to...', value=f'[Messge by {ref.resolved.author}]({ref.resolved.jump_url})', inline=False)
+
         embed.add_field(
             name="Original", value=f"[Jump!]({message.jump_url})", inline=False
         )
@@ -294,8 +298,12 @@ class Stars(commands.Cog):
         if str(payload.emoji) != "\N{WHITE MEDIUM STAR}":
             return
 
-        channel = self.bot.get_channel(payload.channel_id)
-        if not isinstance(channel, discord.TextChannel):
+        guild = self.bot.get_guild(payload.guild_id)
+        if not guild:
+            return
+
+        channel = guild.get_channel_or_thread(payload.channel_id)
+        if not isinstance(channel, (discord.TextChannel, discord.Thread)):
             return
 
         method = getattr(self, f"{fmt}_message")
@@ -368,8 +376,12 @@ class Stars(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_clear(self, payload):
-        channel = self.bot.get_channel(payload.channel_id)
-        if channel is None or not isinstance(channel, discord.TextChannel):
+        guild = self.bot.get_guild(payload.guild_id)
+        if not guild:
+            return
+
+        channel = guild.get_channel_or_thread(payload.channel_id)
+        if channel is None or not isinstance(channel, (discord.TextChannel, discord.Thread)):
             return
 
         async with self.bot.pool.acquire(timeout=300.0) as con:
@@ -453,7 +465,7 @@ class Stars(commands.Cog):
             if record is None:
                 raise StarError("Could not find message in the starboard.")
 
-            ch = channel.guild.get_channel(record["channel_id"])
+            ch = channel.guild.get_channel_or_thread(record["channel_id"])
             if ch is None:
                 raise StarError("Could not find original channel.")
 
@@ -478,9 +490,8 @@ class Stars(commands.Cog):
         if msg.author.id == starrer_id:
             raise StarError("\N{NO ENTRY SIGN} You cannot star your own message.")
 
-        if (
-            len(msg.content) == 0 and len(msg.attachments) == 0
-        ) or msg.type is not discord.MessageType.default:
+        empty_message = len(msg.content) == 0 and len(msg.attachments) == 0
+        if empty_message or msg.type not in (discord.MessageType.default, discord.MessageType.reply):
             raise StarError("\N{NO ENTRY SIGN} This message cannot be starred.")
 
         oldest_allowed = discord.utils.utcnow() - starboard.max_age
@@ -604,7 +615,7 @@ class Stars(commands.Cog):
             if record is None:
                 raise StarError("Could not find message in the starboard.")
 
-            ch = channel.guild.get_channel(record["channel_id"])
+            ch = channel.guild.get_channel_or_thread(record["channel_id"])
             if ch is None:
                 raise StarError("Could not find original channel.")
 
@@ -906,7 +917,7 @@ class Stars(commands.Cog):
                 return
 
         # slow path, try to fetch the content
-        channel = ctx.guild.get_channel(record["channel_id"])
+        channel = ctx.guild.get_channel_or_thread(record["channel_id"])
         if channel is None:
             return await ctx.send("The message's channel has been deleted.")
 
@@ -1394,7 +1405,6 @@ class Stars(commands.Cog):
         """Announce stuff to every starboard."""
         query = "SELECT id, channel_id FROM starboard;"
         records = await ctx.db.fetch(query)
-        await ctx.release()
 
         to_send = []
         for guild_id, channel_id in records:
