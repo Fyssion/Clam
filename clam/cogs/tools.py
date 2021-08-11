@@ -1092,16 +1092,16 @@ class Tools(commands.Cog):
         if guild.large == True:
             desc += "\n:information_source: This guild is considered large (over 250 members)."
 
-        icon = guild.icon_url
+        icon = guild.icon
         color = await self.get_average_color(icon) if icon else None
         color = color or colors.PRIMARY
 
         em = discord.Embed(description=desc, color=color)
 
-        em.set_thumbnail(url=guild.icon_url)
-        if guild.banner_url:
-            em.set_image(url=guild.banner_url)
-        em.set_author(name=f"{guild.name} ({guild.id})", icon_url=guild.icon_url)
+        em.set_thumbnail(url=guild.icon.url)
+        if guild.banner:
+            em.set_image(url=guild.banner.url)
+        em.set_author(name=f"{guild.name} ({guild.id})", icon_url=guild.icon.url)
         em.add_field(
             name="<:owner:649355683598303260> Owner",
             value=guild.owner.mention,
@@ -1109,7 +1109,7 @@ class Tools(commands.Cog):
         )
         em.add_field(
             name=":clock1: Server Created",
-            value=f"{humantime.fulltime(guild.created_at)})",
+            value=f"{humantime.fulltime(guild.created_at)}",
             inline=True,
         )
         em.add_field(

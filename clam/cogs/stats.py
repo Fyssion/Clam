@@ -157,7 +157,7 @@ class Stats(commands.Cog):
             )
 
             em.description = f"There have been **{plural(count[0], pretty=True):command} used**."
-            em.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
+            em.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url)
             em.set_footer(text=f"Tracking command usage since")
 
             query = """SELECT name,
@@ -470,7 +470,7 @@ class Stats(commands.Cog):
         )
 
         em.description = f"There have been **{plural(count[0], pretty=True):command} used**."
-        em.set_author(name=guild.name, icon_url=guild.icon_url)
+        em.set_author(name=guild.name, icon_url=guild.icon.url)
         em.set_footer(text=f"Tracking command usage since")
 
         query = """SELECT name,
@@ -1163,7 +1163,7 @@ class Stats(commands.Cog):
             color=discord.Color.green(),
             timestamp=guild.created_at,
         )
-        em.set_thumbnail(url=guild.icon_url)
+        em.set_thumbnail(url=guild.icon.url)
         em.set_footer(text="Created")
 
         em.add_field(name="Name", value=guild.name)
@@ -1178,7 +1178,7 @@ class Stats(commands.Cog):
         em = discord.Embed(
             title="Left Guild", color=discord.Color.red(), timestamp=guild.created_at
         )
-        em.set_thumbnail(url=guild.icon_url)
+        em.set_thumbnail(url=guild.icon.url)
         em.set_footer(text="Created")
 
         em.add_field(name="Name", value=guild.name)
