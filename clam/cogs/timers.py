@@ -63,7 +63,7 @@ class TimerPageSource(menus.ListPageSource):
         for i, (_id, expires, message) in enumerate(entries, start=offset):
             shorten = textwrap.shorten(message, width=512)
             em.add_field(
-                name=f"`ID: {_id}` In {humantime.timedelta(expires)}",
+                name=f"`ID: {_id}` {humantime.timedelta(expires)}",
                 value=shorten or "No message",
                 inline=False,
             )
