@@ -433,7 +433,7 @@ class Log(commands.Cog):
         if moderation:
             settings = await moderation.get_guild_settings(guild_id)
             if settings:
-                now = datetime.datetime.utcnow()
+                now = discord.utils.utcnow()
 
                 is_new = member.created_at > (now - datetime.timedelta(days=7))
                 checker = moderation._spam_check[guild_id]
