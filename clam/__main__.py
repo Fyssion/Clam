@@ -125,7 +125,7 @@ def init(cogs, quiet):
     if not cogs:
         cogs = initial_extensions
     else:
-        cogs = [f"cogs.{e}" if not e.startswith("cogs.") else e for e in cogs]
+        cogs = [f"clam.cogs.{e}" if not e.startswith("cogs.") else e for e in cogs]
 
     for ext in cogs:
         try:
