@@ -123,7 +123,7 @@ def init(cogs, quiet):
         return
 
     if not cogs:
-        cogs = initial_extensions
+        cogs = [f"clam.cogs.{e}" for e in initial_extensions]
     else:
         cogs = [f"clam.cogs.{e}" if not e.startswith("cogs.") else e for e in cogs]
 
@@ -158,8 +158,8 @@ def init(cogs, quiet):
 def migrate(ctx, cog, quiet):
     """Update the migration file with the newest schema."""
 
-    if not cog.startswith("cogs."):
-        cog = f"cogs.{cog}"
+    if not cog.startswith("clam.cogs."):
+        cog = f"clam.cogs.{cog}"
 
     try:
         importlib.import_module(cog)
@@ -201,8 +201,8 @@ async def apply_migration(cog, quiet, index, *, downgrade=False):
         )
         return
 
-    if not cog.startswith("cogs."):
-        cog = f"cogs.{cog}"
+    if not cog.startswith("clam.cogs."):
+        cog = f"clam.cogs.{cog}"
 
     try:
         importlib.import_module(cog)
@@ -287,8 +287,8 @@ def drop(cog, quiet):
         )
         return
 
-    if not cog.startswith("cogs."):
-        cog = f"cogs.{cog}"
+    if not cog.startswith("clam.cogs."):
+        cog = f"clam.cogs.{cog}"
 
     try:
         importlib.import_module(cog)
