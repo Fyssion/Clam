@@ -1081,7 +1081,7 @@ class Tools(commands.Cog):
     async def serverinfo_command(self, ctx):
         await ctx.trigger_typing()
         guild = ctx.guild
-        if guild.unavailable == True:
+        if guild.unavailable:
             return await ctx.send(
                 "This guild is unavailable.\nWhat does this mean? I don't know either.\nMaybe Discord is having an outage..."
             )
@@ -1089,7 +1089,7 @@ class Tools(commands.Cog):
         desc = ""
         if guild.description:
             desc += f"\n{guild.description}\n"
-        if guild.large == True:
+        if guild.large:
             desc += "\n:information_source: This guild is considered large (over 250 members)."
 
         icon = guild.icon
@@ -1098,10 +1098,9 @@ class Tools(commands.Cog):
 
         em = discord.Embed(description=desc, color=color)
 
-        em.set_thumbnail(url=guild.icon.url)
-        if guild.banner:
-            em.set_image(url=guild.banner.url)
-        em.set_author(name=f"{guild.name} ({guild.id})", icon_url=guild.icon.url)
+        em.set_thumbnail(url=guild.icon.url if guild.icon else discord.Embed.Empty)
+        em.set_image(url=guild.banner.url if guild.banner else discord.Embed.Empty)
+        em.set_author(name=f"{guild.name} ({guild.id})", icon_url=guild.icon.url if guild.icon else discord.Embed.Empty)
         em.add_field(
             name="<:owner:649355683598303260> Owner",
             value=guild.owner.mention,
@@ -1193,7 +1192,7 @@ class Tools(commands.Cog):
             return await ctx.send(embed=em)
 
         em.description = f"ID: `{user_id}`\nUsername: `{user}`\nBot: `{user.bot}`\nCreated: `{created}`"
-        em.set_thumbnail(url=user.avatar.url)
+        em.set_thumbnail(url=user.avatar.url if user.avatar else discord.Embed.Empty)
         await ctx.send(embed=em)
 
     @commands.command(
