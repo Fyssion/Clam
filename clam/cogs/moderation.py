@@ -1707,7 +1707,7 @@ class Moderation(commands.Cog):
         """
 
         strategy = self._basic_cleanup_strategy
-        if ctx.me.permissions_in(ctx.channel).manage_messages:
+        if ctx.channel.permissions_for(ctx.me).manage_messages:
             strategy = self._complex_cleanup_strategy
 
         spammers = await strategy(ctx, search)
