@@ -309,8 +309,8 @@ class Stats(commands.Cog):
             await ctx.send(embed=em)
 
     @stats.command(name="global", description="Global command stats")
-    @commands.is_owner()
-    async def _global(self, ctx):
+    @commands.cooldown(1, 30.0, type=commands.BucketType.member)
+    async def stats_global(self, ctx):
         query = "SELECT COUNT(*), MIN(invoked_at) FROM commands;"
         count = await ctx.db.fetchrow(query)
 
@@ -376,7 +376,7 @@ class Stats(commands.Cog):
         await ctx.send(embed=em)
 
     @stats.command(description="Get global stats for today")
-    @commands.is_owner()
+    @commands.cooldown(1, 30.0, type=commands.BucketType.member)
     async def today(self, ctx):
         query = """SELECT COUNT(*)
                    FROM commands
