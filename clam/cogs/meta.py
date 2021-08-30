@@ -1,13 +1,13 @@
-import asyncio
 import functools
 import json
 import inspect
-import math
+import itertools
 import os.path
 import sys
 import traceback
 from inspect import isawaitable
 from string import Formatter
+from typing import Any, Dict, List, Optional
 
 import discord
 from discord.ext import commands, menus
@@ -42,37 +42,159 @@ def strfdelta(tdelta, fmt):
 
 
 class HelpPages(menus.ListPageSource):
-    def __init__(self, data, embed, more_info):
+    def __init__(self, entries, embed):
         self.embed_base = embed
         self.original_description = embed.description
-        self.more_info = more_info
-        super().__init__(data, per_page=10)
+        super().__init__(entries, per_page=10)
 
     async def format_page(self, menu, entries):
-        offset = menu.current_page * self.per_page
         em = self.embed_base
         em.description = self.original_description
+
+        offset = menu.current_page * self.per_page
         max_pages = self.get_max_pages()
+
         page_count = f"Page {menu.current_page + 1}/{max_pages}"
-        em.set_author(name=page_count)
-        em.set_footer(
-            text=f"{page_count} \N{BULLET} Note that you can only view commands that you can use"
-        )
+        em.set_author(name=f"{page_count} ({plural(len(entries)):command})")
+
+        em.set_footer(text="Note that you can only view commands that you can use")
 
         commands = [c for i, c in enumerate(entries, start=offset)]
         formatted = "\n".join(commands)
 
         if max_pages > 1 and menu.current_page + 1 != max_pages:
             more_pages = "\n*More commands on the next page -->*"
-
         else:
             more_pages = ""
 
         if formatted:
-            em.description += f"\n{formatted}{more_pages}\n\n{self.more_info}"
-        else:
-            em.description += f"\n\n{self.more_info}"
+            em.description += f"\n{formatted}{more_pages}"
+
         return em
+
+
+# Sourced from Rapptz/RoboDanny: https://github.com/Rapptz/RoboDanny/blob/4fd555bb557ef360de0c3966bfb3e2115eed28aa/cogs/meta.py#L48-L91
+class HelpSelectMenu(discord.ui.Select):
+    def __init__(self, commands: Dict[commands.Cog, List[commands.Command]], bot: commands.AutoShardedBot):
+        super().__init__(
+            placeholder='Select a category...',
+            min_values=1,
+            max_values=1,
+            row=0,
+        )
+        self.commands = commands
+        self.bot = bot
+        self.__fill_options()
+
+    def __fill_options(self) -> None:
+        self.add_option(
+            label='Index',
+            emoji='\N{WAVING HAND SIGN}',
+            value='__index',
+            description='The help page showing how to use the bot.',
+        )
+        for cog, commands in self.commands.items():
+            if not commands:
+                continue
+            description = cog.description.split('\n', 1)[0] or None
+            emoji = getattr(cog, 'emoji', None)
+            self.add_option(label=cog.qualified_name, value=cog.qualified_name, description=description, emoji=emoji)
+
+    async def callback(self, interaction: discord.Interaction):
+        assert self.view is not None
+        value = self.values[0]
+        if value == '__index':
+            await self.view.rebind(FrontPageSource(), interaction)
+        else:
+            cog = self.bot.get_cog(value)
+            if cog is None:
+                await interaction.response.send_message('Somehow this category does not exist?', ephemeral=True)
+                return
+
+            commands = self.commands[cog]
+            if not commands:
+                await interaction.response.send_message('This category has no commands for you.', ephemeral=True)
+                return
+
+            source = await self.view.help.generate_cog_help(cog)
+            await self.view.rebind(source, interaction)
+
+
+# Modified from Rapptz/RoboDanny: https://github.com/Rapptz/RoboDanny/blob/4fd555bb557ef360de0c3966bfb3e2115eed28aa/cogs/meta.py#L94-L157
+class FrontPageSource(menus.PageSource):
+    def is_paginating(self) -> bool:
+        # This forces the buttons to appear even in the front page
+        return True
+
+    def get_max_pages(self) -> Optional[int]:
+        # There's only one actual page in the front page
+        # However we need at least 2 to show all the buttons
+        return 2
+
+    async def get_page(self, page_number: int) -> Any:
+        # The front page is a dummy
+        self.index = page_number
+        return self
+
+    def format_page(self, menu, page):
+        embed = menu.help.get_base_embed()
+        embed.set_footer(text=embed.Empty)
+        embed.description = inspect.cleandoc(
+            f"""
+            Hello! Welcome to Clam's help page.
+            Use `{menu.ctx.clean_prefix}help command` for more info on a command.
+            Use `{menu.ctx.clean_prefix}help category` for more info on a category.
+            Use the dropdown menu below to select a category.
+        """
+        )
+
+        if self.index == 0:
+            embed.add_field(
+                name='What is Clam?',
+                value=(
+                    f"Clam is Fyssion#5985's personal Discord bot. It was created using discord.py v{discord.__version__}.\n\n"
+                    'Clam has features such as moderation, tags, games, starboard, and more. You can get more '
+                    'information on the commands by using the dropdown below.\n\n'
+                    "Clam is also open source. You can see the code on [GitHub](https://github.com/Fyssion/Clam)!"
+                ),
+                inline=False,
+            )
+        elif self.index == 1:
+            embed.add_field(
+                name='How do I use this bot?',
+                value=(
+                    "Reading the bot signature is pretty simple.\n\n"
+                    "`<argument>` This means the argument is __**required**__.\n"
+                    "`[argument]` This means the argument is __**optional**__.\n"
+                    "`[argument...]` This means you can have multiple arguments.\n\n"
+                    "Now that you know the basics, it should be noted that...\n"
+                    "__**You do not type in the brackets!**__"
+                )
+            )
+
+        return embed
+
+
+# Sourced from Rapptz/RoboDanny: https://github.com/Rapptz/RoboDanny/blob/4fd555bb557ef360de0c3966bfb3e2115eed28aa/cogs/meta.py#L160-L177
+class HelpMenu(MenuPages):
+    def __init__(self, source: menus.PageSource, ctx: commands.Context, help=None):
+        super().__init__(source, ctx=ctx, compact=True)
+        self.help = help
+
+    def add_categories(self, commands: Dict[commands.Cog, List[commands.Command]]) -> None:
+        self.clear_items()
+        self.add_item(HelpSelectMenu(commands, self.ctx.bot))
+        self.fill_items()
+
+    async def rebind(self, source: menus.PageSource, interaction: discord.Interaction) -> None:
+        self.source = source
+        self.current_page = 0
+
+        await self.source._prepare_once()
+        page = await self.source.get_page(0)
+        kwargs = await self._get_kwargs_from_page(page)
+        self._update_labels(0)
+        await interaction.response.edit_message(**kwargs, view=self)
 
 
 class ClamHelpCommand(commands.HelpCommand):
@@ -111,100 +233,31 @@ class ClamHelpCommand(commands.HelpCommand):
             title=f"Help for {bot.user.name}",
             color=colors.PRIMARY,
         )
-        em.set_thumbnail(url=ctx.bot.user.avatar.url)
+        em.set_thumbnail(url=ctx.bot.user.display_avatar.url)
         em.set_footer(text="Note that you can only view commands that you can use")
         return em
 
+    # Sourced from Rapptz/RoboDanny: https://github.com/Rapptz/RoboDanny/blob/4fd555bb557ef360de0c3966bfb3e2115eed28aa/cogs/meta.py#L211-L231
     async def send_bot_help(self, mapping):
-        ctx = self.context
-        bot = ctx.bot
+        bot = self.context.bot
 
-        em = self.get_base_embed()
-        em.description = (
-            f"{bot.description}\n\n"
-            f"**Default Prefix: `{bot.guild_prefix(ctx.guild)}`** "
-            f"Example: `{bot.guild_prefix(ctx.guild)}help`\n"
-            f"Use `{bot.guild_prefix(ctx.guild)}prefixes` to view all prefixes for this server.\n"
-            f"{self.i_category(ctx)}\n"
-        )
+        def key(command) -> str:
+            cog = command.cog
+            return cog.qualified_name if cog else '\U0010ffff'
 
-        if bot.debug:
-            em.description = (
-                f"```css\n[DEBUG mode {bot.debug} is active]\n```\n" + em.description
-            )
+        entries: List[commands.Command] = await self.filter_commands(bot.commands, sort=True, key=key)
 
-        settings = bot.get_cog("Settings")
+        all_commands: Dict[commands.Cog, List[commands.Command]] = {}
+        for name, children in itertools.groupby(entries, key=key):
+            if name == '\U0010ffff':
+                continue
 
-        async def blocked(name):
-            if settings and ctx.guild:
-                perms = await settings.get_cog_permissions(ctx.guild.id)
+            cog = bot.get_cog(name)
+            all_commands[cog] = sorted(children, key=lambda c: c.qualified_name)
 
-                return perms.is_cog_blocked(name, ctx.channel.id)
-
-            else:
-                return False
-
-        def private(cog):
-            if hasattr(cog, "private"):
-                if ctx.guild and ctx.guild.id in (
-                    454469821376102410,
-                    621123303343652867,
-                ):
-                    return False
-
-                elif (
-                    hasattr(cog, "private_user_overrides")
-                    and ctx.author.id in cog.private_user_overrides
-                ):
-                    return False
-
-                elif (
-                    ctx.guild
-                    and hasattr(cog, "private_guild_overrides")
-                    and ctx.guild.id in cog.private_guild_overrides
-                ):
-                    return False
-
-                return True
-
-            return False
-
-        cog_names = []
-        for cog_name in bot.ordered_cogs:
-            cog = bot.get_cog(cog_name)
-            if (
-                hasattr(cog, "hidden")
-                or private(cog)
-                or cog.qualified_name == "Jishaku"
-                or await blocked(cog.qualified_name)
-            ):
-                if ctx.author.id != bot.owner_id:
-                    continue
-
-            if hasattr(cog, "emoji"):
-                cog_names.append(f"{cog.emoji} {cog.qualified_name}")
-            else:
-                cog_names.append(f":grey_question: {cog.qualified_name}")
-
-        if len(cog_names) >= 8:
-            middle = math.ceil(len(cog_names) / 2)
-            first_half = cog_names[:middle]
-            second_half = cog_names[middle:]
-
-            em.add_field(name="Categories", value="\n".join(first_half), inline=True)
-            em.add_field(name="\u200b", value="\n".join(second_half), inline=True)
-
-        else:
-            em.add_field(name="Categories", value="\n".join(cog_names), inline=True)
-
-        dev = bot.get_user(224513210471022592)
-        em.add_field(
-            name="More Info",
-            value=(f"Created by {dev}\nusing discord.py v{discord.__version__}"),
-            inline=True,
-        )
-
-        await ctx.send(embed=em)
+        menu = HelpMenu(FrontPageSource(), ctx=self.context, help=self)
+        menu.add_categories(all_commands)
+        await menu.start()
 
     def format_commands(self, commands):
         formatted_commands = []
@@ -226,7 +279,7 @@ class ClamHelpCommand(commands.HelpCommand):
         formatted_aliases = []
 
         for alias in command.aliases:
-            formatted_alias = f"`{self.context.guild_prefix}"
+            formatted_alias = f"`{self.context.clean_prefix}"
             formatted_alias += (
                 f"{command.full_parent_name} " if command.parent is not None else ""
             )
@@ -255,7 +308,7 @@ class ClamHelpCommand(commands.HelpCommand):
 
         return formatted_command
 
-    async def send_cog_help(self, cog):
+    async def generate_cog_help(self, cog):
         ctx = self.context
 
         filtered = await self.filter_commands(cog.get_commands(), sort=True)
@@ -276,13 +329,12 @@ class ClamHelpCommand(commands.HelpCommand):
         if cog.description:
             em.description += f"\n{cog.description.format(prefix=ctx.prefix)}\n"
 
-        more_info = f"{self.arg_help}\n{self.i_cmd(ctx)}"
+        return HelpPages(commands, em)
 
-        pages = MenuPages(
-            source=HelpPages(commands, em, more_info),
-            clear_reactions_after=True,
-        )
-        await pages.start(ctx)
+    async def send_cog_help(self, cog):
+        source = await self.generate_cog_help(cog)
+        pages = MenuPages(source, ctx=self.context)
+        await pages.start()
 
     async def send_group_help(self, group):
         ctx = self.context
@@ -302,13 +354,8 @@ class ClamHelpCommand(commands.HelpCommand):
         if filtered:
             em.description += f"\n\n**Subcommands ({len(filtered)} total):**"
 
-        more_info = f"{self.arg_help}\n{self.i_cmd(ctx)}"
-
-        pages = MenuPages(
-            source=HelpPages(commands, em, more_info),
-            clear_reactions_after=True,
-        )
-        await pages.start(ctx)
+        pages = MenuPages(HelpPages(commands, em), ctx=ctx)
+        await pages.start()
 
     async def send_command_help(self, command):
         ctx = self.context
@@ -415,11 +462,11 @@ class CommandConverter(commands.Converter):
 
 
 class Meta(commands.Cog):
-    """Everything to do with the bot itself."""
+    """Commands to do with the bot itself."""
 
     def __init__(self, bot):
         self.bot = bot
-        self.emoji = ":robot:"
+        self.emoji = "\N{ROBOT FACE}"
         self.log = self.bot.log
 
         with open("prefixes.json", "r") as f:
@@ -485,7 +532,7 @@ class Meta(commands.Cog):
         )
 
         em.description = description
-        em.set_footer(icon_url=self.bot.user.avatar.url)
+        em.set_footer(icon_url=self.bot.user.display_avatar.url)
 
         await ctx.send(embed=em)
 
@@ -509,36 +556,6 @@ class Meta(commands.Cog):
         em.description = extra_info
 
         await ctx.console.send(embed=em)
-
-    async def info_reaction(self, message, ctx, error):
-        info_emoji = "\N{INFORMATION SOURCE}"
-        await message.add_reaction(info_emoji)
-
-        def check(pd):
-            return (
-                pd.message_id == message.id
-                and pd.user_id == ctx.author.id
-                and str(pd.emoji) == info_emoji
-            )
-
-        try:
-            await self.bot.wait_for(
-                "raw_reaction_add", check=check, timeout=180  # 3 min
-            )
-        except asyncio.TimeoutError:
-            try:
-                await message.remove_reaction(info_emoji, self.bot.user)
-            except discord.NotFound:
-                pass
-            return
-
-        try:
-            await message.clear_reaction(info_emoji)
-
-        except discord.Forbidden:
-            await message.remove_reaction(info_emoji, self.bot.user)
-
-        await ctx.send_help(ctx.command)
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
@@ -614,9 +631,6 @@ class Meta(commands.Cog):
 
                 await self.send_unexpected_error(ctx, error)
                 return
-
-        if message:
-            await self.bot.loop.create_task(self.info_reaction(message, ctx, error))
 
     def get_guild_prefixes(self, guild):
         if not guild:

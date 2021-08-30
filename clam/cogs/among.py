@@ -51,7 +51,7 @@ class AmongGame:
 
 
 class AmongUs(commands.Cog, name="Among Us"):
-    """Commands that make Among Us easier to play"""
+    """Commands for Among Us."""
 
     def __init__(self, bot):
         self.bot = bot

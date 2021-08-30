@@ -61,7 +61,7 @@ class Stats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.log = bot.log
-        self.emoji = ":bar_chart:"
+        self.emoji = "\N{BAR CHART}"
         self._batch_lock = asyncio.Lock(loop=bot.loop)
         self._data_batch = []
         self.bulk_insert_loop.add_exception_type(asyncpg.PostgresConnectionError)
@@ -263,8 +263,8 @@ class Stats(commands.Cog):
                 timestamp=count[1] or datetime.datetime.utcnow(),
             )
 
-            em.set_author(name=f"{member} - {member.id}", icon_url=member.avatar.url)
-            em.set_thumbnail(url=member.avatar.url)
+            em.set_author(name=f"{member} - {member.id}", icon_url=member.display_avatar.url)
+            em.set_thumbnail(url=member.display_avatar.url)
             em.set_footer(text="First command used")
 
             query = """SELECT name, COUNT(*) AS "uses"
@@ -584,7 +584,7 @@ class Stats(commands.Cog):
             color=colors.PRIMARY,
             timestamp=count[1] or datetime.datetime.utcnow(),
         )
-        em.set_author(name=str(user), icon_url=user.avatar.url)
+        em.set_author(name=str(user), icon_url=user.display_avatar.url)
 
         em.description = f"{user} has used **{plural(count[0], pretty=True):command}**."
         em.set_footer(text="Tracking command usage since")
@@ -844,7 +844,7 @@ class Stats(commands.Cog):
             text=f"Made with \N{HEAVY BLACK HEART} using discord.py v{version}"
         )
 
-        em.set_thumbnail(url=self.bot.user.avatar.url)
+        em.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         dev = self.bot.get_user(224513210471022592)
         em.add_field(name=":gear: Creator", value=str(dev))
@@ -1191,8 +1191,8 @@ class Stats(commands.Cog):
     # Socket Stats
 
     @commands.Cog.listener()
-    async def on_socket_response(self, msg):
-        self.bot.socket_stats[msg.get("t") or "None"] += 1
+    async def on_socket_event_type(self, event_type):
+        self.bot.socket_stats[event_type] += 1
 
     @flags.add_flag("--sort", "-s", default="count")
     @flags.add_flag("--json", action="store_true")
@@ -1249,7 +1249,7 @@ class Stats(commands.Cog):
 
         description = f"Total socket events observed: {total} ({cpm:.2f}/minute)"
         pages = ctx.table_pages(data, title="Websocket Stats", description=description)
-        await pages.start(ctx)
+        await pages.start()
 
     # https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/stats.py#L642-L740
     @commands.command(hidden=True)

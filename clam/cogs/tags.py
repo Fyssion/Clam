@@ -470,20 +470,20 @@ class TagPageSource(menus.ListPageSource):
 
 
 class Tags(commands.Cog):
-    """Tag stuff and retrieve it later.
+    """Commands for tagging stuff and retrieving it later.
 
     Tags are essentially bits of text stored with a name.
     You can use `{prefix}tag <tag name>` to send the stored text
     to the current channel.
 
-    A varient to tags are FAQ tags. FAQ tags are similar to
+    A variant to tags are FAQ tags. FAQ tags are similar to
     regular tags, except FAQ tags are embeds, and they can
     only be created by admins and members with a role called "faq".
     """
 
     def __init__(self, bot):
         self.bot = bot
-        self.emoji = ":bookmark:"
+        self.emoji = "\N{BOOKMARK}"
         self.display_over_commands = True
         self.log = self.bot.log
 
@@ -850,7 +850,7 @@ class Tags(commands.Cog):
         member = guild.get_member(owner_id)
         if not member:
             return {"name": owner_id}
-        return {"name": str(member), "icon_url": member.avatar.url}
+        return {"name": str(member), "icon_url": member.display_avatar.url}
 
     @tag.command(
         name="info",
@@ -926,8 +926,8 @@ class Tags(commands.Cog):
         if not results:
             return await ctx.send("This server has no tags.")
 
-        pages = MenuPages(source=TagPageSource(results), clear_reactions_after=True,)
-        await pages.start(ctx)
+        pages = MenuPages(TagPageSource(results), ctx=ctx)
+        await pages.start()
 
     @commands.command(
         description="[Alias for `tag all`] List all tags for this server or for a member",
@@ -986,8 +986,8 @@ class Tags(commands.Cog):
         if not results:
             return await ctx.send(f"{member} has no tags.")
 
-        pages = MenuPages(source=TagPageSource(results, title=f"Tags for {member}"), clear_reactions_after=True,)
-        await pages.start(ctx)
+        pages = MenuPages(TagPageSource(results, title=f"Tags for {member}"), ctx=ctx)
+        await pages.start()
 
     @tag.command(
         name="search", description="Search for a tag", usage="<tag>", aliases=["find"],
@@ -1036,7 +1036,7 @@ class Tags(commands.Cog):
 
     @commands.group(invoke_without_command=True, usage="[FAQ tag]")
     async def faq(self, ctx, *, name=None):
-        """Varient of tags for server admins.
+        """Variant of tags for server admins.
 
         FAQ tags are similar to regular tags, except FAQ tags
         are embeds, and they can only be created by admins

@@ -22,7 +22,7 @@ from .utils import colors, db, humantime, music_player, ytdl
 from .utils.emojis import GREEN_TICK, LOADING, RED_TICK
 from .utils.flags import NoUsageFlagCommand
 from .utils.formats import plural
-from .utils.menus import UpdatingMessage
+from .utils.menus import MenuPages, UpdatingMessage
 
 
 log = logging.getLogger("clam.music")
@@ -296,7 +296,7 @@ def is_listening():
 
 
 class Music(commands.Cog):
-    """Play music in a voice channel through the bot"""
+    """Play music in a voice channel through the bot."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -1097,11 +1097,8 @@ class Music(commands.Cog):
     @commands.guild_only()
     async def queue(self, ctx):
         """View the player's queue"""
-        pages = menus.MenuPages(
-            source=QueuePages(ctx.player),
-            clear_reactions_after=True,
-        )
-        return await pages.start(ctx)
+        pages = MenuPages(QueuePages(ctx.player), ctx=ctx)
+        return await pages.start()
 
     @queue.command(
         name="save", description="Save the queue to a bin", aliases=["upload"]
@@ -1881,7 +1878,7 @@ class Music(commands.Cog):
             )
 
         pages = ctx.pages(songs, per_page=10, title="Music Database")
-        await pages.start(ctx)
+        await pages.start()
 
     @musicdb.command(name="search", aliases=["find"])
     @commands.is_owner()
@@ -1907,7 +1904,7 @@ class Music(commands.Cog):
             )
 
         pages = ctx.pages(songs, per_page=10, title=f"Results for '{song}'")
-        await pages.start(ctx)
+        await pages.start()
 
     @musicdb.command(name="info", aliases=["show"])
     @commands.is_owner()

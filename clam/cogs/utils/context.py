@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 from .emojis import GREEN_TICK, RED_TICK
-from .menus import BasicPages, Confirm, MenuPages, TablePages
+from .menus import BasicPages, ConfirmView, MenuPages, TablePages
 from .utils import reply_to
 
 
@@ -37,11 +37,20 @@ class Context(commands.Context):
 
         return f"{tick} {label}" if label else tick
 
-    async def confirm(self, message):
-        return await Confirm(message).prompt(self)
+    async def confirm(self, message, *, timeout=60.0, delete_after=True, author_id=None):
+        author_id = author_id or self.author.id
+        view = ConfirmView(
+            timeout=timeout,
+            delete_after=delete_after,
+            ctx=self,
+            author_id=author_id,
+        )
+        view.message = await self.send(message, view=view)
+        await view.wait()
+        return view.value
 
     def pages(self, entries, per_page=10, **paginator_kwargs):
-        return BasicPages(entries, per_page, embed=False, **paginator_kwargs)
+        return BasicPages(entries, per_page, embed=False, **paginator_kwargs, ctx=self)
 
     def embed_pages(
         self, entries, embed, per_page=10,
@@ -49,7 +58,7 @@ class Context(commands.Context):
         if embed is None:
             raise ValueError("Embed argument must not be None.")
 
-        return BasicPages(entries, per_page, embed)
+        return BasicPages(entries, per_page, embed, ctx=self)
 
     def table_pages(self, *args, **kwargs):
-        return MenuPages(TablePages(*args, **kwargs), clear_reactions_after=True)
+        return MenuPages(TablePages(*args, **kwargs), ctx=self)

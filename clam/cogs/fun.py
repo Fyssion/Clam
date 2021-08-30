@@ -95,7 +95,7 @@ class Fun(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.emoji = ":tada:"
+        self.emoji = "\N{PARTY POPPER}"
         self.log = self.bot.log
 
         if not hasattr(bot, "cleverbot_convos"):
@@ -268,11 +268,8 @@ class Fun(commands.Cog):
 
         descriptions = self.format_emojis(matches)
 
-        menu = MenuPages(
-            source=EmojiResultSource(descriptions, matches, f"Results for '{query}'"),
-            clear_reactions_after=True,
-        )
-        await menu.start(ctx)
+        menu = MenuPages(EmojiResultSource(descriptions, matches, f"Results for '{query}'"), ctx=ctx)
+        await menu.start()
 
     @commands.command()
     @commands.is_owner()
@@ -291,11 +288,8 @@ class Fun(commands.Cog):
 
         descriptions = self.format_emojis(emojis)
 
-        menu = MenuPages(
-            source=EmojiResultSource(descriptions, emojis, title),
-            clear_reactions_after=True,
-        )
-        await menu.start(ctx)
+        menu = MenuPages(EmojiResultSource(descriptions, emojis, title), ctx=ctx)
+        await menu.start()
 
     @commands.command(
         description="Search for an emoji I have access to and react with it",

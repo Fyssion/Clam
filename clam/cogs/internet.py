@@ -177,7 +177,7 @@ class Internet(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.emoji = ":globe_with_meridians:"
+        self.emoji = "\N{GLOBE WITH MERIDIANS}"
 
         self.log = bot.log
 
@@ -243,8 +243,8 @@ class Internet(commands.Cog):
                 "Query could not be resolved. Try wording it differently?"
             )
 
-        menu = MenuPages(WolframResultSource(result, query), clear_reactions_after=True)
-        await menu.start(ctx)
+        menu = MenuPages(WolframResultSource(result, query), ctx=ctx)
+        await menu.start()
 
     # modified google command from Rapptz
     def parse_google_card(self, node):
@@ -736,8 +736,8 @@ class Internet(commands.Cog):
         except async_cse.NoResults:
             return await ctx.send(f"No results for `{query}`. Sorry.")
 
-        pages = MenuPages(GoogleResultPages(results, query), clear_reactions_after=True)
-        await pages.start(ctx)
+        pages = MenuPages(GoogleResultPages(results, query), ctx=ctx)
+        await pages.start()
 
     @commands.command(aliases=["question"])
     @commands.cooldown(5, 30, commands.BucketType.user)
@@ -755,10 +755,8 @@ class Internet(commands.Cog):
         if result["@success"] != "true":
             return await ctx.invoke(self.g, query=question)
 
-        menu = MenuPages(
-            WolframResultSource(result, question), clear_reactions_after=True
-        )
-        await menu.start(ctx)
+        menu = MenuPages(WolframResultSource(result, question), ctx=ctx)
+        await menu.start()
 
     @commands.command()
     @commands.cooldown(2, 10, commands.BucketType.user)
@@ -774,8 +772,8 @@ class Internet(commands.Cog):
             if not data:
                 return await ctx.send("No results found, sorry.")
 
-        menu = MenuPages(UrbanDictionarySource(data), clear_reactions_after=True)
-        await menu.start(ctx)
+        menu = MenuPages(UrbanDictionarySource(data), ctx=ctx)
+        await menu.start()
 
     @commands.group(
         description="Fetch a PyPI package.",
@@ -1301,7 +1299,7 @@ class Internet(commands.Cog):
         )
         em.set_image(url=comic.image_url)
         em.set_footer(
-            text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar.url
+            text=f"Comic published {comic.date_str}", icon_url=self.bot.user.display_avatar.url
         )
         await ctx.send(embed=em)
 
@@ -1318,7 +1316,7 @@ class Internet(commands.Cog):
         )
         em.set_image(url=comic.image_url)
         em.set_footer(
-            text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar.url
+            text=f"Comic published {comic.date_str}", icon_url=self.bot.user.display_avatar.url
         )
         await ctx.send(embed=em)
 
@@ -1333,7 +1331,7 @@ class Internet(commands.Cog):
         )
         em.set_image(url=comic.image_url)
         em.set_footer(
-            text=f"Comic published {comic.date_str}", icon_url=self.bot.user.avatar.url
+            text=f"Comic published {comic.date_str}", icon_url=self.bot.user.display_avatar.url
         )
         await ctx.send(embed=em)
 
@@ -1654,8 +1652,8 @@ class Internet(commands.Cog):
         if len(matches) == 0:
             return await ctx.send("Could not find anything. Sorry.")
 
-        pages = MenuPages(source=DocsSource(matches, obj), clear_reactions_after=True)
-        await pages.start(ctx)
+        pages = MenuPages(DocsSource(matches, obj), ctx=ctx)
+        await pages.start()
 
     @commands.group(
         aliases=["rtfm", "rtfd"],

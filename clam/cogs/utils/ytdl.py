@@ -25,7 +25,7 @@ class YTDLError(commands.CommandError):
     pass
 
 
-class SongSelector(menus.Menu):
+class SongSelector(discord.ui.View):
     class _Source(menus.ListPageSource):
         def __init__(self, songs):
             super().__init__(songs, per_page=1)
@@ -52,51 +52,30 @@ class SongSelector(menus.Menu):
 
             return em
 
-    def __init__(self, songs, **kwargs):
+    def __init__(self, ctx, songs, **kwargs):
+        self.ctx = ctx
         self.songs = songs
-        kwargs.setdefault("delete_message_after", True)
         kwargs.setdefault("timeout", 180)  # 3m
         self._source = self._Source(songs)
         self.current_page = 0
         self.selected_page = None
         super().__init__(**kwargs)
 
-    async def prompt(self, ctx):
-        await self.start(ctx, wait=True)
-        return (
-            self.songs[self.selected_page] if self.selected_page is not None else None
-        )
-
     @property
     def source(self):
         """:class:`PageSource`: The source where the data comes from."""
         return self._source
 
-    async def change_source(self, source):
-        """|coro|
-        Changes the :class:`PageSource` to a different one at runtime.
-        Once the change has been set, the menu is moved to the first
-        page of the new source if it was started. This effectively
-        changes the :attr:`current_page` to 0.
-        Raises
-        --------
-        TypeError
-            A :class:`PageSource` was not passed.
-        """
+    async def on_timeout(self) -> None:
+        if self.message:
+            await self.message.delete()
 
-        if not isinstance(source, menus.PageSource):
-            raise TypeError(
-                "Expected {0!r} not {1.__class__!r}.".format(menus.PageSource, source)
-            )
-
-        self._source = source
-        self.current_page = 0
-        if self.message is not None:
-            await source._prepare_once()
-            await self.show_page(0)
-
-    def should_add_reactions(self):
-        return self._source.is_paginating()
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user and interaction.user == self.ctx.author:
+            return True
+        else:
+            await interaction.response.send_message("This select dialog is not for you.", ephemeral=True)
+            return False
 
     async def _get_kwargs_from_page(self, page):
         value = await discord.utils.maybe_coroutine(
@@ -109,67 +88,66 @@ class SongSelector(menus.Menu):
         elif isinstance(value, discord.Embed):
             return {"embed": value, "content": None}
 
-    async def show_page(self, page_number):
-        page = await self._source.get_page(page_number)
+    async def show_page(self, interaction: discord.Interaction, page_number: int) -> None:
+        page = await self.source.get_page(page_number)
         self.current_page = page_number
         kwargs = await self._get_kwargs_from_page(page)
-        await self.message.edit(**kwargs)
+        if kwargs:
+            if interaction.response.is_done():
+                if self.message:
+                    await self.message.edit(**kwargs, view=self)
+            else:
+                await interaction.response.edit_message(**kwargs, view=self)
 
-    async def send_initial_message(self, ctx, channel):
-        """|coro|
-        The default implementation of :meth:`Menu.send_initial_message`
-        for the interactive pagination session.
-        This implementation shows the first page of the source.
-        """
-        page = await self._source.get_page(0)
+    async def start(self) -> None:
+        if not self.ctx.channel.permissions_for(self.ctx.me).embed_links:
+            await self.ctx.send('Bot does not have embed links permission in this channel.')
+            return
+
+        await self.source._prepare_once()
+        page = await self.source.get_page(0)
         kwargs = await self._get_kwargs_from_page(page)
-        return await channel.send(**kwargs)
+        self.message = await self.ctx.send(**kwargs, view=self)  # type: ignore
 
-    async def start(self, ctx, *, channel=None, wait=False):
-        await self._source._prepare_once()
-        await super().start(ctx, channel=channel, wait=wait)
+        await self.wait()
 
-    async def show_checked_page(self, page_number):
+        return self.songs[self.selected_page] if self.selected_page is not None else None
+
+    async def show_checked_page(self, interaction: discord.Interaction, page_number: int) -> None:
         max_pages = self._source.get_max_pages()
         try:
             if max_pages is None:
                 # If it doesn't give maximum pages, it cannot be checked
-                await self.show_page(page_number)
+                await self.show_page(interaction, page_number)
             elif max_pages > page_number >= 0:
-                await self.show_page(page_number)
+                await self.show_page(interaction, page_number)
         except IndexError:
             # An error happened that can be handled, so ignore it.
             pass
 
-    async def show_current_page(self):
-        if self._source.paginating:
-            await self.show_page(self.current_page)
-
-    def _skip_next_and_previous(self):
-        max_pages = self._source.get_max_pages()
-        if max_pages is None:
-            return True
-        return max_pages <= 1
-
-    @menus.button(GREEN_TICK, position=menus.First(0))
-    async def select_pages(self, payload):
+    @discord.ui.button(label="Select", style=discord.ButtonStyle.green)
+    async def select_pages(self, button: discord.ui.Button, interaction: discord.Interaction):
         """select the current page"""
         self.selected_page = self.current_page
+        await interaction.response.defer()
+        await self.message.delete()
         self.stop()
 
-    @menus.button(BACK, position=menus.First(1), skip_if=_skip_next_and_previous)
-    async def go_to_previous_page(self, payload):
+    @discord.ui.button(label="Previous")
+    async def go_to_previous_page(self, button: discord.ui.Button, interaction: discord.Interaction):
         """go to the previous page"""
-        await self.show_checked_page(self.current_page - 1)
+        await self.show_checked_page(interaction, self.current_page - 1)
 
-    @menus.button(FORWARD, position=menus.Last(0), skip_if=_skip_next_and_previous)
-    async def go_to_next_page(self, payload):
+    @discord.ui.button(label="Next")
+    async def go_to_next_page(self, button: discord.ui.Button, interaction: discord.Interaction):
         """go to the next page"""
-        await self.show_checked_page(self.current_page + 1)
+        await self.show_checked_page(interaction, self.current_page + 1)
 
-    @menus.button(RED_TICK, position=menus.Last(2))
-    async def stop_pages(self, payload):
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
+    async def stop_pages(self, button: discord.ui.Button, interaction: discord.Interaction):
         """stops the pagination session."""
+        await interaction.response.defer()
+        await self.message.delete()
         self.stop()
 
 
@@ -737,8 +715,8 @@ class Song:
             await ctx.send("No results found.")
             return
 
-        pages = SongSelector(info["entries"])
-        entry = await pages.prompt(ctx)
+        pages = SongSelector(ctx=ctx, songs=info["entries"])
+        entry = await pages.start()
 
         if not entry:
             await ctx.send("Aborted.")

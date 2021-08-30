@@ -38,7 +38,7 @@ class ArchivedChannelNotFound(commands.CommandError):
 
 
 class CCS(commands.Cog):
-    """Commands for my personal server"""
+    """Commands for Fyssion's personal server."""
 
     def __init__(self, bot):
         self.bot = bot

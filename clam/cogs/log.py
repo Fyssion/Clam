@@ -76,6 +76,7 @@ class GuildLog:
 
 
 class Log(commands.Cog):
+    """Logging-related commands and utilities"""
     def __init__(self, bot):
         self.bot = bot
         self.emoji = "\N{CLIPBOARD}"
@@ -357,7 +358,7 @@ class Log(commands.Cog):
             timestamp=message.created_at,
         )
 
-        em.set_author(name=str(message.author), icon_url=message.author.avatar.url)
+        em.set_author(name=str(message.author), icon_url=message.author.display_avatar.url)
         em.set_footer(text="Message originally sent")
 
         em.add_field(name="Channel", value=message.channel.mention, inline=False)
@@ -395,7 +396,7 @@ class Log(commands.Cog):
             timestamp=before.created_at,
         )
 
-        em.set_author(name=str(before.author), icon_url=before.author.avatar.url)
+        em.set_author(name=str(before.author), icon_url=before.author.display_avatar.url)
         em.set_footer(text="Message originally sent")
 
         em.add_field(name="Channel", value=before.channel.mention, inline=False)
@@ -419,7 +420,7 @@ class Log(commands.Cog):
             return
 
         em = discord.Embed(title="Member Joined", description=member.mention, color=0x53DDA4)  # green
-        em.set_author(name=str(member), icon_url=member.avatar.url)
+        em.set_author(name=str(member), icon_url=member.display_avatar.url)
         em.add_field(name="ID", value=member.id)
         em.add_field(name="Joined At", value=humantime.date(member.joined_at))
         em.add_field(
@@ -475,7 +476,7 @@ class Log(commands.Cog):
             return  # don't log kicks/prunes
 
         em = discord.Embed(title="Member Left", description=member.mention, color=discord.Color.orange())
-        em.set_author(name=str(member), icon_url=member.avatar.url)
+        em.set_author(name=str(member), icon_url=member.display_avatar.url)
         em.add_field(name="ID", value=member.id)
         em.add_field(
             name="Account Created",

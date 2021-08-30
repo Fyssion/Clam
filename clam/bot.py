@@ -238,7 +238,7 @@ class Clam(commands.Bot):
             return
 
         em = discord.Embed(title="User Auto-Blacklisted", color=discord.Color.red())
-        em.set_thumbnail(url=user.avatar.url)
+        em.set_thumbnail(url=user.display_avatar.url)
         em.add_field(name="User", value=f"{user} (ID: {user.id})", inline=False)
         em.add_field(name="Guild", value=f"{guild_name} (ID: {guild_id})", inline=False)
         em.add_field(

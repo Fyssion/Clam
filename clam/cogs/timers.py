@@ -113,11 +113,11 @@ class Timer:
 
 
 class Timers(commands.Cog):
-    """Timers helper cog"""
+    """Timers and reminders."""
 
     def __init__(self, bot):
         self.bot = bot
-        self.emoji = ":alarm_clock:"
+        self.emoji = "\N{ALARM CLOCK}"
 
         self._have_data = asyncio.Event(loop=bot.loop)
         self._current_timer = None
@@ -313,8 +313,8 @@ class Timers(commands.Cog):
         if len(records) == 0:
             return await ctx.send("No currently running reminders.")
 
-        pages = MenuPages(source=TimerPageSource(records), clear_reactions_after=True,)
-        await pages.start(ctx)
+        pages = MenuPages(TimerPageSource(records), ctx=ctx)
+        await pages.start()
 
     @remind.command(name="here", ignore_extra=False)
     async def remind_here(self, ctx):
@@ -333,8 +333,8 @@ class Timers(commands.Cog):
         if len(records) == 0:
             return await ctx.send("No currently running reminders in this channel.")
 
-        pages = MenuPages(source=TimerPageSource(records), clear_reactions_after=True,)
-        await pages.start(ctx)
+        pages = MenuPages(TimerPageSource(records), ctx=ctx)
+        await pages.start()
 
     @remind.command(name="delete", aliases=["remove", "cancel"], ignore_extra=False)
     async def remind_delete(self, ctx, *, id: int):

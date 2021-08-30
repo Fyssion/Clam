@@ -270,7 +270,7 @@ class Stars(commands.Cog):
         )
         embed.set_author(
             name=message.author.display_name,
-            icon_url=message.author.avatar.replace(format="png").url,
+            icon_url=message.author.display_avatar.replace(format="png").url,
         )
         embed.timestamp = message.created_at
         embed.colour = self.star_gradient_colour(stars)
@@ -965,11 +965,7 @@ class Stars(commands.Cog):
         em = discord.Embed(title=title)
 
         p = ctx.embed_pages(entries=members, embed=em, per_page=20)
-
-        try:
-            await p.start(ctx)
-        except menus.MenuError as e:
-            await ctx.send(e)
+        await p.start()
 
     @star.command(name="migrate")
     @requires_starboard()
@@ -1166,7 +1162,7 @@ class Stars(commands.Cog):
     async def star_member_stats(self, ctx, member):
         e = discord.Embed(colour=discord.Colour.gold())
         e.set_author(
-            name=member.display_name, icon_url=member.avatar.replace(format="png").url
+            name=member.display_name, icon_url=member.display_avatar.replace(format="png").url
         )
 
         # this query calculates

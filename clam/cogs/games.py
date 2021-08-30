@@ -4,6 +4,7 @@ import random
 
 import discord
 from discord.ext import commands, menus
+from pkg_resources import empty_provider
 
 from .utils import colors
 
@@ -23,34 +24,43 @@ class Piece:
                 self.emoji = f"<a:{emoji_name}:{id}>"
 
 
-class SinglePlayerGame(menus.Menu):
-    pass
+class SinglePlayerGame(discord.ui.View):
+    def __init__(self, ctx, **kwargs):
+        super().__init__(**kwargs)
+        self.ctx = ctx
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user == self.ctx.author:
+            return True
+        else:
+            await interaction.response.send_message("You didn't start this game.", ephemeral=True)
+            return False
 
 
 class TenSeconds(SinglePlayerGame):
-    def __init__(self):
-        super().__init__(timeout=30.0)
+    def __init__(self, ctx):
+        super().__init__(ctx=ctx, timeout=30.0)
 
-    async def send_initial_message(self, ctx, channel):
+    async def start(self):
         em = discord.Embed(
-            description="Click the reaction after 10 seconds!", color=colors.PRIMARY,
+            description="Click the button after 10 seconds! See how close you are.", color=colors.PRIMARY,
         )
 
-        em.set_author(name=str(ctx.author), icon_url=ctx.author.avatar.url)
+        em.set_author(name=str(self.ctx.author), icon_url=self.ctx.author.display_avatar.url)
 
-        em.set_footer(text=f"Confused? Learn more with {ctx.guild_prefix}help 10s")
+        em.set_footer(text=f"Confused? Learn more with {self.ctx.guild_prefix}help 10s")
 
-        msg = await channel.send(embed=em)
+        self.message = await self.ctx.send(embed=em, view=self)
         self.ten_seconds = datetime.datetime.utcnow() + datetime.timedelta(seconds=10)
 
-        return msg
-
-    @menus.button("⏲️")
-    async def on_time(self, payload):
+    @discord.ui.button(emoji="\N{CLOCK FACE TWO OCLOCK}")
+    async def time_button(self, button: discord.ui.Button, interaction: discord.Interaction):
         tm = datetime.datetime.utcnow()
         end_time = tm - datetime.timedelta(microseconds=tm.microsecond % 100000)
         tm = self.ten_seconds
         ten_seconds = tm - datetime.timedelta(microseconds=tm.microsecond % 10000)
+
+        msg = None
 
         if ten_seconds == end_time:
             msg = ":tada: You did it! I'm impressed!"
@@ -68,22 +78,24 @@ class TenSeconds(SinglePlayerGame):
         em = self.message.embeds[0]
         em.description = msg
 
-        await self.message.edit(embed=em)
+        self.time_button.disabled = True
+        await interaction.response.edit_message(embed=em, view=self)
 
         self.stop()
 
 
-class MultiPlayerGame(menus.Menu):
-    def __init__(self, players):
+class MultiPlayerGame(discord.ui.View):
+    def __init__(self, ctx, players):
         super().__init__(timeout=600.0)  # 10 min
+        self.ctx = ctx
         self.players = players
 
-    def reaction_check(self, payload):
-        if payload.message_id != self.message.id:
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user in self.players:
+            return True
+        else:
+            await interaction.response.send_message("You aren't playing in this game.", ephemeral=True)
             return False
-        if payload.user_id not in [p.id for p in self.players]:
-            return False
-        return payload.emoji in self.buttons
 
 
 EMPTY_piece = ":black_large_square:"
@@ -182,14 +194,17 @@ class Connect4(MultiPlayerGame):
         self.pieces = [Piece("Red", "red_circle"), Piece("Blue", "blue_circle")]
         self.winner = None
 
-    async def finalize(self):
-        if self.timeout and not self.winner:
+    async def on_timeout(self):
+        await self.finalize(timeout=True)
+
+    async def finalize(self, *, timeout):
+        if timeout and not self.winner:
             em = self.make_embed(timeout=True)
             await self.message.edit(embed=em)
 
-    async def send_initial_message(self, ctx, channel):
+    async def start(self):
         em = self.make_embed()
-        return await channel.send(embed=em)
+        return await self.ctx.send(embed=em, view=self)
 
     def make_embed(self, winner=None, draw=False, timeout=False):
         # color is red if current is one, blue if current is zero
@@ -213,9 +228,9 @@ class Connect4(MultiPlayerGame):
 
         return embed
 
-    async def display(self):
+    async def display(self, interaction):
         em = self.make_embed()
-        await self.message.edit(embed=em)
+        await interaction.response.edit_message(embed=em, view=self)
 
     def find_diagonal_4(self):
         height = len(self.board[0].pieces)
@@ -269,12 +284,13 @@ class Connect4(MultiPlayerGame):
 
         return winner
 
-    async def play_piece(self, payload, number):
+    async def play_piece(self, interaction: discord.Interaction, number):
         number -= 1
         rows = self.board.rows
-        member = discord.utils.get(self.players, id=payload.user_id)
+        member = interaction.user
         if member != self.players[self.current_player]:
-            return
+            return await interaction.response.send_message("It isn't your turn!", ephemeral=True)
+
         piece = self.pieces[self.players.index(member)]
         placed = False
 
@@ -298,7 +314,7 @@ class Connect4(MultiPlayerGame):
         if winner:
             self.winner = winner
             em = self.make_embed(winner=winner)
-            await self.message.edit(embed=em)
+            await interaction.response.edit_message(embed=em, view=self)
             self.stop()
             return
 
@@ -311,7 +327,7 @@ class Connect4(MultiPlayerGame):
         if None not in all_pieces:
             self.winner = "draw"
             em = self.make_embed(draw=True)
-            await self.message.edit(embed=em)
+            await interaction.response.edit_message(embed=em, view=self)
             self.stop()
             return
 
@@ -321,31 +337,31 @@ class Connect4(MultiPlayerGame):
             else:
                 self.current_player = 0
 
-        await self.display()
+        await self.display(interaction)
 
-    @menus.button("1️⃣")
-    async def on_one(self, payload):
-        await self.play_piece(payload, 1)
+    @discord.ui.button(label="1")
+    async def one_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await self.play_piece(interaction, 1)
 
-    @menus.button("2️⃣")
-    async def on_two(self, payload):
-        await self.play_piece(payload, 2)
+    @discord.ui.button(label="2")
+    async def two_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await self.play_piece(interaction, 2)
 
-    @menus.button("3️⃣")
-    async def on_three(self, payload):
-        await self.play_piece(payload, 3)
+    @discord.ui.button(label="3️")
+    async def three_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await self.play_piece(interaction, 3)
 
-    @menus.button("4️⃣")
-    async def on_four(self, payload):
-        await self.play_piece(payload, 4)
+    @discord.ui.button(label="4️", row=1)
+    async def four_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await self.play_piece(interaction, 4)
 
-    @menus.button("5️⃣")
-    async def on_five(self, payload):
-        await self.play_piece(payload, 5)
+    @discord.ui.button(label="5️", row=1)
+    async def five_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await self.play_piece(interaction, 5)
 
-    @menus.button("6️⃣")
-    async def on_six(self, payload):
-        await self.play_piece(payload, 6)
+    @discord.ui.button(label="6️", row=1)
+    async def six_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await self.play_piece(interaction, 6)
 
 
 class Hangman:
@@ -466,11 +482,11 @@ class Hangman:
 
 
 class Games(commands.Cog):
-    """Games to play with friends"""
+    """Games to play with friends."""
 
     def __init__(self, bot):
         self.bot = bot
-        self.emoji = ":video_game:"
+        self.emoji = "\N{VIDEO GAME}"
 
         if not hasattr(bot, "hangman_games"):
             # channel_id: Hangman
@@ -495,8 +511,8 @@ class Games(commands.Cog):
         if ctx.author == opponent:
             return await ctx.send("You can't play Connect 4 with yourself.")
 
-        game = Connect4([ctx.author, opponent])
-        await game.start(ctx)
+        game = Connect4(ctx=ctx, players=[ctx.author, opponent])
+        await game.start()
 
     @commands.command(name="10s")
     async def ten_seconds(self, ctx):
@@ -510,8 +526,8 @@ class Games(commands.Cog):
 
         Timer starts as soon as my message is sent.
         """
-        m = TenSeconds()
-        await m.start(ctx)
+        game = TenSeconds(ctx=ctx)
+        await game.start()
 
     @commands.group(invoke_without_command=True)
     async def hangman(self, ctx):
@@ -625,7 +641,7 @@ class Games(commands.Cog):
             return await ctx.send("No running hangman games.")
 
         pages = ctx.pages(games, title="All Running Hangman Games")
-        await pages.start(ctx)
+        await pages.start()
 
 
 def setup(bot):

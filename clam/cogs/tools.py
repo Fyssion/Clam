@@ -15,6 +15,7 @@ from PIL import Image
 
 from .utils import checks, colors, emojis, humantime
 from .utils.formats import human_join, plural
+from .utils.menus import MenuPages
 
 
 def snowstamp(snowflake):
@@ -117,7 +118,7 @@ class Tools(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.emoji = ":tools:"
+        self.emoji = "\N{HAMMER AND WRENCH}"
         self.log = self.bot.log
 
         if not hasattr(bot, "sniped_messages"):
@@ -155,10 +156,8 @@ class Tools(commands.Cog):
         for member in sorted(role.members, key=lambda m: m.name.lower()):
             role_members.append(f"{member} - ID: {member.id}")
 
-        pages = ctx.pages(
-            role_members, per_page=10, title=f"Members with role '{role}'"
-        )
-        await pages.start(ctx)
+        pages = ctx.pages(role_members, per_page=10, title=f"Members with role '{role}'")
+        await pages.start()
 
     @commands.command(aliases=["newmembers"])
     @commands.guild_only()
@@ -416,7 +415,7 @@ class Tools(commands.Cog):
         else:
             name = str(ctx.author)
 
-        em.set_author(name=name, icon_url=ctx.author.avatar.url)
+        em.set_author(name=name, icon_url=ctx.author.display_avatar.url)
 
         poll_message = await ctx.send("New Poll", embed=em)
 
@@ -476,7 +475,7 @@ class Tools(commands.Cog):
         else:
             name = str(ctx.author)
 
-        em.set_author(name=name, icon_url=ctx.author.avatar.url)
+        em.set_author(name=name, icon_url=ctx.author.display_avatar.url)
 
         poll_message = await ctx.send("New Poll", embed=em)
 
@@ -604,7 +603,7 @@ class Tools(commands.Cog):
             ):
                 em.set_image(url=data.url)
 
-        em.set_author(name=str(message.author), icon_url=message.author.avatar.url)
+        em.set_author(name=str(message.author), icon_url=message.author.display_avatar.url)
         formatted = humantime.timedelta(deleted_at, brief=True, accuracy=1)
         em.set_footer(text=f"Deleted {formatted} | Message sent")
         content = f"\N{WASTEBASKET} Deleted Message | ID: {message.id}"
@@ -663,7 +662,7 @@ class Tools(commands.Cog):
             ):
                 em.set_image(url=data.url)
 
-        em.set_author(name=str(after.author), icon_url=after.author.avatar.url)
+        em.set_author(name=str(after.author), icon_url=after.author.display_avatar.url)
         formatted = humantime.timedelta(edited_at, brief=True, accuracy=1)
         em.set_footer(text=f"Edited {formatted} | Message sent")
         content = f"\N{MEMO} Edited Message | ID: {after.id}"
@@ -795,7 +794,7 @@ class Tools(commands.Cog):
             title="Snipe Ignored Entities",
             description="Entities that have opted out of sniped messages",
         )
-        await pages.start(ctx)
+        await pages.start()
 
     @commands.group(
         description="Get all sniped messages in this channel",
@@ -842,7 +841,7 @@ class Tools(commands.Cog):
         em = discord.Embed(title="Sniped Messages", color=colors.PRIMARY)
 
         pages = ctx.embed_pages(entries, em)
-        await pages.start(ctx)
+        await pages.start()
 
     @sniped.command(name="clear", aliases=["delete"])
     @commands.is_owner()
@@ -923,31 +922,31 @@ class Tools(commands.Cog):
         description="Get the avatar of a member.",
         aliases=["profilepic"],
     )
-    async def avatar(self, ctx, *, member: discord.Member = None):
-        if not member:
-            member = ctx.author
+    async def avatar(self, ctx, *, user: GlobalUser = None):
+        if not user:
+            user = ctx.author
 
-        avatar = member.avatar
+        avatar = user.display_avatar
         color = await self.get_average_color(avatar) if avatar else None
-        color = color or member.color or colors.PRIMARY
+        color = color or user.color or colors.PRIMARY
 
         em = discord.Embed(color=color)
 
-        if member.nick:
-            name = f"{member.nick} ({str(member)})"
+        if isinstance(user, discord.Member) and user.nick:
+            name = f"{user.nick} ({str(user)})"
         else:
-            name = str(member)
+            name = str(user)
 
         format_names = ["png", "jpeg", "webp"]
-        if member.avatar.is_animated():
+        if user.display_avatar.is_animated():
             format_names.append("gif")
 
-        formats = [f"[{f.upper()}]({member.avatar.replace(format=f).url})" for f in format_names]
+        formats = [f"[{f.upper()}]({user.display_avatar.replace(format=f).url})" for f in format_names]
 
         em.description = f"View as {human_join(formats)}"
 
-        em.set_author(name=name, icon_url=member.avatar.replace(static_format="png").url)
-        em.set_image(url=member.avatar.url)
+        em.set_author(name=name, icon_url=user.display_avatar.replace(static_format="png").url)
+        em.set_image(url=user.display_avatar.url)
 
         await ctx.send(embed=em)
 
@@ -1006,7 +1005,7 @@ class Tools(commands.Cog):
             author += f" ({user.nick})"
         author += f" - {str(user.id)}"
 
-        icon = user.avatar
+        icon = user.display_avatar
         try:
             color = await self.get_average_color(icon) if icon else None
         except discord.HTTPException:
@@ -1015,8 +1014,8 @@ class Tools(commands.Cog):
 
         em = discord.Embed(description=desc, color=color)
 
-        em.set_thumbnail(url=user.avatar.url)
-        em.set_author(name=author, icon_url=user.avatar.url)
+        em.set_thumbnail(url=user.display_avatar.url)
+        em.set_author(name=author, icon_url=user.display_avatar.url)
 
         created_fmt = humantime.fulltime(user.created_at, accuracy=2)
         em.add_field(
@@ -1193,7 +1192,7 @@ class Tools(commands.Cog):
             return await ctx.send(embed=em)
 
         em.description = f"ID: `{user_id}`\nUsername: `{user}`\nBot: `{user.bot}`\nCreated: `{created}`"
-        em.set_thumbnail(url=user.avatar.url)
+        em.set_thumbnail(url=user.display_avatar.url)
         await ctx.send(embed=em)
 
     @commands.command(
@@ -1273,10 +1272,8 @@ class Tools(commands.Cog):
             if username.lower() in member.name.lower():
                 matches.append(member)
         if matches:
-            pages = menus.MenuPages(
-                source=SearchPages(matches), clear_reactions_after=True
-            )
-            return await pages.start(ctx)
+            pages = MenuPages(SearchPages(matches), ctx=ctx)
+            return await pages.start()
             # return await ctx.send(self.compile_list(matches))
         await ctx.send("No matches found.")
 
@@ -1292,10 +1289,8 @@ class Tools(commands.Cog):
                 if nickname.lower() in member.nick.lower():
                     matches.append(member)
         if matches:
-            pages = menus.MenuPages(
-                source=SearchPages(matches), clear_reactions_after=True
-            )
-            return await pages.start(ctx)
+            pages = MenuPages(SearchPages(matches), ctx=ctx)
+            return await pages.start()
         await ctx.send("No matches found.")
 
     @usersearch.command(
@@ -1309,10 +1304,8 @@ class Tools(commands.Cog):
             if discriminator == int(member.discriminator):
                 matches.append(member)
         if matches:
-            pages = menus.MenuPages(
-                source=SearchPages(matches), clear_reactions_after=True
-            )
-            return await pages.start(ctx)
+            pages = MenuPages(SearchPages(matches), ctx=ctx)
+            return await pages.start()
         await ctx.send("No matches found.")
 
 

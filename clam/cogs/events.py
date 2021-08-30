@@ -67,49 +67,43 @@ class Event:
         return self.starts_at.strftime("%b %d, %Y at %#I:%M %p %z")
 
 
-class EditOptionMenu(menus.Menu):
+class EditOptionSelect(discord.ui.Select):
     def __init__(self):
-        super().__init__(timeout=30.0)
-        self.result = None
-        description = "\n".join([
-            "\N{CLOCK FACE ONE OCLOCK} | time",
-            "\N{AIRPLANE} | timezone",
-            "\N{LEFT SPEECH BUBBLE} | name",
-            "\N{PAGE FACING UP} | description",
-        ])
+        options = [
+            discord.SelectOption(label='Time', description='When the event will occur', emoji='\N{CLOCK FACE ONE OCLOCK}'),
+            discord.SelectOption(label='Timezone', description='The timezone in which the event is held', emoji='\N{AIRPLANE}'),
+            discord.SelectOption(label='Name', description='The name of the event', emoji='\N{LEFT SPEECH BUBBLE}'),
+            discord.SelectOption(label='Description', description='The description of the event', emoji='\N{PAGE FACING UP}')
+        ]
 
-        self.embed = discord.Embed(
-            title="\N{MEMO} Edit Options",
-            description=f"Please press an option below.\n\n{description}",
-            color=discord.Color.orange(),
-        )
+        super().__init__(placeholder='Choose an option to edit...', min_values=1, max_values=1, options=options)
 
-    async def send_initial_message(self, ctx, channel):
-        return await channel.send(embed=self.embed)
+    async def callback(self, interaction: discord.Interaction):
+        assert self.view is not None
+        self.view.value = self.values[0].lower()
+        await interaction.response.defer()
+        await self.view.stop()
 
-    @menus.button("\N{CLOCK FACE ONE OCLOCK}")
-    async def do_time(self, payload):
-        self.result = "time"
-        self.stop()
 
-    @menus.button("\N{AIRPLANE}")
-    async def do_timezone(self, payload):
-        self.result = "timezone"
-        self.stop()
+class EditOptionView(discord.ui.View):
+    def __init__(self, ctx):
+        super().__init__()
+        self.value = None
+        self.ctx = ctx
+        self.add_item(EditOptionSelect())
 
-    @menus.button("\N{LEFT SPEECH BUBBLE}")
-    async def do_name(self, payload):
-        self.result = "name"
-        self.stop()
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user and interaction.user.id == self.ctx.author.id:
+            return True
+        else:
+            await interaction.response.send_message("This select dialog is not for you.", ephemeral=True)
+            return False
 
-    @menus.button("\N{PAGE FACING UP}")
-    async def do_description(self, payload):
-        self.result = "description"
-        self.stop()
-
-    async def prompt(self, ctx):
-        await self.start(ctx, wait=True)
-        return self.result
+    async def prompt(self):
+        prefix = self.ctx.prefix
+        self.message = await self.ctx.send(f"What would you like to edit? Use `{prefix}abort` to cancel.", view=self)
+        await self.wait()
+        return self.value
 
 
 class EventSource(menus.ListPageSource):
@@ -159,7 +153,7 @@ class EventSource(menus.ListPageSource):
             description=description,
             color=colors.PRIMARY,
         )
-        em.set_author(name=str(self.ctx.author), icon_url=self.ctx.author.avatar.url)
+        em.set_author(name=str(self.ctx.author), icon_url=self.ctx.author.display_avatar.url)
         em.set_footer(text=f"Page {menu.current_page + 1}/{self.get_max_pages()}")
 
         return em
@@ -309,7 +303,7 @@ class Events(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.log = bot.log
-        self.emoji = ":fireworks:"
+        self.emoji = "\N{FIREWORKS}"
 
         self._current_event = None
         self._event_ready = asyncio.Event()
@@ -902,7 +896,7 @@ class Events(commands.Cog):
         if member.id != event.owner_id:
             return await ctx.send("Only the event owner can make edits.")
 
-        option = await EditOptionMenu().prompt(ctx)
+        option = await EditOptionView(ctx).prompt()
 
         if option in ["name", "description"]:
             await self.update_event_name_or_description(event, option, ctx)
@@ -1019,8 +1013,8 @@ class Events(commands.Cog):
         if not records:
             return await ctx.send("There are no events in this server.")
 
-        pages = MenuPages(source=EventSource(records, ctx), clear_reactions_after=True,)
-        await pages.start(ctx)
+        pages = MenuPages(source=EventSource(records, ctx), ctx=ctx)
+        await pages.start()
 
     @event.command(name="participants", aliases=["members"])
     async def event_participants(self, ctx, *, event: EventConverter):
@@ -1030,8 +1024,8 @@ class Events(commands.Cog):
             participants.append(f"<@{user_id}>")
 
         em = discord.Embed(title=f"{event.name} Participants", color=colors.PRIMARY)
-        menu = ctx.embed_pages(participants, em)
-        await menu.start(ctx)
+        pages = ctx.embed_pages(participants, em)
+        await pages.start()
 
     @event.command(name="all", description="View all events")
     @commands.is_owner()
@@ -1046,10 +1040,8 @@ class Events(commands.Cog):
         if not records:
             return await ctx.send("There are no events :(")
 
-        pages = MenuPages(
-            source=EventSource(records, ctx, all=True), clear_reactions_after=True,
-        )
-        await pages.start(ctx)
+        pages = MenuPages(EventSource(records, ctx, all=True), ctx=ctx)
+        await pages.start()
 
 
 def setup(bot):

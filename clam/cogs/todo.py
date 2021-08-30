@@ -47,7 +47,7 @@ class TodoTaskSource(menus.ListPageSource):
         em = discord.Embed(
             title="Your Todo List", description=description, color=colors.PRIMARY,
         )
-        em.set_author(name=str(self.ctx.author), icon_url=self.ctx.author.avatar.url)
+        em.set_author(name=str(self.ctx.author), icon_url=self.ctx.author.display_avatar.url)
         em.set_footer(text=f"Page {menu.current_page + 1}/{self.get_max_pages()}")
 
         return em
@@ -92,7 +92,7 @@ class TodoTaskConverter(commands.Converter):
 
 
 class Todo(commands.Cog):
-    """Todo lists"""
+    """Commands for managing your todo list."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -240,7 +240,7 @@ class Todo(commands.Cog):
             timestamp=created_at,
         )
 
-        em.set_author(name=str(ctx.author), icon_url=ctx.author.avatar.url)
+        em.set_author(name=str(ctx.author), icon_url=ctx.author.display_avatar.url)
         em.set_footer(text="Task created")
 
         await ctx.send(embed=em)
@@ -260,10 +260,8 @@ class Todo(commands.Cog):
         if not records:
             return await ctx.send("You have nothing on your todo list.")
 
-        pages = MenuPages(
-            source=TodoTaskSource(records, ctx, "list"), clear_reactions_after=True,
-        )
-        await pages.start(ctx)
+        pages = MenuPages(TodoTaskSource(records, ctx, "list"), ctx=ctx)
+        await pages.start()
 
     @todo.command(name="all", description="View all tasks")
     async def todo_all(self, ctx):
@@ -278,10 +276,9 @@ class Todo(commands.Cog):
         if not records:
             return await ctx.send("You have no tasks.")
 
-        pages = MenuPages(
-            source=TodoTaskSource(records, ctx, "all"), clear_reactions_after=True,
-        )
-        await pages.start(ctx)
+        pages = MenuPages(TodoTaskSource(records, ctx, "all"), ctx=ctx)
+        await pages.start()
+
 
 
 def setup(bot):

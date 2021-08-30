@@ -77,11 +77,11 @@ class PointsConverter(commands.Converter):
 
 
 class Math(commands.Cog):
-    """Math commands to help with homework or to mess around with."""
+    """Math-related commands."""
 
     def __init__(self, bot):
         self.bot = bot
-        self.emoji = ":triangular_ruler:"
+        self.emoji = "\N{TRIANGULAR RULER}"
         self.log = self.bot.log
 
     @commands.command(

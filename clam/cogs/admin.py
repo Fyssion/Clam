@@ -81,7 +81,7 @@ class DMSession:
 
 
 class Admin(commands.Cog):
-    """Admin commands and features"""
+    """Bot admin commands and features."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -274,7 +274,7 @@ class Admin(commands.Cog):
                 return await ctx.send("No blacklisted users")
 
             pages = ctx.pages(blacklist, title="Blacklisted users")
-            return await pages.start(ctx)
+            return await pages.start()
 
         if user == ctx.author:
             return await ctx.send("Don't blacklist yourself! That'd be a real pain.")
@@ -369,7 +369,7 @@ class Admin(commands.Cog):
         em.set_footer(text="Blacklist date")
 
         if user:
-            em.set_thumbnail(url=user.avatar.url)
+            em.set_thumbnail(url=user.display_avatar.url)
 
         console = self.bot.console
         await console.send(embed=em)
@@ -563,11 +563,8 @@ class Admin(commands.Cog):
     async def _error(self, ctx):
         first_step = list(self.bot.error_cache)
         errors = first_step[::-1]
-        pages = MenuPages(
-            source=AllErrorsSource(errors),
-            clear_reactions_after=True,
-        )
-        await pages.start(ctx)
+        pages = MenuPages(AllErrorsSource(errors), ctx=ctx)
+        await pages.start()
 
     @_error.command(aliases=["pre", "p", "prev"])
     @commands.is_owner()
@@ -580,11 +577,8 @@ class Admin(commands.Cog):
         trace = e.__traceback__
         verbosity = 4
         lines = traceback.format_exception(etype, e, trace, verbosity)
-        pages = MenuPages(
-            source=ErrorSource(lines, len(self.bot.error_cache) - 1),
-            clear_reactions_after=True,
-        )
-        await pages.start(ctx)
+        pages = MenuPages(ErrorSource(lines, len(self.bot.error_cache) - 1), ctx=ctx)
+        await pages.start()
 
     @_error.command(aliases=["i", "find", "get", "search"])
     @commands.is_owner()
@@ -599,11 +593,8 @@ class Admin(commands.Cog):
         trace = e.__traceback__
         verbosity = 4
         lines = traceback.format_exception(etype, e, trace, verbosity)
-        pages = MenuPages(
-            source=ErrorSource(lines, index),
-            clear_reactions_after=True,
-        )
-        await pages.start(ctx)
+        pages = MenuPages(ErrorSource(lines, index), ctx=ctx)
+        await pages.start()
 
     @commands.command(aliases=["shutdown"])
     @commands.is_owner()
@@ -682,7 +673,7 @@ class Admin(commands.Cog):
         )
         em.set_author(
             name=f"To: {user} ({user.id})",
-            icon_url=user.avatar.url,
+            icon_url=user.display_avatar.url,
         )
         em.set_footer(text="Outgoing DM")
         await channel.send(embed=em)
@@ -714,7 +705,7 @@ class Admin(commands.Cog):
         )
         em.set_author(
             name=f"To: {dm_session.user} ({dm_session.user.id})",
-            icon_url=dm_session.user.avatar.url,
+            icon_url=dm_session.user.display_avatar.url,
         )
         em.set_footer(text="Outgoing DM")
         return await channel.send(embed=em)
@@ -735,7 +726,7 @@ class Admin(commands.Cog):
         )
         em.set_author(
             name=f"From: {message.author} ({message.author.id})",
-            icon_url=message.author.avatar.url,
+            icon_url=message.author.display_avatar.url,
         )
         em.set_footer(text="Incoming DM")
 

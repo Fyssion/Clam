@@ -173,49 +173,42 @@ class PromptResponse:
         self.result = result
 
 
-class EditOptionMenu(menus.Menu):
+class EditOptionSelect(discord.ui.Select):
     def __init__(self):
-        super().__init__(timeout=30.0)
-        self.result = None
-        description = "\n".join([
-            "\N{MEMO} | title",
-            "\N{SQUARED NEW} | add roles",
-            "\N{CROSS MARK} | remove roles",
-            "🔁 | update message",
-        ])
+        options = [
+            discord.SelectOption(label='Title', description='Change the title of the menu', emoji='\N{MEMO}'),
+            discord.SelectOption(label='Add roles', description='Add roles to the menu', emoji='\N{SQUARED NEW}'),
+            discord.SelectOption(label='Remove roles', description='Remove roles from the menu', emoji='\N{CROSS MARK}'),
+            discord.SelectOption(label='Update message', description='Updates the menu with updated selfrole info', emoji='🔁')
+        ]
 
-        self.embed = discord.Embed(
-            title="\N{MEMO} Edit Options",
-            description=f"Please press an option below.\n\n{description}",
-            color=discord.Color.orange(),
-        )
+        super().__init__(placeholder='Choose an option to edit...', min_values=1, max_values=1, options=options)
 
-    async def send_initial_message(self, ctx, channel):
-        return await channel.send(embed=self.embed)
+    async def callback(self, interaction: discord.Interaction):
+        assert self.view is not None
+        self.view.value = self.values[0].lower()
+        await interaction.response.defer()
+        await self.view.stop()
 
-    @menus.button("\N{MEMO}")
-    async def do_time(self, payload):
-        self.result = "title"
-        self.stop()
 
-    @menus.button("\N{SQUARED NEW}")
-    async def do_timezone(self, payload):
-        self.result = "add roles"
-        self.stop()
+class EditOptionView(discord.ui.View):
+    def __init__(self, ctx):
+        super().__init__()
+        self.value = None
+        self.ctx = ctx
+        self.add_item(EditOptionSelect())
 
-    @menus.button("\N{CROSS MARK}")
-    async def do_name(self, payload):
-        self.result = "remove roles"
-        self.stop()
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user and interaction.user.id == self.ctx.author.id:
+            return True
+        else:
+            await interaction.response.send_message("This select dialog is not for you.", ephemeral=True)
+            return False
 
-    @menus.button("🔁")
-    async def do_description(self, payload):
-        self.result = "update message"
-        self.stop()
-
-    async def prompt(self, ctx):
-        await self.start(ctx, wait=True)
-        return self.result
+    async def prompt(self):
+        self.message = await self.ctx.send("What would you like to edit?", view=self)
+        await self.wait()
+        return self.value
 
 
 class Selfroles(commands.Cog):
@@ -454,7 +447,7 @@ class Selfroles(commands.Cog):
         )
 
         pages = ctx.embed_pages(selfroles, em)
-        await pages.start(ctx)
+        await pages.start()
 
     @commands.command(aliases=["roles"])
     async def selfroles(self, ctx):
@@ -635,7 +628,9 @@ class Selfroles(commands.Cog):
     @commands.group(aliases=["reactionrole"], invoke_without_command=True)
     @checks.has_permissions(manage_roles=True)
     async def reactionroles(self, ctx):
-        """Commands to create and manage reactionrole messages."""
+        """Commands to create and manage reactionrole messages.
+
+        To delete a reaction role menu, simply delete the message."""
         await ctx.send_help(ctx.command)
 
     async def prompt(self, ctx, *, converter=None, delete_after=None, return_message=False, react=True):
@@ -800,7 +795,7 @@ class Selfroles(commands.Cog):
         if not record:
             raise commands.BadArgument("That message is not a recognized reaction role menu.")
 
-        option = await EditOptionMenu().prompt(ctx)
+        option = await EditOptionView(ctx=ctx).prompt()
 
         title = record["title"]
 

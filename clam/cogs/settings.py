@@ -216,7 +216,7 @@ class CogPermissions(CommandPermissions):
 
 
 class Settings(commands.Cog):
-    """Commands to configure the bot"""
+    """Commands to configure the bot."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -395,7 +395,7 @@ class Settings(commands.Cog):
         em = discord.Embed(title="Server Ignore List", color=colors.PRIMARY)
 
         pages = ctx.embed_pages(entities, em)
-        await pages.start(ctx)
+        await pages.start()
 
     @settings_ignored.command(name="clear")
     @checks.has_permissions(manage_guild=True)
@@ -502,7 +502,7 @@ class Settings(commands.Cog):
         )
 
         pages = ctx.embed_pages(commands, em)
-        await pages.start(ctx)
+        await pages.start()
 
     async def cog_toggle(
         self, connection, guild_id, channel_id, command, *, allowed=True
@@ -603,7 +603,7 @@ class Settings(commands.Cog):
         )
 
         pages = ctx.embed_pages(commands, em)
-        await pages.start(ctx)
+        await pages.start()
 
 
 def setup(bot):
