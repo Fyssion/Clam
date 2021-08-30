@@ -22,7 +22,7 @@ log = logging.getLogger("clam")
 
 
 def get_command_prefix(bot, message):
-    prefixes = [bot.default_prefix]
+    prefixes = bot.default_prefixes
 
     if message.guild:
         prefixes = bot.prefixes.get(message.guild.id)
@@ -66,7 +66,7 @@ class Clam(commands.Bot):
 
         self.debug = self.config.debug
 
-        self.default_prefix = "c." if not self.debug else "dev "
+        self.default_prefixes = ["!", "c."] if not self.debug else ["dev "]
 
         intents = discord.Intents.all()
         intents.presences = False
@@ -194,7 +194,7 @@ class Clam(commands.Bot):
 
     def guild_prefix(self, guild):
         if not guild:
-            return self.default_prefix
+            return self.default_prefixes[0]
 
         return self.prefixes.get(guild.id)[0]
 

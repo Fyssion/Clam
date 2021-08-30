@@ -35,7 +35,7 @@ class Prefixes:
 
     def get(self, guild_id):
         """Gets the prefixes for a guild."""
-        return self._prefixes.get(str(guild_id), [self.bot.default_prefix])
+        return self._prefixes.get(str(guild_id), self.bot.default_prefixes)
 
     async def set(self, guild_id, prefixes):
         """Sets the prefixes for a guild."""
