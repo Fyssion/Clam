@@ -941,11 +941,11 @@ class Tools(commands.Cog):
         if user.display_avatar.is_animated():
             format_names.append("gif")
 
-        formats = [f"[{f.upper()}]({user.display_avatar.replace(format=f).url})" for f in format_names]
+        formats = [f"[{f.upper()}]({user.display_avatar.with_format(f).url})" for f in format_names]
 
         em.description = f"View as {human_join(formats)}"
 
-        em.set_author(name=name, icon_url=user.display_avatar.replace(static_format="png").url)
+        em.set_author(name=name, icon_url=user.display_avatar.with_format("png").url)
         em.set_image(url=user.display_avatar.url)
 
         await ctx.send(embed=em)
