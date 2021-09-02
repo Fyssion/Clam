@@ -222,10 +222,6 @@ class ClamHelpCommand(commands.HelpCommand):
 
         return result
 
-    @property
-    def arg_help(self):
-        return "Key: `<required>` `[optional]`\nRemove `<>` and `[]` when using the command."
-
     def get_base_embed(self):
         ctx = self.context
         bot = ctx.bot
@@ -302,9 +298,6 @@ class ClamHelpCommand(commands.HelpCommand):
 
         if command.help:
             formatted_command += f"\n{command.help.format(prefix=ctx.prefix)}\n"
-
-        if not isinstance(command, commands.Group) or not command.commands:
-            formatted_command += f"\n\n{self.arg_help}"
 
         return formatted_command
 
