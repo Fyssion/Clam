@@ -226,13 +226,15 @@ class Internet(commands.Cog):
     @commands.command(aliases=["wiki"])
     @commands.cooldown(5, 30, commands.BucketType.user)
     async def wikipedia(self, ctx, *, query):
-        """Search Wikipedia for an article"""
+        """Searchs Wikipedia for an article and shows a preview."""
+
         await self.search_wikipedia(ctx, query)
 
     @commands.command(aliases=["wolframalpha"])
     @commands.cooldown(5, 30, commands.BucketType.user)
     async def wolfram(self, ctx, *, query):
-        """Make a query to Wolfram Alpha and return the result"""
+        """Queries Wolfram Alpha and shows the result."""
+
         partial = functools.partial(self.bot.wolfram.query, query)
 
         async with ctx.typing():
@@ -691,6 +693,7 @@ class Internet(commands.Cog):
     @commands.command(aliases=["google"])
     async def g(self, ctx, *, query):
         """Searches google and gives you the top result."""
+
         await ctx.trigger_typing()
         try:
             card, entries = await self.get_google_entries(query)
@@ -722,12 +725,11 @@ class Internet(commands.Cog):
 
             await ctx.send(msg)
 
-    @commands.command(
-        description="Preform a google search via the API and display the results",
-        aliases=["gapi"],
-    )
+    @commands.command(aliases=["gapi"])
     @commands.cooldown(5, 30, commands.BucketType.user)
     async def googleapi(self, ctx, *, query):
+        """Queries Google's API and shows the results."""
+
         google_client = self.bot.google_client
 
         try:
@@ -739,14 +741,15 @@ class Internet(commands.Cog):
         pages = MenuPages(GoogleResultPages(results, query), ctx=ctx)
         await pages.start()
 
-    @commands.command(aliases=["question"])
+    @commands.command()
     @commands.cooldown(5, 30, commands.BucketType.user)
-    async def q(self, ctx, *, question):
-        """Ask the bot for information
+    async def question(self, ctx, *, question):
+        """Ask the bot for information.
 
-        The bot will query wolfram alpha and then wikipedia
-        if wolfram alpha returns no results.
+        The bot will query Wolfram Alpha and then Wikipedia
+        if Wolfram Alpha returns no results.
         """
+
         partial = functools.partial(self.bot.wolfram.query, question)
 
         async with ctx.typing():
@@ -761,7 +764,8 @@ class Internet(commands.Cog):
     @commands.command()
     @commands.cooldown(2, 10, commands.BucketType.user)
     async def urban(self, ctx, *, word):
-        """Search Urban Dictionary for definitions"""
+        """Searchs Urban Dictionary and shows the results."""
+
         url = "http://api.urbandictionary.com/v0/define"
         async with self.bot.session.get(url, params={"term": word}) as resp:
             if resp.status != 200:
@@ -775,12 +779,10 @@ class Internet(commands.Cog):
         menu = MenuPages(UrbanDictionarySource(data), ctx=ctx)
         await menu.start()
 
-    @commands.group(
-        description="Fetch a PyPI package.",
-        aliases=["package", "pip"],
-        invoke_without_command=True,
-    )
+    @commands.group(aliases=["package", "pip"], invoke_without_command=True)
     async def pypi(self, ctx, package, release=None):
+        """Shows a PyPI package."""
+
         if not release:
             try:
                 package = await aiopypi.fetch_package(package)
@@ -893,11 +895,11 @@ class Internet(commands.Cog):
 
         return output
 
-    @commands.command(
-        description="Fetch information about a Minecraft user", aliases=["mc"]
-    )
+    @commands.command(aliases=["mc"])
     @commands.cooldown(2, 30, commands.BucketType.user)
     async def minecraft(self, ctx, *, user):
+        """Shows information about a Minecraft user."""
+
         # Get the user's UUID
         async with self.bot.session.get(
             f"https://api.mojang.com/users/profiles/minecraft/{user}"
@@ -1120,11 +1122,12 @@ class Internet(commands.Cog):
 
         return em
 
-    @commands.command(
-        description="Fetch info about a Roblox profile", usage="[username]"
-    )
+    @commands.command()
     @commands.cooldown(3, 15, commands.BucketType.user)
+    @commands.is_owner()
     async def roblox(self, ctx, *, username):
+        """Shows info about a Roblox user."""
+
         # Web scrape to get the rest of the info in one request instead of 4
         async with ctx.typing():
             try:
@@ -1245,13 +1248,10 @@ class Internet(commands.Cog):
                 return data
             return None
 
-    @commands.command(
-        description="Fetch a repo or user from GitHub and display info about it.",
-        usage="<repo|user>",
-        aliases=["gh"],
-    )
+    @commands.command(aliases=["gh"])
     @commands.cooldown(5, 30)
     async def github(self, ctx, item):
+        """Shows info about a GitHub user or organisaion."""
 
         # Basically, this command checks if a / was found in
         # the requested item. If there was a /, it searches for
@@ -1279,14 +1279,12 @@ class Internet(commands.Cog):
         importlib.reload(aioxkcd)
         await ctx.send("It has been done.")
 
-    @commands.group(
-        name="xkcd",
-        description="Fetch an xdcd comic",
-        invoke_without_command=True,
-    )
-    async def _xkcd(self, ctx, number: int = None):
+    @commands.group(invoke_without_command=True,)
+    async def xkcd(self, ctx, number: int = None):
+        """Shows a specific XKCD comic or the latest one."""
+
         if not number:
-            return await self._random_xkcd(ctx)
+            return await self.xkcd_latest(ctx)
         try:
             comic = await aioxkcd.get_comic(number)
         except aioxkcd.XkcdError:
@@ -1303,10 +1301,10 @@ class Internet(commands.Cog):
         )
         await ctx.send(embed=em)
 
-    @_xkcd.command(
-        name="random", description="Fetch a random xdcd comic", aliases=["r"]
-    )
-    async def _random_xkcd(self, ctx):
+    @xkcd.command(name="random", aliases=["r"])
+    async def xkcd_random(self, ctx):
+        """Shows a random XKCD comic."""
+
         comic = await aioxkcd.get_random_comic()
         em = discord.Embed(
             title=f"#{comic.number} - {comic.title}",
@@ -1320,8 +1318,10 @@ class Internet(commands.Cog):
         )
         await ctx.send(embed=em)
 
-    @_xkcd.command(name="latest", description="Fetch the latest xkcd comic")
-    async def _latest_xkcd(self, ctx):
+    @xkcd.command(name="latest")
+    async def xkcd_latest(self, ctx):
+        """Shows the latest XKCD comic."""
+
         comic = await aioxkcd.get_latest_comic()
         em = discord.Embed(
             title=f"#{comic.number} - {comic.title}",
@@ -1337,7 +1337,11 @@ class Internet(commands.Cog):
 
     @commands.command()
     async def pep(self, ctx, number: int):
-        """Sends the URL for a given Python PEP."""
+        """Sends the URL for a given Python PEP.
+
+        This doesn't validate the PEP.
+        """
+
         await ctx.send(f"https://www.python.org/dev/peps/pep-{number:04}")
 
     LICHESS_BASE_URL = "https://lichess.org/api/"
@@ -1356,15 +1360,18 @@ class Internet(commands.Cog):
 
     async def make_lichess_request(self, route, data=None):
         """Makes a request to Lichess.org."""
+
         return await self.make_chess_request(self.LICHESS_BASE_URL + route, data=data)
 
     async def make_chesscom_request(self, route, data=None):
         """Makes a request to chess.com."""
+
         return await self.make_chess_request(self.CHESSCOM_BASE_URL + route, data=data)
 
     @commands.group(invoke_without_command=True)
     async def lichess(self, ctx, *, username):
-        """Gets info about a Lichess.org user and displays it."""
+        """Shows info about a Lichess.org user."""
+
         try:
             data = await self.make_lichess_request(f"user/{username}")
         except ChessNotFound:
@@ -1490,6 +1497,7 @@ class Internet(commands.Cog):
     @commands.is_owner()
     async def vtwitter(self, ctx: commands.Context, *, url: str = None):
         """Downloads a video from Twitter and re-uploads it to Discord."""
+
         # allow users to reply to a message with a twitter url
         ref = None
 
@@ -1655,55 +1663,62 @@ class Internet(commands.Cog):
         pages = MenuPages(DocsSource(matches, obj), ctx=ctx)
         await pages.start()
 
-    @commands.group(
-        aliases=["rtfm", "rtfd"],
-        invoke_without_command=True,
-    )
+    @commands.group(aliases=["rtfm", "rtfd"], invoke_without_command=True)
     async def docs(self, ctx, *, obj: str = None):
         """Searches Python documentation and returns a list of matching entities.
+
         Events, objects, and functions are all supported through a
         a cruddy fuzzy algorithm.
         """
+
         await self.do_docs(ctx, "python", obj)
 
     @docs.group(name="dpy", aliases=["d"], invoke_without_command=True)
     async def docs_dpy(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a discord.py entity."""
+
         await self.do_docs(ctx, "dpy", obj)
 
     @docs_dpy.command(name="master", aliases=["ma"])
     async def docs_dpy_master(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a discord.py master entity."""
+
         await self.do_docs(ctx, "dpy-master", obj)
 
     @docs.command(name="aiohttp", aliases=["ah"])
     async def docs_aiohttp(self, ctx, *, obj: str = None):
         """Gives you a documentation link for an aiohttp entity."""
+
         await self.do_docs(ctx, "aiohttp", obj)
 
     @docs.command(name="asyncpg", aliases=["pg"])
     async def docs_asyncpg(self, ctx, *, obj: str = None):
         """Gives you a documentation link for an asyncpg entity."""
+
         await self.do_docs(ctx, "asyncpg", obj)
 
     @docs.command(name="flask", aliases=["fl"])
     async def docs_flask(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a Flask entity."""
+
         await self.do_docs(ctx, "flask", obj)
 
     @docs.command(name="sqlalchemy", aliases=["sqla"])
     async def docs_sqlalchemy(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a SQLAlchemy entity."""
+
         await self.do_docs(ctx, "sqlalchemy", obj)
 
     @docs.command(name="telegram.py", aliases=["tpy", "telegram"])
     async def docs_telegampy(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a telegram.py entity."""
+
         await self.do_docs(ctx, "telegrampy", obj)
 
     @docs.command(name="tornado")
     async def docs_tornado(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a tornado entity."""
+
         await self.do_docs(ctx, "tornado", obj)
 
 

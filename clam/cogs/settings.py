@@ -299,13 +299,15 @@ class Settings(commands.Cog):
     @commands.group(aliases=["config"], invoke_without_command=True)
     @checks.has_permissions(manage_guild=True)
     async def settings(self, ctx):
-        """Settings to configure the bot"""
+        """Settings to configure the bot."""
+
         await ctx.send_help(ctx.command)
 
     @settings.command(name="ignore")
     @checks.has_permissions(manage_guild=True)
     async def settings_ignore(self, ctx, *, entity: ChannelOrMember = None):
-        """Ignore commands from a member or channel in this server"""
+        """Ignores commands from a member or channel in this server."""
+
         entity = entity or ctx.channel
 
         if isinstance(entity, discord.TextChannel):
@@ -361,7 +363,8 @@ class Settings(commands.Cog):
     @settings_unignore.command(name="all")
     @checks.has_permissions(manage_guild=True)
     async def settings_unignore_all(self, ctx):
-        """Alias for settings ignored clear"""
+        """Alias for `{prefix}settings ignored clear`."""
+
         await ctx.invoke(self.settings_ignored_clear)
 
     @settings.group(name="ignored", invoke_without_command=True)
@@ -400,7 +403,8 @@ class Settings(commands.Cog):
     @settings_ignored.command(name="clear")
     @checks.has_permissions(manage_guild=True)
     async def settings_ignored_clear(self, ctx):
-        """Clear all entities from the server ignore list"""
+        """Clears all entities from the server ignore list."""
+
         query = "DELETE FROM ignored_users WHERE guild_id=$1;"
         await ctx.db.execute(query, ctx.guild.id)
 
@@ -446,7 +450,8 @@ class Settings(commands.Cog):
     async def settings_disable(
         self, ctx, channel: Optional[discord.TextChannel], *, command: CommandName
     ):
-        """Disable a command in the server or a channel"""
+        """Disables a command in the server or a channel."""
+
         channel_id = channel.id if channel else None
 
         try:
@@ -469,7 +474,8 @@ class Settings(commands.Cog):
     async def settings_enable(
         self, ctx, channel: Optional[discord.TextChannel], *, command: CommandName
     ):
-        """Enable a command in the server or a channel"""
+        """Enables a command in the server or a channel."""
+
         channel_id = channel.id if channel else None
 
         try:
@@ -488,7 +494,8 @@ class Settings(commands.Cog):
     @settings.command(name="disabled")
     @checks.has_permissions(manage_guild=True)
     async def settings_disabled(self, ctx, channel: discord.TextChannel = None):
-        """View disabled commands in a channel or the server"""
+        """Shows disabled commands in a channel or the server."""
+
         perms = await self.get_command_permissions(ctx.guild.id)
         commands = list(perms.get_blocked_commands(channel.id if channel else None))
 
@@ -539,7 +546,8 @@ class Settings(commands.Cog):
     @settings.group(name="category", aliases=["cog"], invoke_without_command=True)
     @checks.has_permissions(manage_guild=True)
     async def settings_category(self, ctx):
-        """Enable and disable categories in the server or a channel"""
+        """Commands to enable and disable categories in the server or a channel."""
+
         await ctx.send_help(ctx.command)
 
     @settings_category.command(name="disable")
@@ -547,7 +555,8 @@ class Settings(commands.Cog):
     async def settings_category_disable(
         self, ctx, channel: Optional[discord.TextChannel], *, command: CogName
     ):
-        """Disable a category in the server or a channel"""
+        """Disables a category in the server or a channel."""
+
         channel_id = channel.id if channel else None
 
         try:
@@ -570,7 +579,8 @@ class Settings(commands.Cog):
     async def settings_cog_enable(
         self, ctx, channel: Optional[discord.TextChannel], *, command: CogName
     ):
-        """Enable a category in the server or a channel"""
+        """Enables a category in the server or a channel."""
+
         channel_id = channel.id if channel else None
 
         try:
@@ -589,7 +599,8 @@ class Settings(commands.Cog):
     @settings_category.command(name="disabled")
     @checks.has_permissions(manage_guild=True)
     async def settings_cog_disabled(self, ctx, channel: discord.TextChannel = None):
-        """View disabled categories in a channel or the server"""
+        """Shows disabled categories in the server or a channel."""
+
         perms = await self.get_cog_permissions(ctx.guild.id)
         commands = list(perms.get_blocked_cogs(channel.id if channel else None))
 

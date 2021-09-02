@@ -268,7 +268,7 @@ class Timers(commands.Cog):
         *,
         when: humantime.UserFriendlyTime(commands.clean_content, default=""),
     ):
-        """Create a reminder that will notify you when completed
+        """Creates a reminder that will notify you when completed.
 
         Note that times are in UTC.
         To create a reminder, specify a time and an optional
@@ -299,7 +299,8 @@ class Timers(commands.Cog):
 
     @remind.command(name="list", aliases=["all"], ignore_extra=False)
     async def remind_list(self, ctx):
-        """View your currently running reminders."""
+        """Shows your running reminders."""
+
         query = """SELECT id, expires, extra #>> '{args,2}'
                    FROM timers
                    WHERE event = 'reminder'
@@ -318,7 +319,8 @@ class Timers(commands.Cog):
 
     @remind.command(name="here", ignore_extra=False)
     async def remind_here(self, ctx):
-        """View your currently running reminders in the current channel."""
+        """Shows your running reminders in the current channel."""
+
         query = """SELECT id, expires, extra #>> '{args,2}'
                    FROM timers
                    WHERE event = 'reminder'
@@ -339,7 +341,8 @@ class Timers(commands.Cog):
     @remind.command(name="delete", aliases=["remove", "cancel"], ignore_extra=False)
     async def remind_delete(self, ctx, *, id: int):
         """Deletes a reminder by its ID.
-        To get a reminder ID, use `{prefix}remind list`
+
+        To get a reminder ID, use `{prefix}remind list`.
         """
 
         query = """DELETE FROM timers

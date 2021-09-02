@@ -103,6 +103,10 @@ class Highlights(db.Table):
 class Highlight(commands.Cog):
     """Get notified when your highlight words are said in chat.
 
+    You can register highlight words in a server.
+    Anytime someone says one of your words in the server,
+    you will be DM'd with context.
+
     This is meant to emulate Skype's highlighted words feature.
     Concept was taken from Danny's Highlight bot, source code is original.
     """
@@ -391,17 +395,21 @@ class Highlight(commands.Cog):
     async def highlight(self, ctx):
         """Get notified when your highlight words are said in chat.
 
+        You can register highlight words in a server.
+        Anytime someone says one of your words in the server,
+        you will be DM'd with context.
+
         This is meant to emulate Skype's highlighted words feature.
-        Concept was taken from Danny's Highlight bot, source code is original.
+        The concept was taken from Danny's Highlight bot,
+        but the source code is original.
         """
+
         await ctx.send_help(ctx.command)
 
-    @highlight.command(
-        name="add",
-        description="Add a word to your highlight words",
-        usage="[word]",
-    )
+    @highlight.command(name="add")
     async def highlight_add(self, ctx, *, word):
+        """Adds a word to your highlight words"""
+
         self.delete_timer(ctx.message)
 
         word = word.lower().strip()
@@ -442,12 +450,10 @@ class Highlight(commands.Cog):
 
                 await ctx.delete_send(ctx.tick(True, "Successfully updated your highlight words."))
 
-    @highlight.command(
-        name="remove",
-        description="Remove a word from your highlight words",
-        usage="[word]",
-    )
+    @highlight.command(name="remove")
     async def highlight_remove(self, ctx, word):
+        """Removes a word from your highlight words."""
+
         self.delete_timer(ctx.message)
 
         query = """DELETE FROM highlight_words
@@ -467,12 +473,9 @@ class Highlight(commands.Cog):
 
             await ctx.delete_send(ctx.tick(True, "Successfully updated your highlight words."))
 
-    @highlight.command(
-        name="all",
-        description="View all your highlight words for this server",
-        aliases=["list", "show"],
-    )
+    @highlight.command(name="show", aliases=["list", "all"])
     async def highlight_all(self, ctx):
+        """Shows all your highlight words in this server."""
         self.delete_timer(ctx.message, 5)
 
         query = """SELECT word FROM highlight_words
@@ -496,12 +499,10 @@ class Highlight(commands.Cog):
 
         await ctx.delete_send(embed=em, delete_after=10.0)
 
-    @highlight.command(
-        name="import",
-        description="Import your words from another server",
-        aliases=["transfer"]
-    )
+    @highlight.command(name="import", aliases=["transfer"])
     async def highlight_import(self, ctx, guild_id: int):
+        """Imports your words from another server."""
+
         # self.delete_timer(ctx.message)
 
         # query = """INSERT INTO highlight_words (word, user_id, guild_id)
@@ -551,7 +552,8 @@ class Highlight(commands.Cog):
 
     @highlight.command(name="clear")
     async def highlight_clear(self, ctx):
-        """Clears all your highlight words in this server"""
+        """Clears your highlight words in this server."""
+
         self.delete_timer(ctx.message)
 
         query = """DELETE FROM highlight_words
@@ -706,12 +708,10 @@ class Highlight(commands.Cog):
 
             await self.bot.pool.execute(query, author, blocked_channels)
 
-    @highlight.command(
-        description="Block a user or channel from notifiying you with your highlight words",
-        aliases=["ignore"],
-        usage="<user or channel>",
-    )
+    @highlight.command(aliases=["ignore"],)
     async def block(self, ctx, *, entity: BlockConverter = None):
+        """Block a user or channel from notifiying you."""
+
         self.delete_timer(ctx.message)
 
         entity = entity or ctx.channel
@@ -724,12 +724,10 @@ class Highlight(commands.Cog):
 
         await ctx.delete_send("Successfully updated your blocked list.")
 
-    @highlight.command(
-        description="Unblock a user or channel in your blocked list",
-        aliases=["unignore"],
-        usage="<user or channel>",
-    )
+    @highlight.command(aliases=["unignore"])
     async def unblock(self, ctx, *, entity: BlockConverter = None):
+        """Unblocks a user or channel in your highlight blocked list."""
+
         self.delete_timer(ctx.message)
 
         entity = entity or ctx.channel
@@ -742,14 +740,12 @@ class Highlight(commands.Cog):
 
         await ctx.delete_send("Successfully updated your blocked list.")
 
-    @highlight.command(
-        description="Temporarily block a user",
-        aliases=["tempignore"],
-        usage="<user/channel and time>",
-    )
+    @highlight.command(aliases=["tempignore"])
     async def tempblock(
         self, ctx, *, when: humantime.UserFriendlyTime(BlockConverter, default="")
     ):
+        """Temporarily blocks a user or channel from notifying you."""
+
         self.delete_timer(ctx.message)
 
         timers = self.bot.get_cog("Timers")
@@ -800,8 +796,10 @@ class Highlight(commands.Cog):
         except NotBlocked:
             return
 
-    @highlight.command(description="Display your blocked list")
-    async def blocked(self, ctx):
+    @highlight.command(name="blocked")
+    async def highlight_blocked(self, ctx):
+        """Shows your highlight blocked list."""
+
         self.delete_timer(ctx.message, 5)
 
         em = discord.Embed(
@@ -894,6 +892,8 @@ class Highlight(commands.Cog):
 
     @highlight.command()
     async def stats(self, ctx):
+        """Shows stats for highlight."""
+
         em = discord.Embed(title="Highlight Stats", color=colors.PRIMARY)
 
         query = "SELECT COUNT(*) FROM highlights"

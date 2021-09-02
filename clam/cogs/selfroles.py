@@ -226,29 +226,33 @@ class Selfroles(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_leave(self, guild):
-        """Remove all selfroles of a guild when I leave it"""
+        """Removes all selfroles of a guild when I leave it"""
+
         query = "DELETE FROM selfroles WHERE guild_id=$1"
         await self.bot.pool.execute(query, guild.id)
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role):
-        """Remove selfrole reference when a role is deleted"""
+        """Removes selfrole references when a role is deleted"""
+
         query = "DELETE FROM selfroles WHERE guild_id=$1 AND role_id=$2"
         await self.bot.pool.execute(query, role.guild.id, role.id)
 
     @commands.group(aliases=["role"], invoke_without_command=True)
     @commands.bot_has_permissions(manage_roles=True)
     async def selfrole(self, ctx):
-        """A set of commands to manage selfroles."""
+        """Commands to manage selfroles."""
+
         await ctx.send_help(ctx.command)
 
     @selfrole.command(name="add", aliases=["sub"])
     @commands.bot_has_permissions(manage_roles=True)
     async def selfrole_add(self, ctx, *, role: SelfRole):
-        """Add a selfrole to yourself.
+        """Adds a role to you.
 
         The role specified must be a selfrole.
         """
+
         if not role.role:
             await ctx.send("That role doesn't seem to exist anymore. Contact a mod.")
 
@@ -265,10 +269,11 @@ class Selfroles(commands.Cog):
     @selfrole.command(name="remove", aliases=["unsub"])
     @commands.bot_has_permissions(manage_roles=True)
     async def selfrole_remove(self, ctx, *, role: SelfRole):
-        """Remove a selfrole from yourself.
+        """Removes a role from you.
 
         The role specified must be a selfrole.
         """
+
         if not role.role:
             await ctx.send("That role doesn't seem to exist anymore. Contact a mod.")
 
@@ -314,12 +319,13 @@ class Selfroles(commands.Cog):
     async def selfrole_create(
         self, ctx, name, *, description: SelfRoleDescription = None
     ):
-        """Create a new selfrole.
+        """Creates a new selfrole.
 
         Wrap the role name in quotes if it contains spaces.
 
         You must have the manage roles permission to use this command.
         """
+
         reason = f"Selfrole creation by {ctx.author} (ID: {ctx.author.id})"
 
         try:
@@ -336,7 +342,7 @@ class Selfroles(commands.Cog):
     @checks.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
     async def selfrole_delete(self, ctx, *, role: discord.Role):
-        """Delete a selfrole.
+        """Deletes a selfrole (and the actual role).
 
         This command **will delete the role.**
         If you want to unbind a selfrole without deleting it,
@@ -344,6 +350,7 @@ class Selfroles(commands.Cog):
 
         You must have the manage roles permission to use this command.
         """
+
         await self.delete_selfrole(ctx, role)
 
         try:
@@ -360,7 +367,7 @@ class Selfroles(commands.Cog):
     async def selfrole_set(
         self, ctx, role: discord.Role, *, description: SelfRoleDescription = None
     ):
-        """Set an existing role as a selfrole.
+        """Sets an existing role as a selfrole.
 
         Wrap the role name in quotes if it contains spaces.
 
@@ -369,6 +376,7 @@ class Selfroles(commands.Cog):
 
         You must have the manage roles permission to use this command.
         """
+
         await self.insert_selfrole(ctx, role, description)
         await ctx.send(ctx.tick(True, f"Bound new selfrole to `{role.name}`"))
 
@@ -377,12 +385,13 @@ class Selfroles(commands.Cog):
     async def selfrole_edit(
         self, ctx, role: discord.Role, *, description: SelfRoleDescription = None
     ):
-        """Edit an existing selfrole's description.
+        """Edits an existing selfrole's description.
 
         Wrap the role name in quotes if it contains spaces.
 
         You must have the manage roles permission to use this command.
         """
+
         query = """UPDATE selfroles
                    SET description=$1
                    WHERE guild_id=$2 AND role_id=$3
@@ -404,19 +413,21 @@ class Selfroles(commands.Cog):
     @selfrole.command(name="unbind")
     @checks.has_permissions(manage_roles=True)
     async def selfrole_unbind(self, ctx, *, role: discord.Role):
-        """Unbind a selfrole from a role without deleting it.
+        """Unbinds a selfrole from a role without deleting it.
 
         This is to be used when you don't want a role to be a selfrole,
         but you still want to keep the original role.
 
         You must have the manage roles permission to use this command.
         """
+
         await self.delete_selfrole(ctx, role)
         await ctx.send(ctx.tick(True, "Successfully unbound selfrole from role"))
 
     @selfrole.command(name="list", aliases=["all"])
     async def selfrole_list(self, ctx):
-        """AView available selfroles in this server."""
+        """Shows the selfroles in this server."""
+
         query = """SELECT role_id, description
                    FROM selfroles
                    WHERE guild_id=$1;
@@ -451,7 +462,8 @@ class Selfroles(commands.Cog):
 
     @commands.command(aliases=["roles"])
     async def selfroles(self, ctx):
-        """Alias for selfrole list."""
+        """Alias for `{prefix}selfrole list`."""
+
         await ctx.invoke(self.selfrole_list)
 
     # reaction roles
@@ -516,8 +528,10 @@ class Selfroles(commands.Cog):
 
     async def create_reactionrole_embed(self, ctx, emojis_and_roles, title, menu=None):
         """Creates a reactionrole embed to be sent or edited.
+
         If a menu is provided, buttons will be added to the menu.
         """
+
         description = (
             "Press a reaction to get the associated role!\n"
             "Press the reaction again to remove the role.\n\n"
@@ -565,6 +579,7 @@ class Selfroles(commands.Cog):
 
     async def create_reactionrole_menu(self, ctx, emojis_and_roles, title):
         """Creates and sends/starts a reactionrole menu."""
+
         menu = ReactionroleMenu(timeout=None)
         menu.embed = await self.create_reactionrole_embed(ctx, emojis_and_roles, title, menu=menu)
         await menu.start(ctx)
@@ -572,6 +587,7 @@ class Selfroles(commands.Cog):
 
     async def update_reactionrole_menu(self, ctx, emojis_and_roles, title):
         """Edits a reactionrole menu message, sends the emojis, and restarts the menu."""
+
         old_menu = discord.utils.find(lambda m: m.ctx.channel == ctx.channel and m.ctx.message == ctx.message, self.active_menus)
 
         new_menu = ReactionroleMenu(timeout=None, message=ctx.message)
@@ -630,7 +646,9 @@ class Selfroles(commands.Cog):
     async def reactionroles(self, ctx):
         """Commands to create and manage reactionrole messages.
 
-        To delete a reaction role menu, simply delete the message."""
+        To delete a reaction role menu, simply delete the message.
+        """
+
         await ctx.send_help(ctx.command)
 
     async def prompt(self, ctx, *, converter=None, delete_after=None, return_message=False, react=True):
@@ -718,7 +736,8 @@ class Selfroles(commands.Cog):
     @checks.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
     async def reactionroles_create(self, ctx):
-        """Start an interactive reactionrole creation session."""
+        """Starts an interactive reactionrole creation session."""
+
         await ctx.send(
             "Beginning interactive reactionrole creation session.\n"
             f"Use `{ctx.prefix}abort` to abort."
@@ -783,7 +802,8 @@ class Selfroles(commands.Cog):
     @checks.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_messages=True)
     async def reactionroles_edit(self, ctx, *, message: discord.Message):
-        """Edit a reaction role menu's title or roles."""
+        """Edits a reaction role menu's title or roles."""
+
         if not message.guild or message.guild != ctx.guild:
             raise commands.BadArgument("The menu must be in this guild.")
 

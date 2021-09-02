@@ -115,6 +115,8 @@ class Fun(commands.Cog):
 
     @commands.command(name="8ball", aliases=["eightball"])
     async def eightball(self, ctx, *, question):
+        """Ask the all-knowing."""
+
         result = random.choice(
             [
                 "Yes",
@@ -135,8 +137,13 @@ class Fun(commands.Cog):
 
     @commands.group(aliases=["cleverbot"], invoke_without_command=True)
     @commands.cooldown(5, 10, commands.BucketType.user)
+    @commands.is_owner()
     async def ask(self, ctx, *, anything=None):
-        """Ask the bot anything through the Cleverbot API"""
+        """Ask the bot anything.
+
+        This actually just makes a request to Cleverbot.
+        """
+
         async with ctx.typing():
             convo, last_used = self.bot.cleverbot_convos.get(
                 ctx.author.id, (None, datetime.datetime.utcnow())
@@ -159,7 +166,8 @@ class Fun(commands.Cog):
 
     @ask.command(name="reset")
     async def ask_reset(self, ctx):
-        """Reset your current conversation"""
+        """Resets your current conversation with Cleverbot."""
+
         if not self.bot.cleverbot_convos.get(ctx.author.id):
             return await ctx.send("You don't have a conversation.")
 
@@ -168,9 +176,11 @@ class Fun(commands.Cog):
         await ctx.send(ctx.tick(True, "Reset conversation"))
 
     @commands.command(aliases=["conversation"])
+    @commands.is_owner()
     async def convo(self, ctx, starting_phrase=None):
-        """Start a conversation with Cleverbot.
-        Use the `done` command when you are done.
+        """Starts a conversation with Cleverbot.
+
+        Use the `{prefix}done` command when you are done.
         """
 
         convo = self.bot.cleverbot.conversation()
@@ -215,11 +225,10 @@ class Fun(commands.Cog):
 
         await ctx.send("Ended conversation. Thanks for talking!")
 
-    @commands.command(
-        description="Search for an emoji I have access to.",
-        aliases=["emote", "nitro"],
-    )
+    @commands.command(aliases=["emote", "nitro"])
     async def emoji(self, ctx, emoji):
+        """Shows one of my emojis."""
+
         emoji = discord.utils.get(self.bot.emojis, name=emoji)
 
         if not emoji:
@@ -255,7 +264,8 @@ class Fun(commands.Cog):
 
     @commands.command()
     async def emojisearch(self, ctx, *, query):
-        """Search Clam's emojis"""
+        """Searchs my emojis and shows the closest matches."""
+
         emojis = [(emoji.name, str(emoji)) for emoji in self.bot.emojis]
 
         def transform(tup):
@@ -274,7 +284,8 @@ class Fun(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def emojis(self, ctx, *, guild: GuildConverter = None):
-        """List all of Clam's emojis or emojis for a specific guild"""
+        """Lists all my emojis or the emojis in a specific server."""
+
         if guild:
             emojis = [(e.name, str(e)) for e in self.bot.emojis if e.guild == guild]
             title = f"Emojis in {guild}"
@@ -291,10 +302,10 @@ class Fun(commands.Cog):
         menu = MenuPages(EmojiResultSource(descriptions, emojis, title), ctx=ctx)
         await menu.start()
 
-    @commands.command(
-        description="Search for an emoji I have access to and react with it",
-    )
+    @commands.command()
     async def react(self, ctx, emoji, message=-1):
+        """Reacts with one of my emojis to a message."""
+
         emoji = discord.utils.get(self.bot.emojis, name=emoji)
 
         try:
@@ -374,17 +385,16 @@ class Fun(commands.Cog):
         await message.remove_reaction(emoji, ctx.me)
         await bot_message.delete()
 
-    @commands.command(description="Flip a coin.")
+    @commands.command()
     async def flipcoin(self, ctx):
+        """Flips a virtual coin and shows the result."""
+
         result = random.choice(["heads", "tails"])
         await ctx.send(f"You flipped **{result}**.")
 
-    @commands.group(
-        aliases=["diceroll", "rolldie"],
-        invoke_without_command=True,
-    )
+    @commands.group(aliases=["diceroll", "rolldie"], invoke_without_command=True)
     async def rolldice(self, ctx, dice: int = 1, sides: int = 6):
-        """Roll a die or two
+        """Rolls a die or two.
 
         You can roll up to 10 dice with up to 99 sides.
         """
@@ -410,7 +420,7 @@ class Fun(commands.Cog):
 
     @commands.command(aliases=["choice"])
     async def choose(self, ctx, *choices):
-        """Choose a random option.
+        """Makes a choice for you.
 
         You can have up to 20 choices.
         """
@@ -423,7 +433,7 @@ class Fun(commands.Cog):
         aliases=["bo"],
     )
     async def bestof(self, ctx, number: int, *choices):
-        """Similar to choose, except it's the best of a specified number.
+        """Similar to `{prefix}choose`, except it's the best of a specified number.
 
         The number can be up to 100, and you can have up to 20 choices.
         """
@@ -461,8 +471,13 @@ class Fun(commands.Cog):
         except asyncio.TimeoutError:
             return None
 
-    @commands.command(description="See how fast you can type something")
+    @commands.command()
     async def timeme(self, ctx):
+        """Times your typing speed, sorta.
+
+        It's a pretty dumb command.
+        """
+
         def check(ms):
             return ms.channel == ctx.channel and ms.author == ctx.author
 
@@ -489,12 +504,10 @@ class Fun(commands.Cog):
             f"You took **`{human_friendly} seconds`** to type **`{discord.utils.escape_mentions(message.content)}`**."
         )
 
-    @commands.command(
-        name="birthday",
-        description="Sends a user a bday message straight to their DMs",
-        aliases=["bday"],
-    )
+    @commands.command(name="birthday", aliases=["bday"])
     async def birthday_command(self, ctx):
+        """DMs a user a birthday message."""
+
         await ctx.send(
             "Who would you like to send the birthday message to? They must be in this server."
         )
@@ -556,16 +569,16 @@ class Fun(commands.Cog):
 
         await ctx.send(f"{ctx.tick(True)} Sent birthday message to `{recipient}`")
 
-    @commands.command(
-        description="Generate a typing message for a name", usage="<name>"
-    )
-    async def typing(self, ctx, *, member=None):
-        if not member:
+    @commands.command()
+    async def typing(self, ctx, *, user=None):
+        """Sends a fake typing message."""
+
+        if not user:
             name = ctx.author.display_name
         elif ctx.message.mentions:
             name = ctx.message.mentions[0].display_name
         else:
-            name = member
+            name = user
 
         emoji = "<a:typing:702612001733738517>"
 
@@ -580,7 +593,7 @@ class Fun(commands.Cog):
 
     @commands.command(aliases=["timebars"])
     async def timebar(self, ctx, utc_offset: int = 0):
-        """Display a progress bar for various portions of time."""
+        """Shows a progress bar for various portions of time."""
 
         def format_portion(when, percentage_bar, percent):
             return f"{when}: `|{percentage_bar}|` ({percent:.2f}%)"
@@ -702,34 +715,13 @@ class Fun(commands.Cog):
     @commands.command(hidden=True)
     async def re_text(self, ctx, *, text: Union[discord.Message, str]):
         """dumb command pls ignore"""
+
         if isinstance(text, discord.Message):
             text = text.content
             if not text:
                 return await ctx.send(" ".join(list("i can't reify that u dummy")))
 
         await ctx.send(" ".join(list(text)))
-
-    # async def do_thethaurize(self, sentence):
-    #     words = sentence.split(" ")
-    #     final_words = []
-    #     for word in words:
-    #         if not random.choice([True, False]):
-    #             final_words.append(word)
-    #             continue
-    #         data = self.oxford.get_synonyms(word).json()
-    #         synonyms = data['results'][0]['lexicalEntries'][0]['entries'][0]['senses'][0]['synonyms']
-    #         new_word = synonyms[0]
-    #         final_words.append(new_word)
-    #     return " ".join(final_words)
-
-    # @commands.command(
-    #     description="Thesaurize any sentence CURRENTLY BROKEN",
-    #     usage="[sentence]",
-    #     aliases=["thethis", "tt"],
-    #     hidden=True
-    # )
-    # async def thesaurize(self, ctx, *, sentence):
-    #     await ctx.send(await self.do_thethaurize(sentence))
 
 
 def setup(bot):

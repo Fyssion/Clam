@@ -771,6 +771,7 @@ class Stars(commands.Cog):
     @requires_starboard()
     async def starboard_info(self, ctx):
         """Shows meta information about the starboard."""
+
         starboard = ctx.starboard
         channel = starboard.channel
         data = []
@@ -816,6 +817,7 @@ class Stars(commands.Cog):
         click "Copy ID". You must have Developer Mode enabled to get that
         functionality.
         """
+
         try:
             await self.unstar_message(ctx.channel, message, ctx.author.id, verify=True)
         except StarError as e:
@@ -1398,7 +1400,8 @@ class Stars(commands.Cog):
     @commands.command(hidden=True)
     @commands.is_owner()
     async def star_announce(self, ctx, *, message):
-        """Announce stuff to every starboard."""
+        """Announces stuff to every starboard."""
+
         query = "SELECT id, channel_id FROM starboard;"
         records = await ctx.db.fetch(query)
 

@@ -500,8 +500,10 @@ class Games(commands.Cog):
         else:
             ctx.hangman = None
 
-    @commands.command(description="Start a Connect 4 game", usage="[opponent]")
+    @commands.command()
     async def connect4(self, ctx, *, opponent: discord.Member):
+        """Starts a game of Connect 4."""
+
         if str(opponent.id) in self.bot.blacklist:
             return await ctx.send(f"Opponent `{opponent}` is blacklisted from the bot.")
 
@@ -516,7 +518,7 @@ class Games(commands.Cog):
 
     @commands.command(name="10s")
     async def ten_seconds(self, ctx):
-        """A Discord-exclusive game of 10s
+        """Can you count to 10 seconds?
 
         How to play:
         - Use the 10s command
@@ -526,12 +528,13 @@ class Games(commands.Cog):
 
         Timer starts as soon as my message is sent.
         """
+
         game = TenSeconds(ctx=ctx)
         await game.start()
 
     @commands.group(invoke_without_command=True)
     async def hangman(self, ctx):
-        """Play hangman with your friends in Discord
+        """Starts a game of hangman.
 
         When you use this command, a new hangman game will be
         created in this channel. You will be asked to provide a word.
@@ -542,6 +545,7 @@ class Games(commands.Cog):
         Note that moderators (specifically, members with manage messages)
         can stop any hangman game.
         """
+
         if ctx.hangman:
             return await ctx.send(
                 f"{ctx.tick(False)} There is already a hangman game in this channel."
@@ -576,12 +580,10 @@ class Games(commands.Cog):
 
         await ctx.author.send(f"{ctx.tick(True)} Hangman game created")
 
-    @hangman.command(
-        name="guess",
-        description="Guess a letter in the current hangman game",
-        aliases=["g"],
-    )
+    @hangman.command(name="guess", aliases=["g"])
     async def hangman_guess(self, ctx, letter):
+        """Guess a letter in the running hangman game."""
+
         if not ctx.hangman:
             return await ctx.send(
                 f"{ctx.tick(False)} There is no running hangman game in this channel."
@@ -609,13 +611,18 @@ class Games(commands.Cog):
 
     @commands.command()
     async def guess(self, ctx, letter):
-        """Alias for hangman guess. Guess a letter in hangman"""
+        """Alias for `{prefix}hangman guess`."""
+
         await ctx.invoke(self.hangman_guess, letter)
 
-    @hangman.command(
-        name="stop", description="Stop the current hangman game", aliases=["quit"]
-    )
+    @hangman.command(name="stop")
     async def hangman_stop(self, ctx):
+        """Stops the running hangman game.
+
+        You can only use this command if you started
+        the hangman game or are a moderator.
+        """
+
         if not ctx.hangman:
             return await ctx.send(
                 f"{ctx.tick(False)} There is no running hangman game in this channel."
@@ -632,9 +639,11 @@ class Games(commands.Cog):
         else:
             await ctx.send(f"{ctx.tick(False)} You did not create that hangman game.")
 
-    @hangman.command(name="all", description="List all hangman games", aliases=["list"])
+    @hangman.command(name="all", aliases=["list"])
     @commands.is_owner()
     async def hangman_all(self, ctx):
+        """Shows all hangman games."""
+
         games = [f"{h.ctx.guild} #{h.channel}" for h in self.hangman_games.values()]
 
         if not games:

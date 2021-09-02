@@ -133,6 +133,8 @@ class Tools(commands.Cog):
 
     @commands.command(aliases=["countreactions"])
     async def reactioncount(self, ctx, *, message: discord.Message):
+        """Counts reactions for a message."""
+
         if not message.reactions:
             return await ctx.send("This message has no reactions.")
 
@@ -151,6 +153,8 @@ class Tools(commands.Cog):
 
     @commands.command(aliases=["inrole"])
     async def hasrole(self, ctx, *, role: discord.Role):
+        """Shows members with a specific role."""
+
         role_members = []
 
         for member in sorted(role.members, key=lambda m: m.name.lower()):
@@ -169,6 +173,7 @@ class Tools(commands.Cog):
 
         The count parameter can only be up to 25.
         """
+
         count = max(min(count, 25), 5)
 
         if not ctx.guild.chunked:
@@ -193,6 +198,7 @@ class Tools(commands.Cog):
 
         The count parameter can only be up to 25.
         """
+
         count = max(min(count, 25), 5)
 
         if not ctx.guild.chunked:
@@ -215,6 +221,7 @@ class Tools(commands.Cog):
 
         The count parameter can only be up to 25.
         """
+
         count = max(min(count, 25), 5)
 
         if not ctx.guild.chunked:
@@ -237,6 +244,7 @@ class Tools(commands.Cog):
 
         The count parameter can only be up to 25.
         """
+
         count = max(min(count, 25), 5)
 
         if not ctx.guild.chunked:
@@ -290,10 +298,11 @@ class Tools(commands.Cog):
     @commands.command()
     @commands.guild_only()
     async def poll(self, ctx, name=None, *args):
-        """Create a poll through DMs
+        """Creates a poll through DMs.
 
-        For a quicker version (with less control), use `quickpoll`.
+        For a quicker version (with less control), use `{prefix}quickpoll`.
         """
+
         timers = self.bot.get_cog("Timers")
         if not timers:
             return await ctx.send(
@@ -442,10 +451,11 @@ class Tools(commands.Cog):
     @commands.command()
     @commands.guild_only()
     async def quickpoll(self, ctx, title=None, *options):
-        """A quicker version of the poll command
+        """A quicker version of `{prefix}poll`.
 
         If the the title or an option contains spaces, make sure to wrap it in quotes.
         """
+
         timers = self.bot.get_cog("Timers")
         if not timers:
             return await ctx.send(
@@ -669,12 +679,11 @@ class Tools(commands.Cog):
 
         await ctx.send(content, embed=em)
 
-    @commands.group(
-        description="Get the previous or a specific deleted message in this channel",
-        invoke_without_command=True,
-    )
+    @commands.group(invoke_without_command=True)
     @can_snipe()
     async def snipe(self, ctx, message_id: int = None):
+        """Shows the previous deleted or edited message in the channel."""
+
         if str(ctx.author.id) in self.snipe_ignored:
             return await ctx.send(
                 f"You are opted out of sniped messages. To opt back in, use `{ctx.prefix}snipe optin`"
@@ -705,7 +714,8 @@ class Tools(commands.Cog):
     @snipe.command(name="disable", aliases=["goaway"])
     @checks.has_permissions(manage_guild=True)
     async def sniped_disable(self, ctx):
-        """Disable sniped messages for this server"""
+        """Disables sniped messages in this server."""
+
         if str(ctx.guild.id) in self.snipe_ignored:
             return await ctx.send(
                 f"Snipe is already disabled. To enable, use `{ctx.prefix}snipe enable`"
@@ -720,7 +730,8 @@ class Tools(commands.Cog):
     @snipe.command(name="enable")
     @checks.has_permissions(manage_guild=True)
     async def sniped_enable(self, ctx):
-        """Enable sniped messages for this server"""
+        """Enables sniped messages in this server."""
+
         if str(ctx.guild.id) not in self.snipe_ignored:
             return await ctx.send(
                 f"Snipe is enabled. To disable, use `{ctx.prefix}snipe disable`"
@@ -732,12 +743,10 @@ class Tools(commands.Cog):
 
         await ctx.send(ctx.tick(True, "Enabled sniped messages for this server"))
 
-    @snipe.command(
-        name="optout",
-        description="Opt out of sniped messages tracking",
-        aliases=["ignore", "nothanks"],
-    )
+    @snipe.command(name="optout", aliases=["ignore", "nothanks"],)
     async def snipe_optout(self, ctx):
+        """Opts you out of sniped messages tracking globally."""
+
         if str(ctx.author.id) in self.snipe_ignored:
             return await ctx.send(
                 f"You are already opted out of sniped messages. To opt back in, use `{ctx.prefix}snipe optin`"
@@ -749,12 +758,10 @@ class Tools(commands.Cog):
 
         await ctx.send(ctx.tick(True, "Opted out of sniped messages"))
 
-    @snipe.command(
-        name="optin",
-        description="Opt in to sniped messages tracking",
-        aliases=["unignore", "yesplease"],
-    )
+    @snipe.command(name="optin", aliases=["unignore", "yesplease"])
     async def snipe_optin(self, ctx):
+        """Opts you in back to sniped messages tracking."""
+
         if str(ctx.author.id) not in self.snipe_ignored:
             return await ctx.send(
                 f"You have not opted out of sniped messages. To optout, use `{ctx.prefix}snipe optout`"
@@ -766,9 +773,11 @@ class Tools(commands.Cog):
 
         await ctx.send(ctx.tick(True, "Opted in to sniped messages"))
 
-    @snipe.command(name="ignored", description="View all ignored users")
+    @snipe.command(name="ignored")
     @commands.is_owner()
     async def snipe_ignored(self, ctx):
+        """Shows all users who have opted out of sniped messages."""
+
         if not self.snipe_ignored:
             return await ctx.send("No ignored entities")
 
@@ -796,12 +805,11 @@ class Tools(commands.Cog):
         )
         await pages.start()
 
-    @commands.group(
-        description="Get all sniped messages in this channel",
-        invoke_without_command=True,
-    )
+    @commands.group(invoke_without_command=True)
     @can_snipe()
     async def sniped(self, ctx):
+        """Shows the sniped messaegs in the channel."""
+
         if str(ctx.author.id) in self.snipe_ignored:
             return await ctx.send(
                 f"You are opted out of sniped messages. To opt back in, use `{ctx.prefix}snipe optin`"
@@ -846,9 +854,9 @@ class Tools(commands.Cog):
     @sniped.command(name="clear", aliases=["delete"])
     @commands.is_owner()
     async def sniped_clear(self, ctx, *args):
-        """Clear sniped messages for the current channel.
+        """Clears sniped messages in the channel.
 
-        Use the --all flag to clear sniped messages for all channels
+        Use the `--all` flag to clear sniped messages for all channels.
         """
         if "--all" in args:
             cleared = len(self.bot.sniped_messages)
@@ -918,11 +926,10 @@ class Tools(commands.Cog):
         except TypeError:
             return None
 
-    @commands.command(
-        description="Get the avatar of a member.",
-        aliases=["profilepic"],
-    )
+    @commands.command(aliases=["pfp"])
     async def avatar(self, ctx, *, user: GlobalUser = None):
+        """Shows a user's avatar."""
+
         if not user:
             user = ctx.author
 
@@ -950,11 +957,10 @@ class Tools(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @commands.command(
-        description="Get information about a user",
-        aliases=["memberinfo", "ui", "whois"],
-    )
+    @commands.command(aliases=["memberinfo", "ui", "whois"])
     async def userinfo(self, ctx, *, user: GlobalUser = None):
+        """Shows info about a user."""
+
         await ctx.trigger_typing()
 
         user = user or ctx.author
@@ -1072,12 +1078,10 @@ class Tools(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @commands.command(
-        name="serverinfo",
-        description="Get information about the current server",
-        aliases=["guildinfo"],
-    )
-    async def serverinfo_command(self, ctx):
+    @commands.command(aliases=["guildinfo"])
+    async def serverinfo(self, ctx):
+        """Shows info about the server."""
+
         await ctx.trigger_typing()
         guild = ctx.guild
         if guild.unavailable:
@@ -1142,14 +1146,13 @@ class Tools(commands.Cog):
         # )
         await ctx.send(embed=em)
 
-    @commands.command(
-        name="snowstamp",
-        description="Get timestamp from a Discord snowflake",
-        hidden=True,
-    )
-    async def snowstamp_command(self, ctx, snowflake=None):
-        if snowflake == None:
+    @commands.command(hidden=True)
+    async def snowstamp(self, ctx, snowflake=None):
+        """Shows the timestamp from a Discord snowflake."""
+
+        if not snowflake:
             return await ctx.send("Please specify a snowflake to convert.")
+
         await ctx.send(snowstamp(snowflake))
 
     def time_in_range(self, start, end, x):
@@ -1159,11 +1162,13 @@ class Tools(commands.Cog):
         else:
             return start <= x or x <= end
 
-    @commands.command(description="Parse a Discord token", hidden=True)
+    @commands.command(hidden=True)
     async def parsetoken(self, ctx, token):
+        """Parses a Discord token."""
+
         parsed = token.split(".")
         if len(parsed) != 3:
-            return await ctx.send("This is not a Discord token :/")
+            return await ctx.send("This is not a Discord token.")
 
         try:
             user_id = base64.b64decode(parsed[0])
@@ -1194,57 +1199,10 @@ class Tools(commands.Cog):
         em.set_thumbnail(url=user.display_avatar.url)
         await ctx.send(embed=em)
 
-    @commands.command(
-        name="embed",
-        description="Create a custom embed and send it to a specified channel.",
-        aliases=["em"],
-        hidden=True,
-    )
-    @commands.guild_only()
-    @commands.is_owner()
-    async def embed_command(self, ctx):
-        def check(ms):
-            # Look for the message sent in the same channel where the command was used
-            # As well as by the user who used the command.
-            return ms.channel == ctx.author.dm_channel and ms.author == ctx.author
-
-        if (ctx.channel).__class__.__name__ == "DMChannel":
-            await ctx.send("Please use this command in a server.")
-            return
-
-        await ctx.send("Check your DMs!", delete_after=5)
-        await ctx.author.send(
-            "**Create an embed:**\nWhat server would you like to send the embed to? Type `here` to send the embed where you called the command."
-        )
-
-        msg = await self.bot.wait_for("message", check=check)
-
-        if msg == "here":
-            em_guild = ctx.guild
-        else:
-            await ctx.author.send(
-                "Custom servers not supported yet :(\nServer set to where you called the command."
-            )
-            em_guild = ctx.guild
-
-        # Check to see if bot has permission to view perms
-
-        await ctx.author.send(
-            f"Server set to `{em_guild.name}`.\nWhat channel would you like to send to?"
-        )
-
-        msg = await self.bot.wait_for("message", check=check)
-
-        # Check for permission here
-
-        # while hasPermissionToSend == False:
-
-    @commands.group(
-        description="Search for things in a server.",
-        aliases=["membersearch"],
-        invoke_without_command=True,
-    )
+    @commands.group(aliases=["membersearch"], invoke_without_command=True)
     async def usersearch(self, ctx):
+        """Searchs for things in a server."""
+
         await ctx.send_help(ctx.command)
 
     def compile_list(self, list):
@@ -1260,12 +1218,10 @@ class Tools(commands.Cog):
         msg += "\n```"
         return msg
 
-    @usersearch.command(
-        name="username",
-        description="Search server for a specified username",
-        aliases=["user", "name"],
-    )
+    @usersearch.command(name="username", aliases=["user", "name"])
     async def search_username(self, ctx, *, username):
+        """Searchs usernames in this server."""
+
         matches = []
         for member in ctx.guild.members:
             if username.lower() in member.name.lower():
@@ -1276,12 +1232,10 @@ class Tools(commands.Cog):
             # return await ctx.send(self.compile_list(matches))
         await ctx.send("No matches found.")
 
-    @usersearch.command(
-        name="nickname",
-        description="Search server for a specified nickname",
-        aliases=["nick"],
-    )
+    @usersearch.command(name="nickname", aliases=["nick"])
     async def search_nickname(self, ctx, *, nickname):
+        """Searches nicknames in this server."""
+
         matches = []
         for member in ctx.guild.members:
             if member.nick:
@@ -1292,12 +1246,10 @@ class Tools(commands.Cog):
             return await pages.start()
         await ctx.send("No matches found.")
 
-    @usersearch.command(
-        name="discriminator",
-        description="Search server for a specified descrininator",
-        aliases=["number", "discrim", "dis", "num"],
-    )
+    @usersearch.command(name="discriminator", aliases=["number", "discrim", "dis", "num"])
     async def search_discriminator(self, ctx, discriminator: int):
+        """Searches discriminators in this server."""
+
         matches = []
         for member in ctx.guild.members:
             if discriminator == int(member.discriminator):

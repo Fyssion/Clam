@@ -85,12 +85,12 @@ class CCS(commands.Cog):
             await member.add_roles(role)
             return True
 
-    @commands.command(
-        description="Retire or unretire a bot", aliases=["unretire"]
-    )
+    @commands.command(aliases=["unretire"])
     @commands.has_role(CODER)
     @commands.bot_has_permissions(manage_roles=True, manage_nicknames=True)
     async def retire(self, ctx, *, member: discord.Member):
+        """Retires or unretires a bot."""
+
         if not member.bot:
             raise commands.BadArgument("Member must be a bot.")
 
@@ -104,12 +104,15 @@ class CCS(commands.Cog):
             await member.edit(nick=member.display_name.replace(RETIRED_EMOJI, ""))
             await ctx.send(f"{ctx.tick(True)} Unretired `{member}`")
 
-    @commands.command(
-        description="Kick a bot from a voice channel (music bot testing)"
-    )
+    @commands.command()
     @commands.has_role(CODER)
     @commands.bot_has_guild_permissions(move_members=True)
     async def kickvoice(self, ctx, *, member: discord.Member):
+        """Kicks a bot from a voice channel.
+
+        This command is for testing music bots.
+        """
+
         if not member.bot:
             raise commands.BadArgument("You can only kick bots.")
 
@@ -200,12 +203,16 @@ class CCS(commands.Cog):
 
         await ctx.send(f"{ctx.tick(True)} Archived channel `{channel}`")
 
-    @commands.command(
-        description="Toggle a channel on or off (move to archived category)", aliases=["archive", "unarchive"]
-    )
+    @commands.command(aliases=["archive", "unarchive"])
     @commands.is_owner()
     @commands.bot_has_permissions(manage_channels=True)
     async def toggle(self, ctx, *, channel: discord.TextChannel = None):
+        """Toggles a channel as archived or unarchived.
+
+        This moves the channel between the archive category
+        and the category that it previously occupied.
+        """
+
         channel = channel or ctx.channel
 
         if channel.category and channel.category.id == ARCHIVE_CATEGORY:

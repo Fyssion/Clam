@@ -101,7 +101,7 @@ class Todo(commands.Cog):
 
     @commands.group(invoke_without_command=True)
     async def todo(self, ctx):
-        """Manage your todo list
+        """Shows your todo list.
 
         This command houses a series of subcommands used for
         managing a todo list. Each item on your todo list
@@ -113,12 +113,10 @@ class Todo(commands.Cog):
         """
         await ctx.invoke(self.todo_list)
 
-    @todo.command(
-        name="add",
-        description="Add an task to your todo list",
-        aliases=["create", "new"],
-    )
+    @todo.command(name="add", aliases=["create", "new"])
     async def todo_add(self, ctx, *, name):
+        """Adds an task to your todo list."""
+
         if len(name) > 512:
             raise commands.BadArgument(
                 f"That name is too long. Must be 512 characters or less ({len(name)}/512)."
@@ -148,12 +146,10 @@ class Todo(commands.Cog):
                     f":page_facing_up: Added **`{discord.utils.escape_mentions(name)}`** to your todo list."
                 )
 
-    @todo.command(
-        name="check",
-        description="Mark an task from your todo list as done",
-        aliases=["done", "complete"],
-    )
-    async def todo_check(self, ctx, *, task):
+    @todo.command(name="done", aliases=["check", "complete"])
+    async def todo_done(self, ctx, *, task):
+        """Marks a task on your todo list as done."""
+
         try:
             task = int(task)
             sql = """UPDATE todos
@@ -173,12 +169,10 @@ class Todo(commands.Cog):
 
         await ctx.send(f"{COMPLETE_EMOJI} Task marked as done")
 
-    @todo.command(
-        name="uncheck",
-        description="Mark a task from your todo list as not done",
-        aliases=["undo"],
-    )
-    async def todo_uncheck(self, ctx, *, task):
+    @todo.command(name="undone", aliases=["uncheck"])
+    async def todo_undone(self, ctx, *, task):
+        """Marks a task from your todo list as not done."""
+
         try:
             task = int(task)
             sql = """UPDATE todos
@@ -198,12 +192,10 @@ class Todo(commands.Cog):
 
         await ctx.send(f"{INCOMPLETE_EMOJI} Task marked as not done")
 
-    @todo.command(
-        name="delete",
-        description="Delete a task from your todo list",
-        aliases=["remove"],
-    )
+    @todo.command(name="delete", aliases=["remove"])
     async def todo_delete(self, ctx, *, task):
+        """Deletes a task from your todo list."""
+
         try:
             task = int(task)
             query = "DELETE FROM todos WHERE id=$1 AND author_id=$2;"
@@ -217,12 +209,10 @@ class Todo(commands.Cog):
 
         await ctx.send(":wastebasket: Task deleted.")
 
-    @todo.command(
-        name="info",
-        description="View info about a task",
-        aliases=["information"],
-    )
+    @todo.command(name="info", aliases=["show"])
     async def todo_info(self, ctx, *, task: TodoTaskConverter):
+        """Shows info about a task on your todo list."""
+
         todo_id, name, created_at, completed_at = task
 
         if completed_at:
@@ -245,10 +235,10 @@ class Todo(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @todo.command(
-        name="list", description="List all tasks, regardless of completion", aliases=["incomplete"],
-    )
+    @todo.command(name="list")
     async def todo_list(self, ctx):
+        """Shows incomplete tasks on your todo list."""
+
         query = """SELECT id, name, created_at
                    FROM todos
                    WHERE author_id=$1 AND completed_at IS NULL
@@ -263,8 +253,10 @@ class Todo(commands.Cog):
         pages = MenuPages(TodoTaskSource(records, ctx, "list"), ctx=ctx)
         await pages.start()
 
-    @todo.command(name="all", description="View all tasks")
+    @todo.command(name="all")
     async def todo_all(self, ctx):
+        """Shows all tasks on your todo list, regardless of completion."""
+
         query = """SELECT id, name, created_at, completed_at
                    FROM todos
                    WHERE author_id=$1
@@ -274,11 +266,10 @@ class Todo(commands.Cog):
         records = await ctx.db.fetch(query, ctx.author.id)
 
         if not records:
-            return await ctx.send("You have no tasks.")
+            return await ctx.send("You have no tasks on your todo list.")
 
         pages = MenuPages(TodoTaskSource(records, ctx, "all"), ctx=ctx)
         await pages.start()
-
 
 
 def setup(bot):

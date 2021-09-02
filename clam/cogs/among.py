@@ -110,16 +110,13 @@ class AmongUs(commands.Cog, name="Among Us"):
             )
         )
 
-    @commands.group(
-        description="Retrieves or saves an Among Us game code.",
-        aliases=["amongus", "amogus"],
-        invoke_without_command=True,
-    )
+    @commands.group(aliases=["amongus", "amogus"], invoke_without_command=True)
     async def among(self, ctx, code=None, *, region="North America"):
-        """View or set the current Among Us code for this server.
+        """Shows or sets the Among Us code for this server.
 
-        To set a code, use `{prefix}among <code> [region]`
+        To set a code, use `{prefix}among <code> [region]`.
         """
+
         if code:
             return await self.set_among_code(ctx, code, region)
 
@@ -140,14 +137,13 @@ class AmongUs(commands.Cog, name="Among Us"):
     @among.command(name="us")
     async def among_us(self, ctx, code=None, *, region="North America"):
         """Alias for `among`."""
+
         await ctx.invoke(self.among, code=code, region=region)
 
-    @among.command(
-        name="clear",
-        description="Clears the current Among Us code.",
-        aliases=["reset"],
-    )
+    @among.command(name="clear", aliases=["reset"])
     async def among_clear(self, ctx):
+        """Clears the current Among Us code."""
+
         query = """INSERT INTO among_games (id, code, code_region, code_author, code_set_at)
                    VALUES ($1, NULL, NULL, NULL, NULL) ON CONFLICT (id) DO UPDATE SET
                         code=EXCLUDED.code,

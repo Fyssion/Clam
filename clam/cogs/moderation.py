@@ -387,11 +387,12 @@ class Moderation(commands.Cog):
     @commands.command(aliases=["su"])
     @checks.has_permissions(administrator=True)
     async def runas(self, ctx, target: discord.Member, *, command):
-        """Run a command as someone else.
+        """Runs a command as someone else.
 
-        You must have the administrator permission, and you cannot run
-        a command as someone with a higher role than you.
+        You must have the administrator permission to run this command,
+        and you cannot run a command as someone with a higher role than you.
         """
+
         if target.id == self.bot.owner_id:
             raise commands.BadArgument(
                 "You cannot run commands as the owner of the bot."
@@ -457,6 +458,8 @@ class Moderation(commands.Cog):
         *,
         reason=None,
     ):
+        """Bans a user from the server."""
+
         if type(user) == str:
             raise commands.BadArgument(
                 f'User "{user}" not found.'
@@ -490,7 +493,7 @@ class Moderation(commands.Cog):
 
         await ctx.send(f"{ctx.tick(True)} Banned {human_friendly}")
 
-    @commands.command(description="Temporarily ban a user")
+    @commands.command()
     @checks.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
     async def tempban(
@@ -501,6 +504,8 @@ class Moderation(commands.Cog):
         *,
         reason=None,
     ):
+        """Temporarily bans a user from the server."""
+
         timers = self.bot.get_cog("Timers")
         if not timers:
             return await ctx.send(
@@ -596,6 +601,8 @@ class Moderation(commands.Cog):
     @checks.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
     async def unban(self, ctx, user: BannedUser, *, reason=None):
+        """Unbans a user from the server."""
+
         to_be_unbanned = discord.Object(id=user.id)
         reason = f"Unban by {ctx.author} (ID: {ctx.author.id}) with reason: {reason}"
 
@@ -612,6 +619,8 @@ class Moderation(commands.Cog):
     @checks.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
     async def kick(self, ctx, user: discord.Member, *, reason=None):
+        """Kicks a user from the server."""
+
         if not role_hierarchy_check(ctx, ctx.author, user):
             return await ctx.send(
                 "You can't preform this action due to role hierarchy."
@@ -705,6 +714,8 @@ class Moderation(commands.Cog):
     @commands.group(invoke_without_command=True)
     @can_mute()
     async def mute(self, ctx, member: discord.Member, *, reason=None):
+        """Mutes a user."""
+
         if not role_hierarchy_check(ctx, ctx.author, member):
             return await ctx.send(
                 "You can't preform this action due to role hierarchy."
@@ -734,6 +745,8 @@ class Moderation(commands.Cog):
     async def unmute(
         self, ctx, member: typing.Union[discord.Member, int], *, reason=None
     ):
+        """Unmutes a member."""
+
         if isinstance(member, discord.Member) and not role_hierarchy_check(
             ctx, ctx.author, member
         ):
@@ -801,6 +814,8 @@ class Moderation(commands.Cog):
         *,
         reason=None,
     ):
+        """Temporarily mutes a member."""
+
         timers = self.bot.get_cog("Timers")
         if not timers:
             return await ctx.send(
@@ -899,10 +914,10 @@ class Moderation(commands.Cog):
     @commands.command()
     @commands.guild_only()
     async def selfmute(self, ctx, *, duration: humantime.FutureTime):
-        """Mute yourself for a duration of time.
+        """Mutes you for a duration of time.
 
         The duration can't be less than 5 minutes or more than 24 hours.
-        Do not bother a moderator to unmute you. You have been warned.
+        Do not bother a moderator to unmute you.
         """
         timers = self.bot.get_cog("Timers")
         if not timers:
@@ -935,7 +950,7 @@ class Moderation(commands.Cog):
         )
         confirm = await ctx.confirm(
             f"Are you sure you want to mute yourself for {human_friendly}?\n"
-            "You won't be able to unmute yourself unless you ask a mod."
+            "Do not ask a moderator to unmute you."
         )
 
         if not confirm:
@@ -969,9 +984,11 @@ class Moderation(commands.Cog):
             "Don't bug anyone about it!"
         )
 
-    @commands.command(description="View members with the muted role")
+    @commands.command()
     @checks.has_permissions(manage_roles=True)
     async def muted(self, ctx):
+        """Shows members with the muted role."""
+
         settings = await self.get_guild_settings(ctx.guild.id)
 
         if not settings:
@@ -999,6 +1016,8 @@ class Moderation(commands.Cog):
 
     @mute.group(name="role", invoke_without_command=True)
     async def mute_role(self, ctx):
+        """Manages the server's mute role."""
+
         settings = await self.get_guild_settings(ctx.guild.id)
         if not settings:
             return await ctx.send("No mute role has been set for this server.")
@@ -1008,10 +1027,12 @@ class Moderation(commands.Cog):
 
         return await ctx.send(f"This server's mute role is **`{settings.mute_role}`**")
 
-    @mute_role.command(name="set", description="Set an existing mute role")
+    @mute_role.command(name="set")
     @commands.bot_has_permissions(manage_roles=True)
     @checks.has_permissions(manage_roles=True)
     async def mute_role_set(self, ctx, *, role: discord.Role):
+        """Sets an existing role as the mute role."""
+
         query = """INSERT INTO guild_settings (id, mute_role_id, muted_members)
                    VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET
                         mute_role_id=EXCLUDED.mute_role_id,
@@ -1023,37 +1044,11 @@ class Moderation(commands.Cog):
 
         await ctx.send(f"{ctx.tick(True)} Set mute role to **`{role}`**")
 
-    @mute_role.command(
-        name="create",
-        description="Create a new mute role and change channel overwrites",
-    )
-    @commands.bot_has_permissions(manage_channels=True, manage_roles=True)
-    @checks.has_permissions(manage_channels=True, manage_roles=True)
-    async def mute_role_create(
-        self, ctx, name="Muted", *, color: discord.Color = discord.Color.dark_grey()
-    ):
-        settings = await self.get_guild_settings(ctx.guild.id)
-
-        if settings and settings.mute_role:
-            result = await ctx.confirm(
-                "A mute role is already set for this server. "
-                "Are you sure you want to create a new one?"
-            )
-
-            if not result:
-                return await ctx.send("Aborted.")
-
-        await ctx.trigger_typing()
-
-        guild = ctx.guild
-        reason = f"Creation of Muted role by {ctx.author} (ID: {ctx.author.id})"
-
-        role = await guild.create_role(name=name, color=color, reason=reason)
-
+    async def update_channel_overwrites(self, role: discord.Role, reason: str):
         succeeded = 0
         failed = []
 
-        for channel in guild.channels:
+        for channel in role.guild.channels:
             overwrites = channel.overwrites
             overwrites[role] = discord.PermissionOverwrite(
                 send_messages=False, add_reactions=False, speak=False
@@ -1073,6 +1068,34 @@ class Moderation(commands.Cog):
                     formatted = channel.name
 
                 failed.append(formatted)
+
+        return succeeded, failed
+
+    @mute_role.command(name="create")
+    @commands.bot_has_permissions(manage_channels=True, manage_roles=True)
+    @checks.has_permissions(manage_channels=True, manage_roles=True)
+    async def mute_role_create(
+        self, ctx, name="Muted", *, color: discord.Color = discord.Color.dark_grey()
+    ):
+        """Creates a new mute role and updates channel overwrites."""
+
+        settings = await self.get_guild_settings(ctx.guild.id)
+
+        if settings and settings.mute_role:
+            result = await ctx.confirm(
+                "A mute role is already set for this server. "
+                "Are you sure you want to create a new one?"
+            )
+
+            if not result:
+                return await ctx.send("Aborted.")
+
+        async with ctx.typing():
+            guild = ctx.guild
+            reason = f"Creation of Muted role by {ctx.author} (ID: {ctx.author.id})"
+
+            role = await guild.create_role(name=name, color=color, reason=reason)
+            succeeded, failed = await self.update_channel_overwrites(role, reason)
 
         query = """INSERT INTO guild_settings (id, mute_role_id)
                    VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET
@@ -1094,11 +1117,40 @@ class Moderation(commands.Cog):
 
         await ctx.send(message)
 
-    @mute_role.command(
-        name="unbind", description="Unbind the current mute role without deleting it"
-    )
-    @can_mute()
+    @mute_role.command(name="update", aliases=["sync"])
+    @commands.bot_has_permissions(manage_channels=True, manage_roles=True)
+    @checks.has_permissions(manage_channels=True, manage_roles=True)
+    async def mute_role_update(self, ctx):
+        """Updates the channel overwrites of the mute role."""
+        settings = await self.get_guild_settings(ctx.guild.id)
+
+        if not settings or not settings.mute_role_id:
+            raise NoMuteRole()
+
+        role = settings.mute_role
+        reason = f"Update of Muted role by {ctx.author} (ID: {ctx.author.id})"
+
+        async with ctx.typing():
+            succeeded, failed = await self.update_channel_overwrites(role, reason)
+
+        message = (
+            "Updated channel overwrites.\n"
+            f"Attempted to change {len(ctx.guild.channels)} channels:"
+            f"\n  - {succeeded} succeeded\n  - {len(failed)} failed"
+        )
+
+        if failed:
+            formatted = ", ".join(failed)
+            message += f"\n\nChannels failed: {formatted}"
+
+        await ctx.send(message)
+
+    @mute_role.command(name="unbind")
+    @commands.bot_has_permissions(manage_channels=True, manage_roles=True)
+    @checks.has_permissions(manage_channels=True, manage_roles=True)
     async def mute_role_unbind(self, ctx):
+        """Unbinds the server's mute role without deleting it."""
+
         settings = await self.get_guild_settings(ctx.guild.id)
 
         if not settings or not settings.mute_role_id:
@@ -1141,18 +1193,14 @@ class Moderation(commands.Cog):
             file = discord.File(buffer, f"attachment{index}.{ending}")
             return file
 
-    @commands.command(
-        name="welcome-message",
-        description="Create a server info message for your server.",
-        hidden=True,
-    )
+    @commands.command()
     @commands.guild_only()
     @has_manage_guild()
     @commands.is_owner()
     async def welcome_message(
         self, ctx, channel: discord.TextChannel, *, content: BinConverter
     ):
-        """Send a welcome or about message to a channel
+        """Sends a welcome or about message to a channel.
 
         Please note that this will purge the specified channel of all it's messages.
 
@@ -1160,6 +1208,7 @@ class Moderation(commands.Cog):
         - $$BREAK$$ | Split the content before and after this point into two messages
         - $$ATTACHMENT=attachment_url$$ | Add an image or attachment to the message at this point
         """
+
         done = ctx.tick(True)
         loading = LOADING
 
@@ -1283,11 +1332,11 @@ class Moderation(commands.Cog):
     @flags.add_flag("--reactions", action="store_true")
     @flags.add_flag("--or", action="store_true")
     @flags.add_flag("--not", action="store_true")
-    @commands.group(usage="[search=100]", invoke_without_command=True, cls=NoUsageFlagGroup)
+    @commands.group(usage="[search=100]", aliases=["remove"], invoke_without_command=True, cls=NoUsageFlagGroup)
     @checks.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
     async def purge(self, ctx, search: typing.Optional[int] = None, **flags):
-        """Purge messages in a channel using an optional command-line syntax
+        """Purge messages in a channel using an optional command-line syntax.
 
         Flags:
           `--user`       The author of the message
@@ -1306,6 +1355,7 @@ class Moderation(commands.Cog):
           `--or`         Use logical OR for all flags
           `--not`        Use logical NOT for all flags
         """
+
         predicates = []
         if flags["bot"]:
             predicates.append(lambda m: m.author.bot)
@@ -1387,7 +1437,7 @@ class Moderation(commands.Cog):
     async def purge_bot(
         self, ctx, search: typing.Optional[int], bot: discord.User, *prefixes
     ):
-        """Purge commands from another bot with their prefixes
+        """Purges commands from another bot with their prefixes.
 
         Example usage:
             - purge bot @BotName ! ? "$ "
@@ -1419,13 +1469,13 @@ class Moderation(commands.Cog):
         search = max(0, min(2000, search))  # clamp from 0-2000
         await self.do_purge(ctx, search, predicate)
 
-    @commands.group(
-        description="View the current verification system", invoke_without_command=True
-    )
+    @commands.group(invoke_without_command=True)
     @commands.guild_only()
     @has_manage_guild()
     @commands.is_owner()
     async def verification(self, ctx):
+        """Shows info about the verification system."""
+
         if str(ctx.guild.id) in self.verifications.keys():
             return await ctx.send("**Verification is ON** for this server.")
         else:
@@ -1434,16 +1484,16 @@ class Moderation(commands.Cog):
                 f"Set it up with `{self.bot.guild_prefix(ctx.guild)}verification create`"
             )
 
-    @verification.command(
-        name="create", description="Create a verification system for your server"
-    )
+    @verification.command(name="create")
     @commands.guild_only()
     @has_manage_guild()
     @commands.is_owner()
     @commands.bot_has_permissions(
         manage_messages=True, manage_roles=True, manage_channels=True
     )
-    async def ver_create(self, ctx):
+    async def verification_create(self, ctx):
+        """Creates a verification system."""
+
         await ctx.send(
             "Welcome to the interactive verification system generator! "
             f"**You can use `{ctx.guild_prefix}abort` to abort.**\n\n"
@@ -1549,16 +1599,16 @@ class Moderation(commands.Cog):
         with open("verifications.json", "w") as f:
             json.dump(self.verifications, f)
 
-    @verification.command(
-        name="disable", description="Disable verification", aliases=["remove", "delete"]
-    )
+    @verification.command(name="remove")
     @commands.guild_only()
     @has_manage_guild()
     @commands.is_owner()
     @commands.bot_has_permissions(
         manage_messages=True, manage_guild=True, manage_roles=True, manage_channels=True
     )
-    async def ver_remove(self, ctx):
+    async def verification_remove(self, ctx):
+        """Removes verification."""
+
         if str(ctx.guild.id) not in self.verifications.keys():
             return await ctx.send(
                 "**Verification is OFF** for this server. "
@@ -2094,7 +2144,7 @@ class Moderation(commands.Cog):
     @automod.command(name="clear")
     @checks.has_permissions(manage_guild=True)
     async def automod_clear(self, ctx, *, member: discord.Member):
-        """Clears a member's spam violations"""
+        """Clears a member's spam violations."""
 
         query = """DELETE FROM spam_violations
                    WHERE guild_id=$1 AND user_id=$2
@@ -2110,7 +2160,8 @@ class Moderation(commands.Cog):
     @automod.command(name="violations")
     @checks.has_permissions(manage_guild=True)
     async def automod_violations(self, ctx, *, member: discord.Member):
-        """View a member's spam violations"""
+        """Shows a member's spam violations"""
+
         records = await self.get_spam_violations(ctx.guild.id, member.id)
 
         if not records:
@@ -2132,7 +2183,8 @@ class Moderation(commands.Cog):
     @automod.group(name="ignore", invoke_without_command=True)
     @checks.has_permissions(manage_guild=True)
     async def automod_ignore(self, ctx, *, entity: typing.Union[discord.TextChannel, discord.Role, discord.Member, str]):
-        """Ignore a channel, role, or member from being affected by AutoMod"""
+        """Ignores a channel, role, or member from being affected by AutoMod."""
+
         if isinstance(entity, str):
             raise commands.BadArgument(f"Couldn't find a text channel, role, or member named '{entity}'")
 
@@ -2167,7 +2219,8 @@ class Moderation(commands.Cog):
     @automod_ignore.command(name="roles")
     @checks.has_permissions(manage_guild=True)
     async def automod_ignore_roles(self, ctx):
-        """Ignore all members with roles"""
+        """Ignores all members with roles."""
+
         query = """UPDATE guild_settings
                    SET ignore_roles=TRUE
                    WHERE id=$1
@@ -2184,7 +2237,8 @@ class Moderation(commands.Cog):
     @automod.group(name="unignore", invoke_without_command=True)
     @checks.has_permissions(manage_guild=True)
     async def automod_unignore(self, ctx, *, entity: typing.Union[discord.TextChannel, discord.Role, discord.Member, str]):
-        """Unignore a channel, role, or member"""
+        """Allows a role, channel, or member to be affected by AutoMod."""
+
         if isinstance(entity, str):
             raise commands.BadArgument(f"Couldn't find a text channel, role, or member named '{entity}'")
 
@@ -2229,7 +2283,8 @@ class Moderation(commands.Cog):
     @automod_unignore.command(name="roles")
     @checks.has_permissions(manage_guild=True)
     async def automod_unignore_roles(self, ctx):
-        """Unignore all members with roles"""
+        """Unignores all members with roles."""
+
         query = """UPDATE guild_settings
                    SET ignore_roles=FALSE
                    WHERE id=$1
@@ -2246,7 +2301,8 @@ class Moderation(commands.Cog):
     @automod.command(name="ignored")
     @checks.has_permissions(manage_guild=True)
     async def automod_ignored(self, ctx):
-        """View the AutoMod ignore list"""
+        """Shows the AutoMod ignore list."""
+
         query = """SELECT ignore_roles, ignored_channels, ignored_roles, ignored_members
                    FROM guild_settings
                    WHERE id=$1;
@@ -2355,13 +2411,15 @@ class Moderation(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     @commands.bot_has_permissions(kick_members=True, create_instant_invite=True)
     async def forbid(self, ctx, *, word):
-        """Forbid a word from being said in this server.
+        """Forbids a word from being said in this server.
 
-        If a member says any of the forbidden words, they will be kicked from the server and sent an invite to join back.
+        If a member says any of the forbidden words,
+        they will be kicked from the server and sent an invite to join back.
         To view the forbidden words, use `{prefix}forbidden`.
 
         You must have the Manage Server permission to use this command.
         """
+
         settings = await self.get_guild_settings(ctx.guild.id)
 
         if settings and word.lower().strip() in settings.forbidden_words:
@@ -2382,10 +2440,11 @@ class Moderation(commands.Cog):
     @commands.command()
     @commands.has_permissions(manage_guild=True)
     async def unforbid(self, ctx, *, word):
-        """Remove a word from the forbidden words list.
+        """Removes a word from the forbidden words list.
 
         You must have the Manage Server permission to use this command.
         """
+
         settings = await self.get_guild_settings(ctx.guild.id)
 
         if not settings or word.lower().strip() not in settings.forbidden_words:
@@ -2405,7 +2464,8 @@ class Moderation(commands.Cog):
 
     @commands.group(invoke_without_command=True)
     async def forbidden(self, ctx):
-        """View the forbidden words in this server."""
+        """Shows the forbidden words in this server."""
+
         settings = await self.get_guild_settings(ctx.guild.id)
 
         if not settings or not settings.forbidden_words:
@@ -2423,6 +2483,7 @@ class Moderation(commands.Cog):
 
         You must have the Manage Server permission to use this command.
         """
+
         settings = await self.get_guild_settings(ctx.guild.id)
 
         if not settings or not settings.forbidden_words:
@@ -2443,6 +2504,7 @@ class Moderation(commands.Cog):
 
     async def revert_member_on_rejoin(self, member):
         """Gives the member their roles back and changes their nickname to what it was before (if applicable)."""
+
         def check(m):
             return m.guild == member.guild and m == member
 
@@ -2463,6 +2525,7 @@ class Moderation(commands.Cog):
 
     async def bonk_member(self, message, word):
         """Kicks a member for saying a forbidden word and sends an invite back to the server."""
+
         # role hierarchy check
         if (
             await self.bot.is_owner(message.author)
@@ -2532,6 +2595,7 @@ class Moderation(commands.Cog):
 
     async def detect_forbidden_word(self, message):
         """Detects if a forbidden word is in a message and takes appropriate action."""
+
         if message.author.bot:
             return
 

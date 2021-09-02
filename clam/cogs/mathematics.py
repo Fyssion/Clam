@@ -84,10 +84,10 @@ class Math(commands.Cog):
         self.emoji = "\N{TRIANGULAR RULER}"
         self.log = self.bot.log
 
-    @commands.command(
-        description="Solve the quadratic formula", aliases=["quad"]
-    )
+    @commands.command(aliases=["quad"])
     async def quadratic(self, ctx, a: float, b: float, c: float):
+        """Solves the quadratic formula."""
+
         delta = (b ** 2) - (4 * a * c)
         msg = f"Quadratic formula: **`( -{b} ± √( {b}^2 - 4({a})({c}) ) ) / ( 2({a}) )`**\n"
         if delta < 0:
@@ -102,11 +102,9 @@ class Math(commands.Cog):
 
         await ctx.send(msg)
 
-    @commands.command(
-        aliases=["dist"],
-    )
+    @commands.command(aliases=["dist"])
     async def distance(self, ctx, *, points: PointsConverter(max_points=2)):
-        """Calculate the distance between two points.
+        """Calculates the distance between two points.
 
         Example point inputs:
 
@@ -123,7 +121,7 @@ class Math(commands.Cog):
 
     @commands.command(aliases=["midpt"])
     async def midpoint(self, ctx, *, points: PointsConverter(max_points=5)):
-        """Calculate the midpoint when given two or more points.
+        """Calculates the midpoint when given two or more points.
 
         Example point inputs:
 

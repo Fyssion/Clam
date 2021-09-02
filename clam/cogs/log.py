@@ -77,6 +77,7 @@ class GuildLog:
 
 class Log(commands.Cog):
     """Logging-related commands and utilities"""
+
     def __init__(self, bot):
         self.bot = bot
         self.emoji = "\N{CLIPBOARD}"
@@ -110,7 +111,7 @@ class Log(commands.Cog):
     @commands.group(invoke_without_command=True)
     @checks.has_permissions(manage_guild=True)
     async def log(self, ctx, *, channel: discord.TextChannel = None):
-        """Control logging to a channel
+        """Manages logging to a channel.
 
         To set the logging channel, use this command with the log channel.
         Otherwise, use `{prefix}log create`
@@ -118,6 +119,7 @@ class Log(commands.Cog):
         Log options are listed below. To learn more about a
         specific option, use `{prefix}help log <option>`.
         """
+
         if not channel:
             return await self.send_log_info(ctx)
 
@@ -165,6 +167,7 @@ class Log(commands.Cog):
     @checks.has_permissions(manage_guild=True)
     async def log_disable(self, ctx):
         """Disables logging for this server."""
+
         query = """DELETE FROM guild_logs
                    WHERE id=$1
                    RETURNING guild_logs.id;
@@ -197,42 +200,46 @@ class Log(commands.Cog):
     @log.command(name="joins")
     @checks.has_permissions(manage_guild=True)
     async def log_joins(self, ctx):
-        """Enable/disable member join logging"""
+        """Enables/disables member join logging"""
+
         await self.toggle_logging_option(ctx, "log_joins", "join")
 
     @log.command(name="leaves")
     @checks.has_permissions(manage_guild=True)
     @commands.bot_has_permissions(view_audit_log=True)
     async def log_leaves(self, ctx):
-        """Enable/disable member leave logging"""
+        """Enables/disables member leave logging"""
+
         await self.toggle_logging_option(ctx, "log_leaves", "leave")
 
     @log.command(name="member_actions")
     @checks.has_permissions(manage_guild=True)
     async def log_member_actions(self, ctx):
-        """Enable/disable member action logging
+        """Enables/disables member action logging
 
         Member actions include:
         - message edits
         - message deletions
         """
+
         await self.toggle_logging_option(ctx, "log_member_actions", "member action")
 
     @log.command(name="automod_actions")
     @checks.has_permissions(manage_guild=True)
     async def log_automod_actions(self, ctx):
-        """Enable/disable AutoMod action logging
+        """Enables/disables AutoMod action logging
 
         AutoMod actions are automatic actions performed by AutoMod.
         For more info on AutoMod, see `{prefix}help automod`
         """
+
         await self.toggle_logging_option(ctx, "log_automod_actions", "AutoMod action")
 
     @log.command(name="mod_actions")
     @checks.has_permissions(manage_guild=True)
     @commands.bot_has_permissions(view_audit_log=True)
     async def log_mod_actions(self, ctx):
-        """Enable/disable mod action logging
+        """Enables/disables mod action logging
 
         Mod actions include:
         - kicks
@@ -248,6 +255,7 @@ class Log(commands.Cog):
 
         This is useful if you want a permanent audit log.
         """
+
         await self.toggle_logging_option(ctx, "log_mod_actions", "mod action")
 
     # ====== #

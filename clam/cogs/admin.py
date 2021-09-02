@@ -189,7 +189,8 @@ class Admin(commands.Cog):
 
     @commands.command()
     async def eval(self, ctx, *, argument: codeblock_converter):
-        """Alias for `jishaku python`. Direct evaluation of Python code."""
+        """Alias for `{prefix}jishaku python`. Runs some Python code."""
+
         jishaku = self.bot.get_cog("Jishaku")
 
         if not jishaku:
@@ -200,7 +201,8 @@ class Admin(commands.Cog):
     # https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/admin.py#L353-L419
     @commands.command()
     async def sql(self, ctx, *, code: codeblock_converter):
-        """Run some SQL."""
+        """Runs some SQL."""
+
         # the imports are here because I imagine some people would want to use
         # this cog as a base for their other cog, and since this one is kinda
         # odd and unnecessary for most people, I will make it easy to remove
@@ -262,11 +264,10 @@ class Admin(commands.Cog):
         else:
             await ctx.send(fmt)
 
-    @commands.command(
-        description="View or add someone to the blacklist",
-        aliases=["block"],
-    )
+    @commands.command(aliases=["block"])
     async def blacklist(self, ctx, *, user: discord.User = None):
+        """Shows the blacklist or adds someone to the blacklist."""
+
         if not user:
             blacklist = self.bot.blacklist
 
@@ -286,11 +287,10 @@ class Admin(commands.Cog):
 
         await ctx.send(ctx.tick(True, f"Added **`{user}`** to the blacklist."))
 
-    @commands.command(
-        description="Remove someone from the blacklist",
-        aliases=["unblock"],
-    )
+    @commands.command(aliases=["unblock"])
     async def unblacklist(self, ctx, user_id: int):
+        """Removes someone from the blacklist."""
+
         if str(user_id) not in self.bot.blacklist:
             return await ctx.send("That user isn't blacklisted.")
 
@@ -309,10 +309,10 @@ class Admin(commands.Cog):
 
         await ctx.send(ctx.tick(True, human_friendly))
 
-    @commands.command(description="Temporarily blacklist a user", aliases=["tempblock"])
-    async def tempblacklist(
-        self, ctx, user: discord.User, duration: humantime.FutureTime
-    ):
+    @commands.command(aliases=["tempblock"])
+    async def tempblacklist(self, ctx, user: discord.User, duration: humantime.FutureTime):
+        """Temporarily blacklists a user."""
+
         timers = self.bot.get_cog("Timers")
         if not timers:
             return await ctx.send(
@@ -374,14 +374,11 @@ class Admin(commands.Cog):
         console = self.bot.console
         await console.send(embed=em)
 
-    @commands.group(
-        name="reload",
-        description="Reload an extension",
-        aliases=["load"],
-        invoke_without_command=True,
-    )
+    @commands.group(name="reload", aliases=["load"], invoke_without_command=True)
     @commands.is_owner()
     async def _reload(self, ctx, *, cog):
+        """Reloads an extension."""
+
         extension = f"clam.cogs.{cog.lower()}"
 
         try:
@@ -526,7 +523,8 @@ class Admin(commands.Cog):
     @commands.command(aliases=["process"])
     @commands.is_owner()
     async def host(self, ctx):
-        """View host stats"""
+        """Shows stats about the host."""
+
         em = discord.Embed(
             title="Host Stats",
             color=discord.Color.teal(),
@@ -554,11 +552,7 @@ class Admin(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @commands.group(
-        name="error",
-        aliases=["e"],
-        invoke_without_command=True,
-    )
+    @commands.group(name="error", aliases=["e"], invoke_without_command=True)
     @commands.is_owner()
     async def _error(self, ctx):
         first_step = list(self.bot.error_cache)
@@ -600,19 +594,22 @@ class Admin(commands.Cog):
     @commands.is_owner()
     async def logout(self, ctx):
         """Shuts down the bot."""
+
         await ctx.send("Logging out :wave:")
         await self.bot.close()
 
-    @commands.group(
-        description="DMs with the bot", aliases=["dms"], invoke_without_command=True
-    )
+    @commands.group(aliases=["dms"], invoke_without_command=True)
     @commands.is_owner()
     async def dm(self, ctx):
-        await ctx.invoke(self.all_dms)
+        """Manages DMs with the bot."""
 
-    @dm.command(name="all", description="View all current DMs.")
+        await ctx.invoke(self.dm_all)
+
+    @dm.command(name="all")
     @commands.is_owner()
-    async def all_dms(self, ctx):
+    async def dm_all(self, ctx):
+        """Shows all DM sessions."""
+
         if not self.dm_sessions:
             return await ctx.send("No active DMs.")
         dms = "Current active DMs:"
@@ -620,11 +617,11 @@ class Admin(commands.Cog):
             dms += f"\n{dm.user}"
         await ctx.send(dms)
 
-    @dm.command(
-        description="Create a new DM session with a user.", aliases=["new", "start"]
-    )
+    @dm.command()
     @commands.is_owner()
     async def create(self, ctx, user: typing.Union[discord.User, int]):
+        """Starts a new DM session with a user."""
+
         if type(user) == int:
             user = self.bot.get_user(user)
             if not user:
@@ -636,13 +633,11 @@ class Admin(commands.Cog):
         dm_session = DMSession(user, channel)
         self.dm_sessions[channel.id] = dm_session
 
-    @dm.group(
-        description="Close a DM session with a user.",
-        aliases=["delete", "stop", "remove"],
-        invoke_without_command=True,
-    )
+    @dm.group(invoke_without_command=True)
     @commands.is_owner()
     async def close(self, ctx):
+        """Closes a DM session with a user."""
+
         if not ctx.dm_session:
             return await ctx.send(
                 f"{ctx.tick(False)} You must be in a DM session to invoke this command."
@@ -658,8 +653,10 @@ class Admin(commands.Cog):
         self.bot.dm_sessions = {}
         await ctx.send(f"{ctx.tick(True)} Closed {num_sessions} DM session(s)")
 
-    @dm.command(name="reply", description="Reply to a DM", aliases=["send"])
+    @dm.command(name="reply", aliases=["send"])
     async def dm_reply(self, ctx, user: discord.User, *, message):
+        """Replies to a DM."""
+
         try:
             await user.send(message)
         except discord.Forbidden:

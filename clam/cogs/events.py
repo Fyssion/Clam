@@ -639,7 +639,7 @@ class Events(commands.Cog):
 
     @commands.group(invoke_without_command=True)
     async def event(self, ctx):
-        """Create and manage events on Discord!
+        """Commands to create and manage events.
 
         Features:
         - Easily create events with an interactive event creator
@@ -743,14 +743,13 @@ class Events(commands.Cog):
 
         return name, timezone_name, when, description, channel
 
-    @event.command(
-        name="create", aliases=["new"],
-    )
+    @event.command(name="create", aliases=["new"])
     async def event_create(self, ctx):
-        """Create a new event
+        """Creates a new event.
 
-        This leads you through an interactive event creation.
+        This leads you through an interactive event creation tool.
         """
+
         options = await self.interactive_event_creation(ctx)
         if not options:
             return
@@ -810,10 +809,10 @@ class Events(commands.Cog):
 
         await self.send_confirmation_message(partial_event, ctx.channel, ctx.author, notify_role)
 
-    @event.command(
-        name="join", description="Join an event", aliases=["rsvp"]
-    )
+    @event.command(name="join", aliases=["rsvp"])
     async def event_join(self, ctx, *, event: EventConverter):
+        """Joins an event."""
+
         result = await self.member_join_or_leave_event(event, ctx.guild, ctx.author, ctx.channel, force_join=True)
         if result:
             await ctx.send(ctx.tick(True, f"Joined event `{event.name}`"))
@@ -882,15 +881,14 @@ class Events(commands.Cog):
                 ctx.tick(True, f" Updated event {option} from `{old}` to `{result}`")
             )
 
-    @event.command(
-        name="edit"
-    )
+    @event.command(name="edit")
     async def event_edit(self, ctx, *, event: EventConverter):
-        """Edit an event.
+        """Edits an event.
 
         You can edit an event's starting time, timezone, name, and description.
         You must own the event to edit it.
         """
+
         member = ctx.author
 
         if member.id != event.owner_id:
@@ -948,12 +946,9 @@ class Events(commands.Cog):
 
             await ctx.send(ctx.tick(True, "Updated your event's timezone."))
 
-    @event.command(
-        name="delete",
-        aliases=["remove", "cancel"],
-    )
+    @event.command(name="delete", aliases=["remove", "cancel"])
     async def event_delete(self, ctx, *, event: EventConverter):
-        """Delete an event.
+        """Deletes an event.
 
         You must own the event to delete it.
         Moderators can delete any event.
@@ -989,19 +984,17 @@ class Events(commands.Cog):
 
         await ctx.send("\N{WASTEBASKET} Event cancelled and deleted.")
 
-    @event.command(
-        name="view",
-        description="Get a link to jump to the event message",
-        aliases=["show", "info"],
-    )
+    @event.command(name="view", aliases=["show", "info"],)
     async def event_info(self, ctx, *, event: EventConverter):
+        """Sends a link to jump to an event message."""
+
         jump_url = f"https://discord.com/channels/{event.guild_id}/{event.channel_id}/{event.message_id}"
         await ctx.send(f"Jump to event: {jump_url}")
 
-    @event.command(
-        name="list", description="List all upcoming events", aliases=["upcoming"],
-    )
+    @event.command(name="list", aliases=["upcoming"])
     async def event_list(self, ctx):
+        """Shows all upcoming events."""
+
         query = """SELECT *
                    FROM events
                    WHERE guild_id=$1
@@ -1018,6 +1011,8 @@ class Events(commands.Cog):
 
     @event.command(name="participants", aliases=["members"])
     async def event_participants(self, ctx, *, event: EventConverter):
+        """Shows all participants for an event."""
+
         participants = []
 
         for user_id in event.participants:
@@ -1027,9 +1022,10 @@ class Events(commands.Cog):
         pages = ctx.embed_pages(participants, em)
         await pages.start()
 
-    @event.command(name="all", description="View all events")
+    @event.command(name="all")
     @commands.is_owner()
     async def event_all(self, ctx):
+        """Shows all events with the bot."""
         query = """SELECT *
                    FROM events
                    ORDER BY starts_at DESC

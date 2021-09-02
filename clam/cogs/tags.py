@@ -495,7 +495,7 @@ class Tags(commands.Cog):
             await ctx.send(str(error))
             ctx.handled = True
 
-    @commands.group(usage="[tag]", invoke_without_command=True)
+    @commands.group(invoke_without_command=True)
     async def tag(self, ctx, *, name=None):
         """Tag stuff and retrieve it later.
 
@@ -507,6 +507,7 @@ class Tags(commands.Cog):
         tags with the subcommands below.
         Note that server moderators can manage tags.
         """
+
         if not name:
             return await ctx.send_help(ctx.command)
 
@@ -553,12 +554,12 @@ class Tags(commands.Cog):
                     f"{ctx.tick(True)} Successfully created tag **`{name}`**."
                 )
 
-    @tag.command(
-        name="create", description="Create a new tag", aliases=["new"],
-    )
+    @tag.command(name="create", aliases=["new"])
     async def tag_create(
         self, ctx, name: TagNameConverter, *, content: TagContentConverter
     ):
+        """Creates a tag."""
+
         # https://github.com/Rapptz/RoboDanny/blob/65b13cad81317768b21cd1e1e05e6efc414cceda/cogs/tags.py#L253-L283
         query = """WITH tag_insert AS (
                         INSERT INTO tags (name, content, owner_id, guild_id)
@@ -589,8 +590,10 @@ class Tags(commands.Cog):
                     f"{ctx.tick(True)} Successfully created tag **`{name}`**."
                 )
 
-    @tag.command(name="make", description="Make a tag with an interactive session")
+    @tag.command(name="make")
     async def tag_make(self, ctx):
+        """Creates a tag with an interactive session."""
+
         await ctx.send("What would you like to name your tag?")
 
         def check(ms):
@@ -657,12 +660,14 @@ class Tags(commands.Cog):
         ipt = self._in_progress_tags[ctx.guild.id]
         ipt.pop(ipt.index(name))
 
-    @tag.command(
-        name="delete",
-        description="Delete a tag you own (unless you are a mod)",
-        aliases=["remove"],
-    )
+    @tag.command(name="delete", aliases=["remove"])
     async def tag_delete(self, ctx, *, name):
+        """Deletes a tag.
+
+        You must own the tag to delete it.
+        Server moderators can delete any tag.
+        """
+
         # https://github.com/Rapptz/RoboDanny/blob/65b13cad81317768b21cd1e1e05e6efc414cceda/cogs/tags.py#L644-L669
         bypass_owner_check = (
             ctx.author.id == self.bot.owner_id
@@ -699,12 +704,12 @@ class Tags(commands.Cog):
                 f"{ctx.tick(True)} Tag and corresponding aliases successfully deleted."
             )
 
-    @tag.command(
-        name="edit", description="Edit a tag you own", aliases=["update"],
-    )
+    @tag.command(name="edit")
     async def tag_edit(
         self, ctx, tag: TagNameConverter, *, content: TagContentConverter
     ):
+        """Edits a tag."""
+
         query = """UPDATE tags
                    SET content=$1
                    WHERE LOWER(name)=$2 AND guild_id=$3 AND owner_id=$4;
@@ -720,12 +725,10 @@ class Tags(commands.Cog):
 
         await ctx.send(f"{ctx.tick(True)} Successfully edited tag.")
 
-    @tag.command(
-        name="alias",
-        description="Set an alias for a tag",
-        usage="<original name> <alias name>",
-    )
+    @tag.command(name="alias", usage="<original name> <alias name>")
     async def tag_alias(self, ctx, original: TagNameConverter, alias: TagNameConverter):
+        """Sets an alias for a tag."""
+
         query = """INSERT INTO tag_aliases (name, owner_id, guild_id, tag_id)
                    SELECT $1, $4, guild_id, tag_id
                    FROM tag_aliases
@@ -747,12 +750,16 @@ class Tags(commands.Cog):
                     f"{ctx.tick(True)} An aliases for **`{original}`** called **`{alias}`** has been created."
                 )
 
-    @tag.command(
-        name="transfer", description="Transfer a tag to another member",
-    )
-    async def tag_transfer(self, ctx, tag, *, member: discord.Member):
+    @tag.command(name="transfer")
+    async def tag_transfer(self, ctx, tag, *, recipient: discord.Member):
+        """Transfers a tag to another member.
+
+        Note: this DMs the tag recipient.
+
+        You must own the tag to transfer it.
+        Moderators can transfer any tag."""
         confirm = await ctx.confirm(
-            f"Are you sure you want to transfer tag `{tag}` to `{member}`?"
+            f"Are you sure you want to transfer tag `{tag}` to `{recipient}`?"
         )
 
         if not confirm:
@@ -765,9 +772,9 @@ class Tags(commands.Cog):
         clause = "LOWER(name)=$2 AND guild_id=$3"
 
         if bypass_owner_check:
-            args = [member.id, tag, ctx.guild.id]
+            args = [recipient.id, tag, ctx.guild.id]
         else:
-            args = [member.id, tag, ctx.guild.id, ctx.author.id]
+            args = [recipient.id, tag, ctx.guild.id, ctx.author.id]
             clause = f"{clause} AND owner_id=$4"
 
         query = f"""UPDATE tags
@@ -784,7 +791,7 @@ class Tags(commands.Cog):
                 "\nEither:\n- that tag doesn't exist\n- you do not own that tag or have manage messages."
             )
 
-        await ctx.send(ctx.tick(True, f"Transfered tag `{tag}` to `{member}`."))
+        await ctx.send(ctx.tick(True, f"Transfered tag `{tag}` to `{recipient}`."))
 
         em = discord.Embed(
             title=f"Tag `{tag}` transferred to you.", color=discord.Color.green()
@@ -802,7 +809,7 @@ class Tags(commands.Cog):
 
     @tag.command(name="claim")
     async def tag_claim(self, ctx, *, tag):
-        """Claim a tag
+        """Transfers a tag to you.
 
         To claim a tag, **one** of the following requirements must be met:
         - the original tag owner is no longer in the server
@@ -852,13 +859,10 @@ class Tags(commands.Cog):
             return {"name": owner_id}
         return {"name": str(member), "icon_url": member.display_avatar.url}
 
-    @tag.command(
-        name="info",
-        description="Get info about a tag",
-        aliases=["about"],
-        usage="<tag>",
-    )
+    @tag.command(name="info", aliases=["about"], usage="<tag>")
     async def tag_info(self, ctx, *, name):
+        """Shows info about a tag."""
+
         query = """SELECT
                        tag_aliases.name <> tags.name AS "Alias",
                        tag_aliases.name AS alias_name,
@@ -900,19 +904,19 @@ class Tags(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @tag.command(
-        name="raw", description="Get a tag without markdown (for copy/pasting)",
-    )
+    @tag.command(name="raw")
     async def tag_raw(self, ctx, *, tag: TagConverter):
+        """Shows a tag without markdown."""
+
         await ctx.send(discord.utils.escape_markdown(tag.content))
 
         query = "UPDATE tags SET uses = uses + 1 WHERE name=$1 AND guild_id=$2;"
         await ctx.db.execute(query, tag.name, ctx.guild.id)
 
-    @tag.command(
-        name="all", description="List all tags for this server or for a member", aliases=["list"]
-    )
+    @tag.command(name="list", aliases=["all"])
     async def tag_all(self, ctx, *, member: discord.Member = None):
+        """Shows all tags in this server or owned by a member."""
+
         if member:
             return await ctx.invoke(self.tag_member, member=member)
 
@@ -929,18 +933,16 @@ class Tags(commands.Cog):
         pages = MenuPages(TagPageSource(results), ctx=ctx)
         await pages.start()
 
-    @commands.command(
-        description="[Alias for `tag all`] List all tags for this server or for a member",
-    )
+    @commands.command()
     async def tags(self, ctx, *, member: discord.Member = None):
+        """Alias for `{prefix}tag all`."""
+
         await ctx.invoke(self.tag_all, member=member)
 
-    @tag.command(
-        name="top",
-        description="List top tags by number of uses for this server",
-        aliases=["ranks"],
-    )
+    @tag.command(name="top", aliases=["ranks"])
     async def tag_top(self, ctx):
+        """Shows top tags by number of uses for this server."""
+
         query = """SELECT id, name, uses, faq
                    FROM tags
                    WHERE guild_id=$1
@@ -971,10 +973,10 @@ class Tags(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @tag.command(
-        name="member", description="Get all tags owned by a member", aliases=["user"],
-    )
+    @tag.command(name="member", aliases=["user"])
     async def tag_member(self, ctx, *, member: discord.Member):
+        """Shows all tags owned by a member."""
+
         query = """SELECT id, name, uses, faq
                    FROM tags
                    WHERE guild_id=$1 AND owner_id=$2
@@ -989,10 +991,10 @@ class Tags(commands.Cog):
         pages = MenuPages(TagPageSource(results, title=f"Tags for {member}"), ctx=ctx)
         await pages.start()
 
-    @tag.command(
-        name="search", description="Search for a tag", usage="<tag>", aliases=["find"],
-    )
+    @tag.command(name="search", usage="<tag>", aliases=["find"])
     async def tag_search(self, ctx, name):
+        """Searches for tags and shows the results."""
+
         query = """SELECT     tag_aliases.name
                    FROM       tag_aliases
                    WHERE      tag_aliases.guild_id=$1 AND tag_aliases.name % $2
@@ -1036,10 +1038,10 @@ class Tags(commands.Cog):
 
     @commands.group(invoke_without_command=True, usage="[FAQ tag]")
     async def faq(self, ctx, *, name=None):
-        """Variant of tags for server admins.
+        """Variant of tags for server moderators.
 
         FAQ tags are similar to regular tags, except FAQ tags
-        are embeds, and they can only be created by admins
+        are embeds, and they can only be created by moderators
         and members with a role called "faq".
 
         Since tags and FAQ tags use the same system, you can
@@ -1047,6 +1049,7 @@ class Tags(commands.Cog):
         Exceptions to this are the subcommands below, unless
         specified otherwise.
         """
+
         if not name:
             return await ctx.send_help(ctx.command)
 
@@ -1089,11 +1092,10 @@ class Tags(commands.Cog):
 
         return response.content
 
-    @faq.command(
-        name="create", description="Create a new faq tag", aliases=["new"],
-    )
+    @faq.command(name="create")
     @faq_only()
     async def faq_create(self, ctx, *, name: TagNameConverter):
+        """Creates a new FAQ tag."""
         # try:
         #     embed = await self.send_prompt(
         #         "Would you like this FAQ to be an embed? (y/n)", bool_response=True
@@ -1183,8 +1185,10 @@ class Tags(commands.Cog):
         ipt = self._in_progress_tags[ctx.guild.id]
         ipt.pop(ipt.index(name))
 
-    @faq.command(name="edit", description="Edit a FAQ tag you own")
+    @faq.command(name="edit")
     async def faq_edit(self, ctx, *, tag: TagConverter(faq=True, owner=True)):
+        """Edits a FAQ tag."""
+
         if tag.owner_id != ctx.author.id:
             raise commands.BadArgument("You do not have permission to edit that tag.")
 
@@ -1209,16 +1213,16 @@ class Tags(commands.Cog):
 
         await ctx.send(f"{ctx.tick(True)} Successfully edited tag.")
 
-    @faq.command(name="delete", description="Alias for tag delete", usage="[FAQ tag]")
+    @faq.command(name="delete", usage="[FAQ tag]")
     async def faq_delete(self, ctx, *, name):
+        """Alias for `{prefix}tag delete`."""
+
         await ctx.invoke(self.tag_delete, name=name)
 
-    @faq.command(
-        name="alias",
-        description="Alias for tag alias",
-        usage="<original name> <alias name>",
-    )
+    @faq.command(name="alias", usage="<original name> <alias name>")
     async def faq_alias(self, ctx, original: TagNameConverter, alias: TagNameConverter):
+        """Alias for `{prefix}tag alias`."""
+
         await ctx.invoke(self.tag_alias, original=original, alias=alias)
 
 

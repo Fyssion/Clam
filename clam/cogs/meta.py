@@ -255,7 +255,7 @@ class ClamHelpCommand(commands.HelpCommand):
         menu.add_categories(all_commands)
         await menu.start()
 
-    def format_commands(self, commands):
+    def format_commands(self, commands, ctx):
         formatted_commands = []
 
         for command in commands:
@@ -265,7 +265,7 @@ class ClamHelpCommand(commands.HelpCommand):
             formatted_command = f"**`{signature}`**"
 
             if description:
-                formatted_command += f" - {description}"
+                formatted_command += f" - {description.format(prefix=ctx.prefix)}"
 
             formatted_commands.append(formatted_command)
 
@@ -291,7 +291,7 @@ class ClamHelpCommand(commands.HelpCommand):
         formatted_command = f"**`{signature}`**"
 
         if command.description:
-            formatted_command += f" - {command.description}"
+            formatted_command += f" - {command.description.format(prefix=ctx.prefix)}"
 
         if command.aliases:
             formatted_command += f"\n{self.format_aliases(command)}"
@@ -305,7 +305,7 @@ class ClamHelpCommand(commands.HelpCommand):
         ctx = self.context
 
         filtered = await self.filter_commands(cog.get_commands(), sort=True)
-        commands = self.format_commands(filtered)
+        commands = self.format_commands(filtered, ctx)
 
         em = self.get_base_embed()
 
@@ -333,7 +333,7 @@ class ClamHelpCommand(commands.HelpCommand):
         ctx = self.context
 
         filtered = await self.filter_commands(group.commands, sort=True)
-        commands = self.format_commands(filtered)
+        commands = self.format_commands(filtered, ctx)
 
         em = self.get_base_embed()
 
@@ -637,7 +637,8 @@ class Meta(commands.Cog):
 
     @commands.command(aliases=["diagnose"])
     async def troubleshoot(self, ctx, *, command: CommandConverter):
-        """Troubleshoot any errors with a command"""
+        """Troubleshoots any errors with a command."""
+
         alt_ctx = await copy_context_with(ctx, content=f"{ctx.prefix}{command}")
 
         errors = []
@@ -697,37 +698,35 @@ class Meta(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @commands.command(description="Greet me!", aliases=["hello"])
+    @commands.command(aliases=["hello"])
     async def hi(self, ctx):
+        """Greet me!"""
+
         dev = self.bot.get_user(224513210471022592)
         await ctx.send(
             f"Hi there! :wave: I'm a bot made by {dev}."
             f"\nTo find out more about me, type: `{ctx.guild_prefix}help`"
         )
 
-    @commands.command(description="Get a link to my website", aliases=["site"])
-    @commands.is_owner()
-    async def website(self, ctx):
-        await ctx.send("My website: https://clambot.xyz")
-
-    @commands.group(
-        description="Find out what I'm made of!", invoke_without_command=True
-    )
+    @commands.group(invoke_without_command=True)
     async def code(self, ctx):
+        """Find out what I'm made of!"""
+
         partial = functools.partial(get_lines_of_code)
         lines = await self.bot.loop.run_in_executor(None, partial)
         await ctx.send(lines)
 
-    @code.command(
-        name="all", description="Include comments and newlines", aliases=["comments"]
-    )
+    @code.command(name="all", aliases=["comments"])
     async def code_all(self, ctx):
+        """Includes comments and newlines."""
+
         partial = functools.partial(get_lines_of_code, comments=True)
         lines = await self.bot.loop.run_in_executor(None, partial)
         await ctx.send(lines)
 
-    @commands.command(name="invite", description="Invite me to your server")
+    @commands.command(name="invite")
     async def invite_command(self, ctx):
+        """Shows my invite link."""
         permissions = discord.Permissions(
             view_audit_log=True,
             manage_roles=True,
@@ -763,26 +762,11 @@ class Meta(commands.Cog):
         else:
             await ctx.send(embed=em)
 
-    @commands.command(description="Get a link to my support server")
-    @commands.is_owner()
-    async def support(self, ctx):
-        # If the bot isn't Clam or Clam DEV,
-        # send a 'friendly' message with a link
-        # to my site
-        if self.bot.user.id in [639234650782564362, 683129055092015107]:
-            await ctx.send("Support Server Invite: https://discord.gg/eHxvStNJb7")
-        else:
-            return await ctx.send(
-                "The person who made this bot copy/pasted my code :(\nHere's the original: <https://clambot.xyz/>"
-            )
-
-    @commands.group(
-        invoke_without_command=True,
-        aliases=["prefixes"],
-    )
+    @commands.group(invoke_without_command=True, aliases=["prefixes"])
     @commands.guild_only()
     async def prefix(self, ctx):
         """Shows this server's prefixes."""
+
         prefixes = self.bot.prefixes.get(ctx.guild.id)
         formatted = [f"{plural(len(prefixes)):Prefix|Prefixes}:"]
 
@@ -796,6 +780,7 @@ class Meta(commands.Cog):
     @has_manage_guild()
     async def prefix_add(self, ctx, prefix):
         """Adds a prefix for this server."""
+
         prefixes = self.bot.prefixes.get(ctx.guild.id)
 
         if prefix in prefixes:
@@ -809,6 +794,7 @@ class Meta(commands.Cog):
     @has_manage_guild()
     async def prefix_remove(self, ctx, prefix):
         """Removes a prefix for this server."""
+
         prefixes = self.bot.prefixes.get(ctx.guild.id)
 
         if prefix in prefixes:
@@ -836,6 +822,7 @@ class Meta(commands.Cog):
 
         The default prefix is just the first prefix.
         """
+
         await self.bot.prefixes.set_default(ctx.guild.id, prefix)
         await ctx.send(f"{ctx.tick(True)} Set default prefix to `{prefix}` for this server.")
 
@@ -844,6 +831,7 @@ class Meta(commands.Cog):
     @has_manage_guild()
     async def prefixes_reset(self, ctx):
         """Resets the prefixes for this server to the default."""
+
         confirm = await ctx.confirm(
             "Are you sure you want to reset this server's prefixes?\n"
             "**This action is irreversible.**"
@@ -857,9 +845,10 @@ class Meta(commands.Cog):
     @commands.command()
     async def source(self, ctx, *, command: str = None):
         """Displays my full source code or for a specific command.
-        To display the source code of a subcommand you can separate it
+
+        To display the source code of a subcommand, you can separate it
         by periods, e.g. tag.create for the create subcommand of the tag
-        command or by spaces.
+        command, or by spaces.
         """
 
         source_url = "https://github.com/Fyssion/Clam"
@@ -893,8 +882,8 @@ class Meta(commands.Cog):
 
         if "Fyssion/Clam" in source_url:
             license_notice = (
-                "Please note that most of this code is subject to the [MPL-2.0 license.](https://www.mozilla.org/MPL/2.0)\n"
-                "This means you are required to license any copied or modified source code under MPL-2.0.\n"
+                "Please note that most of this code is subject to the [MPL-2.0.](https://www.mozilla.org/MPL/2.0)\n"
+                "This means you are required to license any copied or modified source code under the MPL-2.0.\n"
                 "For more info, visit <https://www.mozilla.org/MPL/2.0/FAQ>"
             )
 
@@ -905,51 +894,6 @@ class Meta(commands.Cog):
 
         final_url = f"<{source_url}/blob/{branch}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}>"
         await ctx.send(final_url, embed=license_notice_embed)
-
-    @commands.command(name="backup_reload")
-    @commands.is_owner()
-    async def _reload(self, ctx, cog="all"):
-        if cog == "all":
-            msg = ""
-
-            for ext in self.bot.cogs_to_load:
-                try:
-                    self.bot.reload_extension(ext)
-                    msg += (
-                        f"**{OK_SIGN} Reloaded** `{ext}`\n\n"
-                    )
-                    self.log.info(f"Extension '{cog.lower()}' successfully reloaded.")
-
-                except Exception as e:
-                    traceback_data = "".join(
-                        traceback.format_exception(type(e), e, e.__traceback__, 1)
-                    )
-                    msg += (
-                        f"**:warning: Extension `{ext}` not loaded.**\n"
-                        f"```py\n{traceback_data}```\n\n"
-                    )
-                    self.log.warning(
-                        f"Extension 'cogs.{cog.lower()}' not loaded.\n"
-                        f"{traceback_data}"
-                    )
-            return await ctx.send(msg)
-
-        try:
-            self.bot.reload_extension(cog.lower())
-            await ctx.send(
-                f"**{OK_SIGN} Reloaded** `{cog.lower()}`"
-            )
-            self.log.info(f"Extension '{cog.lower()}' successfully reloaded.")
-        except Exception as e:
-            traceback_data = "".join(
-                traceback.format_exception(type(e), e, e.__traceback__, 1)
-            )
-            await ctx.send(
-                f"**:warning: Extension `{cog.lower()}` not loaded.**\n```py\n{traceback_data}```"
-            )
-            self.log.warning(
-                f"Extension 'cogs.{cog.lower()}' not loaded.\n{traceback_data}"
-            )
 
 
 def setup(bot):

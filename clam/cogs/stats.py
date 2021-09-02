@@ -126,14 +126,12 @@ class Stats(commands.Cog):
                 }
             )
 
-    @commands.group(
-        description="View usage statistics for the current guild or a specified member.",
-        aliases=["statistics"],
-        invoke_without_command=True,
-    )
+    @commands.group(aliases=["statistics"], invoke_without_command=True)
     @commands.guild_only()
     @commands.cooldown(1, 30.0, type=commands.BucketType.member)
     async def stats(self, ctx, *, member: discord.Member = None):
+        """Shows bot usage stats for the server or a member."""
+
         await ctx.trigger_typing()
 
         places = (
@@ -308,9 +306,11 @@ class Stats(commands.Cog):
 
             await ctx.send(embed=em)
 
-    @stats.command(name="global", description="Global command stats")
+    @stats.command(name="global")
     @commands.cooldown(1, 30.0, type=commands.BucketType.member)
     async def stats_global(self, ctx):
+        """Shows global command usage stats."""
+
         query = "SELECT COUNT(*), MIN(invoked_at) FROM commands;"
         count = await ctx.db.fetchrow(query)
 
@@ -375,9 +375,11 @@ class Stats(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @stats.command(description="Get global stats for today")
+    @stats.command()
     @commands.cooldown(1, 30.0, type=commands.BucketType.member)
     async def today(self, ctx):
+        """Shows today's global command usage stats."""
+
         query = """SELECT COUNT(*)
                    FROM commands
                    WHERE invoked_at > (CURRENT_TIMESTAMP - INTERVAL '1 day');
@@ -447,9 +449,11 @@ class Stats(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @stats.command(name="guild", description="Get stats for a specific guild")
+    @stats.command(name="guild")
     @commands.is_owner()
     async def stats_guild(self, ctx, *, guild: GuildConverter):
+        """Shows command usage stats for a specific guild."""
+
         places = (
             "`1.`",
             "`2.`",
@@ -565,7 +569,8 @@ class Stats(commands.Cog):
     @stats.command(name="user")
     @commands.is_owner()
     async def stats_user(self, ctx, *, user: discord.User):
-        """Get stats for a specific user"""
+        """Shows command usage stats for a specific user."""
+
         places = (
             "`1.`",
             "`2.`",
@@ -687,7 +692,8 @@ class Stats(commands.Cog):
     @stats.command(name="command")
     @commands.is_owner()
     async def stats_command(self, ctx, *, command=None):
-        """Get command usage stats for a specific command"""
+        """Shows command usage stats for a specific command."""
+
         places = (
             "`1.`",
             "`2.`",
@@ -826,12 +832,10 @@ class Stats(commands.Cog):
         commits = list(list(repo.iter_commits("main", max_count=count)))
         return "\n".join(self.format_commit(c) for c in commits)
 
-    @commands.command(
-        name="about",
-        description="Display info about the bot",
-        aliases=["info"],
-    )
+    @commands.command(aliases=["info"])
     async def about(self, ctx):
+        """Shows info about the bot."""
+
         revisions = self.get_latest_commits()
         em = discord.Embed(
             title="About",
@@ -886,11 +890,10 @@ class Stats(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @commands.command(
-        description="Get the latest changes for the bot",
-        aliases=["changes", "latest", "news"],
-    )
+    @commands.command(aliases=["changes", "latest", "news"])
     async def changelog(self, ctx):
+        """Shows the bot's latest changes."""
+
         async with ctx.typing():
             revisions = self.get_latest_commits(10)
 
@@ -911,20 +914,18 @@ class Stats(commands.Cog):
         )
         await ctx.send(embed=em)
 
-    @commands.command(
-        name="ping", description="Get the bot's latency.", aliases=["latency"]
-    )
+    @commands.command(name="ping", aliases=["latency"])
     async def ping_command(self, ctx):
+        """Shows the bot's gateway latency."""
+
         latency = (self.bot.latency) * 1000
         latency = int(latency)
         await ctx.send(f"My latency is {latency}ms.")
 
-    @commands.command(
-        name="uptime",
-        description="Get the bot's uptime",
-        aliases=["up"],
-    )
+    @commands.command(aliases=["up"])
     async def uptime(self, ctx):
+        """Shows the bot's uptime."""
+
         uptime = humantime.timedelta(
             self.bot.uptime, source=ctx.message.created_at, discord_fmt=False
         )
@@ -957,7 +958,8 @@ class Stats(commands.Cog):
     @commands.group(hidden=True, invoke_without_command=True)
     @commands.is_owner()
     async def command_history(self, ctx):
-        """Command history."""
+        """Shows command history."""
+
         query = """SELECT
                         CASE failed
                             WHEN TRUE THEN name || ' [!]'
@@ -977,7 +979,7 @@ class Stats(commands.Cog):
     async def command_history_for(
         self, ctx, days: typing.Optional[int] = 7, *, command: str
     ):
-        """Command history for a command."""
+        """Shows command history for a command."""
 
         query = """SELECT *, t.success + t.failed AS "total"
                    FROM (
@@ -998,7 +1000,7 @@ class Stats(commands.Cog):
     @command_history.command(name="guild", aliases=["server"])
     @commands.is_owner()
     async def command_history_guild(self, ctx, guild_id: int):
-        """Command history for a guild."""
+        """Shows command history for a guild."""
 
         query = """SELECT
                         CASE failed
@@ -1018,7 +1020,7 @@ class Stats(commands.Cog):
     @command_history.command(name="user", aliases=["member"])
     @commands.is_owner()
     async def command_history_user(self, ctx, user_id: int):
-        """Command history for a user."""
+        """Shows command history for a user."""
 
         query = """SELECT
                         CASE failed
@@ -1037,7 +1039,7 @@ class Stats(commands.Cog):
     @command_history.command(name="log")
     @commands.is_owner()
     async def command_history_log(self, ctx, days=7):
-        """Command history log for the last N days."""
+        """Shows the command history log for the last N days."""
 
         query = """SELECT name, COUNT(*)
                    FROM commands
@@ -1085,7 +1087,7 @@ class Stats(commands.Cog):
     async def command_history_cog(
         self, ctx, days: typing.Optional[int] = 7, *, cog: str = None
     ):
-        """Command history for a cog or grouped by a cog."""
+        """Shows command history for a cog or grouped by a cog."""
 
         interval = datetime.timedelta(days=days)
         if cog is not None:
@@ -1198,12 +1200,13 @@ class Stats(commands.Cog):
     @flags.add_flag("--json", action="store_true")
     @commands.command(aliases=["socket", "websocket"], cls=NoUsageFlagCommand)
     async def socketstats(self, ctx, **flags):
-        """View websocket stats
+        """Shows websocket stats.
 
         Flags:
           `--sort` `-s`  Sort by 'name' or by 'count'. Defaults to 'name'
           `--json`  Save socketstats to a json file for use programmatically
         """
+
         if flags["json"]:
             stats = {
                 "uptime": datetime.timestamp(self.bot.uptime),
@@ -1255,7 +1258,7 @@ class Stats(commands.Cog):
     @commands.command(hidden=True)
     @commands.is_owner()
     async def bothealth(self, ctx):
-        """Various bot health monitoring tools."""
+        """Shows the bot's health."""
 
         # This uses a lot of private methods because there is no
         # clean way of doing this otherwise.
