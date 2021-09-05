@@ -71,7 +71,6 @@ class EditOptionSelect(discord.ui.Select):
     def __init__(self):
         options = [
             discord.SelectOption(label='Time', description='When the event will occur', emoji='\N{CLOCK FACE ONE OCLOCK}'),
-            discord.SelectOption(label='Timezone', description='The timezone in which the event is held', emoji='\N{AIRPLANE}'),
             discord.SelectOption(label='Name', description='The name of the event', emoji='\N{LEFT SPEECH BUBBLE}'),
             discord.SelectOption(label='Description', description='The description of the event', emoji='\N{PAGE FACING UP}')
         ]
@@ -82,7 +81,7 @@ class EditOptionSelect(discord.ui.Select):
         assert self.view is not None
         self.view.value = self.values[0].lower()
         await interaction.response.defer()
-        await self.view.stop()
+        self.view.stop()
 
 
 class EditOptionView(discord.ui.View):
@@ -275,23 +274,20 @@ class PromptResponse(enum.Enum):
     CANCELLED = 1
 
 
-def future_time(timezone):
-    def func(ctx, arg):
-        try:
-            result = humantime.ShortTime(arg)
-            shorttime = True
-        except Exception:
-            result = humantime.Time(arg)
-            shorttime = False
+def future_time(ctx, arg):
+    try:
+        result = humantime.ShortTime(arg)
+        shorttime = True
+    except Exception:
+        result = humantime.Time(arg)
+        shorttime = False
 
-        when = result.dt.replace(tzinfo=datetime.timezone.utc).astimezone(timezone) 
+    when = result.dt.replace(tzinfo=datetime.timezone.utc)
 
-        if when < discord.utils.utcnow():
-            raise commands.BadArgument("That time is in the past.")
+    if when < discord.utils.utcnow():
+        raise commands.BadArgument("That time is in the past.")
 
-        return when
-
-    return func
+    return when
 
 
 class Events(commands.Cog):
@@ -711,17 +707,16 @@ class Events(commands.Cog):
         if isinstance(name, PromptResponse):
             return
 
-        em = self.get_tz_embed()
-        await ctx.send("In what timezone is the event held?", embed=em)
-        timezone = await self.prompt(ctx, converter=TimezoneValidator().convert)
+        now = discord.utils.utcnow()
+        user_fmt = discord.utils.format_dt(now, "t")
+        utc_fmt = now.strftime("%H:%M")
 
-        if isinstance(timezone, PromptResponse):
-            return
-
-        timezone, timezone_name = timezone
-
-        await ctx.send("When will the event start?")
-        when = await self.prompt(ctx, converter=future_time(timezone))
+        await ctx.send(
+            "When will the event start?\n\n"
+            "Please note that you must enter a time in UTC.\n"
+            f"Your time: {user_fmt} UTC: {utc_fmt}"
+        )
+        when = await self.prompt(ctx, converter=future_time)
 
         if isinstance(when, PromptResponse):
             return
@@ -741,7 +736,7 @@ class Events(commands.Cog):
         if isinstance(channel, PromptResponse):
             return
 
-        return name, timezone_name, when, description, channel
+        return name, when, description, channel
 
     @event.command(name="create", aliases=["new"])
     async def event_create(self, ctx):
@@ -753,7 +748,7 @@ class Events(commands.Cog):
         options = await self.interactive_event_creation(ctx)
         if not options:
             return
-        name, timezone, when, description, channel = options
+        name, when, description, channel = options
 
         embed = discord.Embed(description="Creating your event...", color=discord.Color.green())
         msg = await channel.send(embed=embed)
@@ -765,8 +760,8 @@ class Events(commands.Cog):
             await ctx.send("Warning: Could not create event role.")
             notify_role, notify_role_id = None, None
 
-        query = """INSERT INTO events (name, description, owner_id, starts_at, message_id, guild_id, channel_id, participants, notify_role, timezone)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        query = """INSERT INTO events (name, description, owner_id, starts_at, message_id, guild_id, channel_id, participants, notify_role)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                    RETURNING id;
                 """
 
@@ -783,7 +778,6 @@ class Events(commands.Cog):
             channel.id,
             [ctx.author.id],
             notify_role_id,
-            timezone,
         )
 
         record = await ctx.db.fetchrow(query, *event_args)
@@ -900,11 +894,16 @@ class Events(commands.Cog):
             await self.update_event_name_or_description(event, option, ctx)
 
         elif option == "time":
-            timezone = pytz.timezone(event.timezone)
+            now = discord.utils.utcnow()
+            user_fmt = discord.utils.format_dt(now, "t")
+            utc_fmt = now.strftime("%H:%M")
 
-            await ctx.send("Enter the new time for the event.")
-            converter = future_time(timezone)
-            when = await self.prompt(ctx, converter=converter)
+            await ctx.send(
+                "What is the new starting time for the event?\n\n"
+                "Please note that you must enter a time in UTC.\n"
+                f"Your time: {user_fmt} UTC: {utc_fmt}"
+            )
+            when = await self.prompt(ctx, converter=future_time)
 
             if isinstance(when, PromptResponse):
                 return
@@ -922,29 +921,6 @@ class Events(commands.Cog):
 
             await self.update_event_field(event, 0, self.format_event_time(event))
             await ctx.send(ctx.tick(True, "Updated your event's time."))
-
-        elif option == "timezone":
-            tz_embed = self.get_tz_embed()
-            await ctx.send(embed=tz_embed)
-            result = await self.prompt(ctx, converter=TimezoneValidator().convert)
-
-            if isinstance(result, PromptResponse):
-                return
-
-            timezone, timezone_name = result
-
-            query = """UPDATE events
-                        SET timezone=$1
-                        WHERE id=$2;
-                    """
-
-            await self.bot.pool.execute(query, timezone_name, event.id)
-
-            event.timezone = timezone_name
-
-            await self.update_event_field(event, 0, self.format_event_time(event))
-
-            await ctx.send(ctx.tick(True, "Updated your event's timezone."))
 
     @event.command(name="delete", aliases=["remove", "cancel"])
     async def event_delete(self, ctx, *, event: EventConverter):
