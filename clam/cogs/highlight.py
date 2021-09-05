@@ -153,8 +153,6 @@ class Highlight(commands.Cog):
         self.bot.loop.create_task(self.delete_message_in(message, seconds))
 
     def format_message(self, message, *, highlight=None):
-        time_formatting = "%H:%M "
-
         content = discord.utils.escape_markdown(message.content)
 
         if highlight:
@@ -169,9 +167,7 @@ class Highlight(commands.Cog):
 
             content = " ".join(words)
 
-        sent = message.created_at.strftime(time_formatting)
-        timezone = message.created_at.strftime("%Z")
-        sent += timezone or "UTC"
+        sent = discord.utils.format_dt(message.created_at, "t")
 
         if not highlight and len(content) > 50:
             content = content[:50] + "..."
@@ -179,7 +175,7 @@ class Highlight(commands.Cog):
         else:
             content = content
 
-        formatted = f"`{sent}` {message.author}: {content}"
+        formatted = f"{sent} {message.author}: {content}"
 
         if highlight:
             formatted = f"> {formatted}"
