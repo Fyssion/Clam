@@ -913,7 +913,7 @@ class Moderation(commands.Cog):
 
     @commands.command()
     @commands.guild_only()
-    async def selfmute(self, ctx, *, duration: humantime.FutureTime):
+    async def selfmute(self, ctx, *, duration: humantime.ShortTime):
         """Mutes you for a duration of time.
 
         The duration can't be less than 5 minutes or more than 24 hours.
