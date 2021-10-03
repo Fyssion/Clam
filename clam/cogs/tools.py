@@ -27,7 +27,7 @@ def snowstamp(snowflake):
 
 def can_snipe():
     async def predicate(ctx):
-        return str(ctx.guild.id) not in ctx.cog.snipe_ignored
+        return ctx.guild and str(ctx.guild.id) not in ctx.cog.snipe_ignored
 
     return commands.check(predicate)
 

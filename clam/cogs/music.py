@@ -234,6 +234,9 @@ class SongPosition(commands.Converter):
 
 def is_dj(*, only_member_check=False):
     def predicate(ctx):
+        if not ctx.guild:
+            raise commands.NoPrivateMessage()
+
         author = ctx.author
         upper = discord.utils.get(ctx.guild.roles, name="DJ")
         lower = discord.utils.get(ctx.guild.roles, name="dj")
@@ -266,6 +269,9 @@ def is_dj(*, only_member_check=False):
 
 def is_listening():
     async def predicate(ctx):
+        if not ctx.guild:
+            return False
+
         player = ctx.cog.get_player(ctx)
 
         if not player:

@@ -47,7 +47,7 @@ class CCS(commands.Cog):
         self.private = True
 
     async def cog_check(self, ctx):
-        if ctx.guild.id != CCS_ID:
+        if not ctx.guild or ctx.guild.id != CCS_ID:
             raise PrivateCog("This is a private cog.")
 
         return True
