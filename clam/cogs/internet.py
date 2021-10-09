@@ -1387,34 +1387,36 @@ class Internet(commands.Cog):
         em = discord.Embed(title=username, url=data["url"], color=discord.Color.light_gray())
 
         description = []
-        profile = data["profile"]
+        profile = data.get("profile")
 
-        basic_info = ""
-        if profile.get("firstName"):
-            basic_info += f"{profile.get('firstName')} "
-        if profile.get("lastName"):
-            basic_info += f"{profile.get('lastName')} "
-        if profile.get("country"):
-            basic_info += f":flag_{profile.get('country').lower()}:"
+        if profile:
 
-        if basic_info:
-            description.append(f"{basic_info}")
+            basic_info = ""
+            if profile.get("firstName"):
+                basic_info += f"{profile.get('firstName')} "
+            if profile.get("lastName"):
+                basic_info += f"{profile.get('lastName')} "
+            if profile.get("country"):
+                basic_info += f":flag_{profile.get('country').lower()}:"
 
-        if profile.get("bio"):
-            description.append(profile.get("bio"))
+            if basic_info:
+                description.append(f"{basic_info}")
 
-        if profile.get("links"):
-            description.append(profile.get("links"))
+            if profile.get("bio"):
+                description.append(profile.get("bio"))
 
-        em.description = "\n".join(description)
+            if profile.get("links"):
+                description.append(profile.get("links"))
+
+            em.description = "\n".join(description)
 
         status = "Offline"
-        if data["online"]:
+        if data.get("online"):
             status = "Online"
         if data.get("playing"):
             status = f"[**Currently Playing**]({data.get('playing')})"
 
-        # timestamp is in miliseconds
+        # timestamp is in milliseconds
         last_seen_datetime = datetime.datetime.fromtimestamp(data["seenAt"] // 1000)
         last_seen = humantime.timedelta(last_seen_datetime, accuracy=1)
 
@@ -1433,27 +1435,31 @@ class Internet(commands.Cog):
 
         em.add_field(name="Performance", value="\n".join(performance), inline=True)
 
-        ratings = []
-        if profile.get("fideRating"):
-            ratings.append(f"**FIDE:** {profile.get('fideRating')}")
-        if profile.get("uscfRating"):
-            ratings.append(f"**USCF:** {profile.get('uscfRating')}")
-        if profile.get("ecfRating"):
-            ratings.append(f"**ECF:** {profile.get('ecfRating')}")
+        if profile:
+            ratings = []
+            if profile.get("fideRating"):
+                ratings.append(f"**FIDE:** {profile.get('fideRating')}")
+            if profile.get("uscfRating"):
+                ratings.append(f"**USCF:** {profile.get('uscfRating')}")
+            if profile.get("ecfRating"):
+                ratings.append(f"**ECF:** {profile.get('ecfRating')}")
 
-        if ratings:
-            em.add_field(name="Ratings", value="\n".join(ratings), inline=True)
+            if ratings:
+                em.add_field(name="Ratings", value="\n".join(ratings), inline=True)
 
-        total_play_time_dt = discord.utils.utcnow() - datetime.timedelta(seconds=data["playTime"]["total"])
-        total_play_time = humantime.timedelta(total_play_time_dt, accuracy=1, suffix=False, discord_fmt=False)
-        tv_play_time_dt = discord.utils.utcnow() - datetime.timedelta(seconds=data["playTime"]["tv"])
-        tv_play_time = humantime.timedelta(tv_play_time_dt, accuracy=1, suffix=False, discord_fmt=False)
+        def format_play_time(seconds):
+            delta = datetime.timedelta(seconds=seconds)
+            if delta < datetime.timedelta(seconds=1):
+                return "none"
+
+            play_time_dt = discord.utils.utcnow() - delta
+            return humantime.timedelta(play_time_dt, accuracy=1, suffix=False, discord_fmt=False)
+
+        total_play_time = format_play_time(data["playTime"]["total"])
+        tv_play_time = format_play_time(data["playTime"]["tv"])
         em.add_field(name="Play Time", value=f"**Total:** {total_play_time}\n**TV:** {tv_play_time}")
 
-        followers = f"**Followers:** {data['nbFollowers']}\n**Following:** {data['nbFollowing']}"
-        em.add_field(name="Social", value=followers, inline=True)
-
-        em.set_footer(text="Account created")
+        em.set_footer(text="Member since")
         em.timestamp = datetime.datetime.fromtimestamp(data["createdAt"] // 1000)
 
         await ctx.send(embed=em)
