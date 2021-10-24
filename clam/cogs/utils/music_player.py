@@ -139,6 +139,9 @@ class Player:
 
     @staticmethod
     def create_duration(current, total):
+        if total == 0:
+            return "`Unknown Duration`"
+
         decimal = current / total
         position = round(decimal * 30)
         bar = "`"
@@ -172,9 +175,12 @@ class Player:
         if not db_info:
             em.add_field(name="Requested by", value=song.requester.mention)
 
-        em.add_field(name="Uploader", value=f"[{song.uploader}]({song.uploader_url})")
+        if song.uploader:
+            em.add_field(name="Uploader", value=f"[{song.uploader}]({song.uploader_url})")
+        em.add_field(name="Source", value=song.extractor.capitalize())
         em.add_field(name="URL", value=f"[Click]({song.url})")
-        em.set_thumbnail(url=song.thumbnail)
+        if song.thumbnail:
+            em.set_thumbnail(url=song.thumbnail)
 
         if song.database:
             em.set_footer(text=f"Song cached in database (ID: {song.db_id}). Last updated")

@@ -222,13 +222,19 @@ class Song:
         self.uploader_url = data.get("uploader_url")
         date = data.get("upload_date")
         self.date = data.get("upload_date")
-        self.total_seconds = int(data.get("duration"))
-        self.upload_date = date[6:8] + "." + date[4:6] + "." + date[0:4]
+        try:
+            self.total_seconds = int(data.get("duration"))
+        except (TypeError, ValueError):
+            self.total_seconds = 0
+        if self.date:
+            self.upload_date = date[6:8] + "." + date[4:6] + "." + date[0:4]
+        else:
+            self.upload_date = "???"
         self.title = data.get("title")
         self.thumbnail = data.get("thumbnail")
         self.description = data.get("description")
-        self.human_duration = self.parse_duration(int(data.get("duration")))
-        self.duration = self.timestamp_duration(int(data.get("duration")))
+        self.human_duration = self.parse_duration(self.total_seconds)
+        self.duration = self.timestamp_duration(self.total_seconds)
         self.tags = data.get("tags")
         self.url = data.get("webpage_url")
         self.views = data.get("view_count")
