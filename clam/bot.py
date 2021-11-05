@@ -22,14 +22,14 @@ log = logging.getLogger("clam")
 
 
 def get_command_prefix(bot, message):
-    prefixes = bot.default_prefixes
+    prefixes = bot.default_prefixes.copy()
 
     if message.guild:
         prefixes = bot.prefixes.get(message.guild.id)
 
     # Add ! and ? to prefixes in DMs for easier use
     else:
-        prefixes.extend(["!", "?", "! ", "? "])
+        prefixes.extend(["! ", "? "])
 
     return commands.when_mentioned_or(*prefixes)(bot, message)
 
