@@ -307,19 +307,6 @@ class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.emoji = "\N{MULTIPLE MUSICAL NOTES}"
-        self.private = True
-        self.private_user_overrides = [612816777994305566]
-        self.private_guild_overrides = [
-            722184677984698398,
-            592510013222682669,
-            704692704113721426,
-            764327674649903104,
-            464484469215199243,
-            800452213385461791,
-            805273995191517214,
-            824268739939794964,
-            414487431249657856,
-        ]
 
         # Check if the cache folder is created
         if not os.path.exists("cache"):
