@@ -1834,6 +1834,8 @@ class Music(commands.Cog):
         total_with_plays = 0
 
         for duration, plays in records:
+            if not duration:
+                continue
             duration = float(duration)
             total += duration
             total_with_plays += duration * plays
@@ -1889,7 +1891,7 @@ class Music(commands.Cog):
         songs = []
         for song_id, title, plays, last_updated, duration in records:
             formatted = humantime.timedelta(last_updated, brief=True, accuracy=1, discord_fmt=False)
-            dur = ytdl.Song.timestamp_duration(round(duration))
+            dur = ytdl.Song.timestamp_duration(round(duration)) if duration else "none"
             songs.append(
                 f"{title} # ID: {song_id} ({plays:,} plays) duration: {dur} last updated {formatted}"
             )
@@ -2084,8 +2086,11 @@ class Music(commands.Cog):
 
         formatted = []
         for (i, (title, duration)) in enumerate(records):
+            dur = ytdl.Song.timestamp_duration(round(duration)) if duration else "none"
+            if len(title) > 30:
+                title = title[:29] + "..."
             formatted.append(
-                f"{places[i]} **{title}** ({ytdl.Song.timestamp_duration(round(duration))})"
+                f"{places[i]} **{title}** ({dur})"
             )
 
         value = "\n".join(formatted) or "None"
