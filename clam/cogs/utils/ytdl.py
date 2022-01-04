@@ -629,6 +629,9 @@ class Song:
             song_id = video.get("id")
             extractor = video.get("extractor")
 
+            # yes I know this is prone to failure, but I don't care
+            extractor = extractor or "youtube"
+
             song = await cls.fetch_from_database(ctx, song_id, extractor)
 
             if song:
@@ -636,6 +639,8 @@ class Song:
                     f"Song '{extractor}-{song_id}' in database, skipping further extraction"
                 )
                 playlist.append(song)
+                progress_message.change_label(1, text=f"Getting songs ({i+1}/{length})")
+                progress_message.change_label(1, emoji=ctx.tick(True))
                 continue
 
             filename = cls.playlist_ytdl.prepare_filename(video)[:-3] + ".webm"
