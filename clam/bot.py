@@ -12,10 +12,10 @@ from cleverbot import async_ as cleverbot
 from discord.ext import commands
 
 from .config import Config
-from .cogs.utils import db
-from .cogs.utils.context import Context
-from .cogs.utils.errors import PrivateCog
-from .cogs.utils.prefixes import Prefixes
+from .utils import db
+from .utils.context import Context
+from .utils.errors import PrivateCog
+from .utils.prefixes import Prefixes
 
 
 log = logging.getLogger("clam")

@@ -37,8 +37,8 @@ import asyncpg
 import discord
 from discord.ext import commands, tasks, menus
 
-from .utils import cache, checks, db
-from .utils.formats import human_join, plural
+from clam.utils import cache, checks, db
+from clam.utils.formats import human_join, plural
 
 
 log = logging.getLogger(__name__)

@@ -2,7 +2,7 @@ import asyncpg
 import discord
 from discord.ext import commands
 
-from .utils import cache, db, humantime
+from clam.utils import cache, db, humantime
 
 
 class AmongGameTable(db.Table, table_name="among_games"):

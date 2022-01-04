@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands, menus
 from pkg_resources import empty_provider
 
-from .utils import colors
+from clam.utils import colors
 
 
 class Piece:

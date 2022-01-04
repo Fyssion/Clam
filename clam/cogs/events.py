@@ -9,8 +9,8 @@ import asyncpg
 import enum
 import pytz
 
-from .utils import colors, db, humantime
-from .utils.menus import MenuPages
+from clam.utils import colors, db, humantime
+from clam.utils.menus import MenuPages
 
 
 utc = pytz.UTC

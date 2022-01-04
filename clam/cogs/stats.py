@@ -16,11 +16,11 @@ import psutil
 from discord.ext import commands, tasks, flags
 from jishaku.features.root_command import natural_size
 
-from .utils import colors, db, humantime
-from .utils.emojis import VOICE_CHANNEL, TEXT_CHANNEL
-from .utils.flags import NoUsageFlagCommand
-from .utils.formats import plural, TabularData
-from .utils.utils import get_lines_of_code
+from clam.utils import colors, db, humantime
+from clam.utils.emojis import VOICE_CHANNEL, TEXT_CHANNEL
+from clam.utils.flags import NoUsageFlagCommand
+from clam.utils.formats import plural, TabularData
+from clam.utils.utils import get_lines_of_code
 
 
 log = logging.getLogger("clam.stats")

@@ -13,9 +13,9 @@ import discord
 from discord.ext import commands, menus
 from PIL import Image
 
-from .utils import checks, colors, emojis, humantime
-from .utils.formats import human_join, plural
-from .utils.menus import MenuPages
+from clam.utils import checks, colors, emojis, humantime
+from clam.utils.formats import human_join, plural
+from clam.utils.menus import MenuPages
 
 
 def snowstamp(snowflake):

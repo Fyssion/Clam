@@ -17,10 +17,10 @@ from discord.ext import commands, menus, tasks
 from jishaku.codeblocks import codeblock_converter
 from jishaku.features.root_command import natural_size
 
-from .utils import aiopypi, colors, humantime
-from .utils.emojis import OK_SIGN
-from .utils.formats import plural, TabularData
-from .utils.menus import MenuPages
+from clam.utils import aiopypi, colors, humantime
+from clam.utils.emojis import OK_SIGN
+from clam.utils.formats import plural, TabularData
+from clam.utils.menus import MenuPages
 
 
 CLAM_DMS_CATEGORY = 714981398540451841

@@ -19,10 +19,10 @@ from discord.ext import commands, menus
 from lxml import etree
 from PIL import Image
 
-from .utils import aiopypi, aioxkcd, colors, fuzzy, humantime
-from .utils.formats import plural
-from .utils.menus import MenuPages
-from .utils.utils import SphinxObjectFileReader
+from clam.utils import aiopypi, aioxkcd, colors, fuzzy, humantime
+from clam.utils.formats import plural
+from clam.utils.menus import MenuPages
+from clam.utils.utils import SphinxObjectFileReader
 
 
 class DocsSource(menus.ListPageSource):

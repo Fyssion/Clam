@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands
 
 
-from .utils import db, cache, checks, colors
+from clam.utils import db, cache, checks, colors
 
 
 class CommandPermissionsTable(db.Table, table_name="command_permissions"):

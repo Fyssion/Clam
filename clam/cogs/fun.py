@@ -10,11 +10,11 @@ import discord
 from dateutil import tz
 from discord.ext import commands, menus
 
-from .utils import colors, fuzzy
-from .utils.formats import plural
-from .utils.menus import MenuPages
-from .utils.tabulate import tabulate
-from .utils.utils import quote
+from clam.utils import colors, fuzzy
+from clam.utils.formats import plural
+from clam.utils.menus import MenuPages
+from clam.utils.tabulate import tabulate
+from clam.utils.utils import quote
 
 
 num2words1 = {

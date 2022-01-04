@@ -3,8 +3,8 @@ import asyncio
 import discord
 from discord.ext import commands
 
-from .utils import db, emojis
-from .utils.errors import PrivateCog
+from clam.utils import db, emojis
+from clam.utils.errors import PrivateCog
 
 
 class ArchivedChannels(db.Table, table_name="archived_channels"):

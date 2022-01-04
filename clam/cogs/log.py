@@ -3,7 +3,7 @@ import datetime
 import discord
 from discord.ext import commands
 
-from .utils import cache, checks, db, humantime
+from clam.utils import cache, checks, db, humantime
 
 
 class GuildLogsTable(db.Table, table_name="guild_logs"):

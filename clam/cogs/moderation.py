@@ -16,12 +16,12 @@ from discord.ext import commands, flags, tasks
 from jishaku.models import copy_context_with
 
 
-from .utils import cache, checks, db, humantime
-from .utils.checks import has_manage_guild
-from .utils.emojis import GREEN_TICK, LOADING, RED_TICK
-from .utils.flags import NoUsageFlagGroup
-from .utils.formats import human_join, plural
-from .utils.utils import is_int
+from clam.utils import cache, checks, db, humantime
+from clam.utils.checks import has_manage_guild
+from clam.utils.emojis import GREEN_TICK, LOADING, RED_TICK
+from clam.utils.flags import NoUsageFlagGroup
+from clam.utils.formats import human_join, plural
+from clam.utils.utils import is_int
 
 
 log = logging.getLogger("clam.mod")

@@ -6,8 +6,8 @@ import discord
 from discord.ext import commands, menus
 
 
-from .utils import checks, colors, db
-from .utils.menus import MenuPages
+from clam.utils import checks, colors, db
+from clam.utils.menus import MenuPages
 
 
 # Note that this was heavily inspired by Rapptz/RoboDanny

@@ -3,8 +3,8 @@ import discord
 from discord.ext import commands, menus
 
 
-from .utils import colors, db, humantime
-from .utils.menus import MenuPages
+from clam.utils import colors, db, humantime
+from clam.utils.menus import MenuPages
 
 
 INCOMPLETE_EMOJI = "\N{BLACK LARGE SQUARE}"

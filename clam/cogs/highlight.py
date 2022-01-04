@@ -8,8 +8,8 @@ import discord
 from discord.ext import commands, tasks
 
 
-from .utils import colors, db, humantime
-from .utils.formats import plural
+from clam.utils import colors, db, humantime
+from clam.utils.formats import plural
 
 
 log = logging.getLogger("clam.highlight")

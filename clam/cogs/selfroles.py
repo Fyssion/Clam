@@ -10,8 +10,8 @@ from discord.ext import commands, menus
 from jishaku.models import copy_context_with
 
 
-from .utils import db, checks, colors, converters
-from .utils.formats import human_join
+from clam.utils import db, checks, colors, converters
+from clam.utils.formats import human_join
 
 
 log = logging.getLogger("clam.reactionroles")

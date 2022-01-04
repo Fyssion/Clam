@@ -18,11 +18,11 @@ from async_timeout import timeout
 from discord.ext import commands, menus, flags
 
 
-from .utils import colors, db, humantime, music_player, ytdl
-from .utils.emojis import GREEN_TICK, LOADING, RED_TICK
-from .utils.flags import NoUsageFlagCommand
-from .utils.formats import plural
-from .utils.menus import MenuPages, UpdatingMessage
+from clam.utils import colors, db, humantime, music_player, ytdl
+from clam.utils.emojis import GREEN_TICK, LOADING, RED_TICK
+from clam.utils.flags import NoUsageFlagCommand
+from clam.utils.formats import plural
+from clam.utils.menus import MenuPages, UpdatingMessage
 
 
 log = logging.getLogger("clam.music")

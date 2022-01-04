@@ -14,13 +14,13 @@ from discord.ext import commands, menus
 
 from jishaku.models import copy_context_with
 
-from .utils import colors
-from .utils.checks import has_manage_guild
-from .utils.emojis import OK_SIGN
-from .utils.errors import Blacklisted, PrivateCog
-from .utils.formats import plural
-from .utils.menus import MenuPages
-from .utils.utils import get_lines_of_code
+from clam.utils import colors
+from clam.utils.checks import has_manage_guild
+from clam.utils.emojis import OK_SIGN
+from clam.utils.errors import Blacklisted, PrivateCog
+from clam.utils.formats import plural
+from clam.utils.menus import MenuPages
+from clam.utils.utils import get_lines_of_code
 
 
 def strfdelta(tdelta, fmt):
