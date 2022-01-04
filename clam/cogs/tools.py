@@ -614,7 +614,7 @@ class Tools(commands.Cog):
                 em.set_image(url=data.url)
 
         em.set_author(name=str(message.author), icon_url=message.author.display_avatar.url)
-        formatted = humantime.timedelta(deleted_at, brief=True, accuracy=1)
+        formatted = humantime.timedelta(deleted_at, brief=True, accuracy=1, discord_fmt=False)
         em.set_footer(text=f"Deleted {formatted} | Message sent")
         content = f"\N{WASTEBASKET} Deleted Message | ID: {message.id}"
 
@@ -643,7 +643,8 @@ class Tools(commands.Cog):
         return content
 
     async def send_sniped_message(self, ctx, snipe):
-        if isinstance(snipe, DeletedMessage):
+        # 2nd condition is a fix for extension reloads (something something types)
+        if isinstance(snipe, DeletedMessage) or hasattr(snipe, "deleted_at"):
             await self.send_deleted_message(ctx, snipe.message, snipe.deleted_at)
             return
 
@@ -673,7 +674,7 @@ class Tools(commands.Cog):
                 em.set_image(url=data.url)
 
         em.set_author(name=str(after.author), icon_url=after.author.display_avatar.url)
-        formatted = humantime.timedelta(edited_at, brief=True, accuracy=1)
+        formatted = humantime.timedelta(edited_at, brief=True, accuracy=1, discord_fmt=False)
         em.set_footer(text=f"Edited {formatted} | Message sent")
         content = f"\N{MEMO} Edited Message | ID: {after.id}"
 
