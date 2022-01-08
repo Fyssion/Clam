@@ -63,7 +63,7 @@ poetry install
 python3 -m clam
 ```
 
-## Config
+### Config
 
 You'll need quite a few API keys to run the bot.
 
@@ -92,7 +92,7 @@ status-hook: status webhook url
 # debug: 0
 ```
 
-## Database Setup
+### Database Setup
 
 To setup PostgreSQL, use the following SQL commands using `psql`:
 
