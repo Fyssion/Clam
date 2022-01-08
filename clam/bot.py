@@ -95,8 +95,6 @@ class Clam(commands.Bot):
         with open("blacklist.json", "r") as f:
             self.blacklist = json.load(f)
 
-        self.reddit_id = self.config.reddit_id
-        self.reddit_secret = self.config.reddit_secret
         self.dev = self.get_user(224513210471022592)
         self.error_cache = collections.deque(maxlen=100)
         self.console = None

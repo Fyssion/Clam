@@ -51,8 +51,6 @@ class Config:
         # Required config stuff
         self.bot_token = self._data["bot-token"]  # Bot token
         self.console = self._data["console"]  # Console channel ID
-        self.reddit_id = self._data["reddit-id"]  # Reddit app ID
-        self.reddit_secret = self._data["reddit-secret"]  # Reddit app secret
         self.google_api_key = self._data["google-api-key"]  # Google api key
         self.database_uri = self._data["database-uri"]  # Postgres database URI
         self.cleverbot_api_key = self._data["cleverbot-api-key"]  # Cleverbot API key
