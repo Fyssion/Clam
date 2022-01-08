@@ -12,7 +12,7 @@ However, there are some [installation instructions](#running) below.
 
 ## Features
 
-Here's a brief list of Clam's most prominent features:
+Here's a brief list of Clam's most notable features:
 
 - Music
   - Clam uses [youtube-dl][ytdl] and its own player system to play music in voice channels.
@@ -46,7 +46,7 @@ However, I have provided installation instructions for the intrepid.
 git clone https://github.com/Fyssion/Clam.git
 cd Clam
 
-# OPTIONAL: create and activate a virtual env to house the requirements.
+# OPTIONAL: create and activate a virtual env to house the dependencies.
 python3 -m venv venv
 source venv/bin/activate
 
