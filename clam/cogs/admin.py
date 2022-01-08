@@ -94,75 +94,6 @@ class Admin(commands.Cog):
 
         self.dm_sessions = self.bot.dm_sessions
 
-        if not self.bot.debug:
-            self.dependancy_check_task.start()
-
-    @tasks.loop(hours=48)
-    async def dependancy_check_task(self):
-        """A simple dependancy checker that checks for outdated dependencies.
-
-        The reason why this doesn't check requirements.txt is because I want to
-        specify exactly which deps to check.
-        """
-        self.bot.log.info("Checking dependancies...")
-        deps_to_check = [
-            "youtube-dl",
-            "gitpython",
-            "jishaku",
-            "asyncpg",
-            "pytz",
-            "beautifulsoup4",
-        ]
-        packages = []
-
-        for dep in deps_to_check:
-            try:
-                package = await aiopypi.fetch_package(dep)
-                packages.append(package)
-            except aiopypi.PackageNotFoundError:
-                pass
-
-            await asyncio.sleep(5)  # don't want to spam
-
-        outdated_list = []
-        raw_oudated_list = []
-
-        for package in packages:
-            try:
-                install_version = pkg_resources.get_distribution(package.name).version
-                # this means the version is above
-                if install_version != package.version:
-                    raw_oudated_list.append(package.name)
-                    outdated_list.append(
-                        (
-                            f"**`{package.name}`** (Latest: {package.version} | Me: {install_version}) - "
-                            f"`!jsk sh venv/bin/pip install -U {package.name}`"
-                        )
-                    )
-            except (pkg_resources.DistributionNotFound, AttributeError):
-                continue
-        console = self.bot.console
-
-        if outdated_list:
-            self.log.info(
-                f"Found {len(outdated_list)} {plural(len(packages)):package} that "
-                f"need to be updated. Sending to console"
-            )
-
-            owner_id = self.bot.owner_id
-
-            formatted = "\n".join(outdated_list)
-            if len(outdated_list) > 1:
-                formatted += f"\nUpdate all: `!jsk sh venv/bin/pip install -U {' '.join(raw_oudated_list)}`"
-
-            await console.send(
-                f"I have found {len(outdated_list)} package(s) that are oudated:\n{formatted}"
-            )
-
-    @dependancy_check_task.before_loop
-    async def before_dependancy_check_task(self):
-        await self.bot.wait_until_ready()
-
     def get_dm_session(self, channel):
         if channel.id in self.dm_sessions.keys():
             dm_session = self.dm_sessions[channel.id]
@@ -183,9 +114,6 @@ class Admin(commands.Cog):
         if not await commands.is_owner().predicate(ctx):
             raise commands.NotOwner("You do not own this bot.")
         return True
-
-    def cog_unload(self):
-        self.dependancy_check_task.cancel()
 
     @commands.command()
     async def eval(self, ctx, *, argument: codeblock_converter):
