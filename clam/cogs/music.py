@@ -3,30 +3,34 @@ import datetime
 import enum
 import functools
 import importlib
+import itertools
 import logging
 import os.path
+import random
 import re
 import sys
 import traceback
 import typing
 from urllib.parse import urlparse
 
+import asyncpg
 import discord
 import humanize
 import youtube_dl
 from async_timeout import timeout
-from discord.ext import commands, menus, flags
+from discord.ext import commands, flags, menus
 
-
-from clam.utils import colors, db, humantime, music_player, ytdl
+from clam.utils import colors, db, humantime, stopwatch
 from clam.utils.emojis import GREEN_TICK, LOADING, RED_TICK
 from clam.utils.flags import NoUsageFlagCommand
 from clam.utils.formats import plural
 from clam.utils.menus import MenuPages, UpdatingMessage
 
-
 log = logging.getLogger("clam.music")
 bin_log = logging.getLogger("clam.music.bin")
+ytdl_log = logging.getLogger("clam.music.ytdl")
+player_log = logging.getLogger("clam.music.player")
+
 
 
 class SongsTable(db.Table, table_name="songs"):
@@ -67,6 +71,1086 @@ class SongAliases(db.Table, table_name="song_aliases"):
         return statement + "\n" + sql
 
 
+# Silence useless bug reports messages
+youtube_dl.utils.bug_reports_message = lambda: ""
+
+
+class YTDLError(commands.CommandError):
+    pass
+
+
+class Aborted(RuntimeError):
+    pass
+
+
+class SongSelector(discord.ui.View):
+    class _Source(menus.ListPageSource):
+        def __init__(self, songs):
+            super().__init__(songs, per_page=1)
+
+        def format_page(self, menu, song):
+            em = discord.Embed(
+                title="Select a song to continue",
+                description=f"```yml\n{song.get('title')}\n```",
+                color=discord.Color.green(),
+            )
+
+            em.add_field(
+                name="Duration",
+                value=Song.timestamp_duration(int(song.get("duration"))),
+            )
+            em.add_field(
+                name="Uploader",
+                value=f"[{song.get('uploader')}]({song.get('uploader_url')})",
+            )
+            em.add_field(name="URL", value=f"[Click]({song.get('webpage_url')})")
+            em.set_thumbnail(url=song.get("thumbnail"))
+
+            em.set_footer(text=f"Song {menu.current_page+1}/{self.get_max_pages()}")
+
+            return em
+
+    def __init__(self, ctx, songs, **kwargs):
+        self.ctx = ctx
+        self.songs = songs
+        kwargs.setdefault("timeout", 180)  # 3m
+        self._source = self._Source(songs)
+        self.current_page = 0
+        self.selected_page = None
+        super().__init__(**kwargs)
+
+    @property
+    def source(self):
+        """:class:`PageSource`: The source where the data comes from."""
+        return self._source
+
+    async def on_timeout(self) -> None:
+        if self.message:
+            await self.message.delete()
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user and interaction.user == self.ctx.author:
+            return True
+        else:
+            await interaction.response.send_message("This select dialog is not for you.", ephemeral=True)
+            return False
+
+    async def _get_kwargs_from_page(self, page):
+        value = await discord.utils.maybe_coroutine(
+            self._source.format_page, self, page
+        )
+        if isinstance(value, dict):
+            return value
+        elif isinstance(value, str):
+            return {"content": value, "embed": None}
+        elif isinstance(value, discord.Embed):
+            return {"embed": value, "content": None}
+
+    async def show_page(self, interaction: discord.Interaction, page_number: int) -> None:
+        page = await self.source.get_page(page_number)
+        self.current_page = page_number
+        kwargs = await self._get_kwargs_from_page(page)
+        if kwargs:
+            if interaction.response.is_done():
+                if self.message:
+                    await self.message.edit(**kwargs, view=self)
+            else:
+                await interaction.response.edit_message(**kwargs, view=self)
+
+    async def start(self) -> None:
+        if not self.ctx.channel.permissions_for(self.ctx.me).embed_links:
+            await self.ctx.send('Bot does not have embed links permission in this channel.')
+            return
+
+        await self.source._prepare_once()
+        page = await self.source.get_page(0)
+        kwargs = await self._get_kwargs_from_page(page)
+        self.message = await self.ctx.send(**kwargs, view=self)  # type: ignore
+
+        await self.wait()
+
+        return self.songs[self.selected_page] if self.selected_page is not None else None
+
+    async def show_checked_page(self, interaction: discord.Interaction, page_number: int) -> None:
+        max_pages = self._source.get_max_pages()
+        try:
+            if max_pages is None:
+                # If it doesn't give maximum pages, it cannot be checked
+                await self.show_page(interaction, page_number)
+            elif max_pages > page_number >= 0:
+                await self.show_page(interaction, page_number)
+        except IndexError:
+            # An error happened that can be handled, so ignore it.
+            pass
+
+    @discord.ui.button(label="Select", style=discord.ButtonStyle.green)
+    async def select_pages(self, button: discord.ui.Button, interaction: discord.Interaction):
+        """select the current page"""
+        self.selected_page = self.current_page
+        await interaction.response.defer()
+        await self.message.delete()
+        self.stop()
+
+    @discord.ui.button(label="Previous")
+    async def go_to_previous_page(self, button: discord.ui.Button, interaction: discord.Interaction):
+        """go to the previous page"""
+        await self.show_checked_page(interaction, self.current_page - 1)
+
+    @discord.ui.button(label="Next")
+    async def go_to_next_page(self, button: discord.ui.Button, interaction: discord.Interaction):
+        """go to the next page"""
+        await self.show_checked_page(interaction, self.current_page + 1)
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
+    async def stop_pages(self, button: discord.ui.Button, interaction: discord.Interaction):
+        """stops the pagination session."""
+        await interaction.response.defer()
+        await self.message.delete()
+        self.stop()
+
+
+class Song:
+    YTDL_OPTIONS = {
+        "format": "bestaudio/best",
+        "extractaudio": True,
+        "audioformat": "mp3",
+        "outtmpl": "cache/%(extractor)s-%(id)s.%(ext)s",
+        "restrictfilenames": True,
+        "noplaylist": True,
+        "nocheckcertificate": True,
+        "ignoreerrors": False,
+        "logtostderr": False,
+        "quiet": True,
+        "no_warnings": True,
+        "default_search": "auto",
+        "source_address": "0.0.0.0",
+    }
+
+    YTDL_PLAYLIST_OPTIONS = {
+        "format": "bestaudio/best",
+        "extractaudio": True,
+        "audioformat": "mp3",
+        "outtmpl": "cache/%(extractor)s-%(id)s.%(ext)s",
+        "restrictfilenames": True,
+        "noplaylist": False,
+        "nocheckcertificate": True,
+        "ignoreerrors": False,
+        "logtostderr": False,
+        "quiet": True,
+        "no_warnings": True,
+        "default_search": "auto",
+        "source_address": "0.0.0.0",
+    }
+
+    # FFMPEG_OPTIONS = {
+    #     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+    #     "options": "-vn",
+    # }
+    FFMPEG_OPTIONS = {
+        "before_options": None,
+        "options": None,
+    }
+
+    ytdl = youtube_dl.YoutubeDL(YTDL_OPTIONS)
+    playlist_ytdl = youtube_dl.YoutubeDL(YTDL_PLAYLIST_OPTIONS)
+
+    def __init__(
+        self,
+        ctx: commands.Context,
+        *,
+        data: dict,
+        source: discord.FFmpegPCMAudio = None,
+        volume: float = 0.5,
+        filename=None,
+    ):
+        self.ffmpeg_options = self.FFMPEG_OPTIONS.copy()
+
+        self.source = source
+
+        self.ctx = ctx
+        self.requester = ctx.author
+        self.channel = ctx.channel
+        self.data = data
+        self.filename = filename
+        self._volume = volume
+
+        self.id = data.get("id")
+        self.extractor = data.get("extractor")
+        self.uploader = data.get("uploader")
+        self.uploader_url = data.get("uploader_url")
+        date = data.get("upload_date")
+        self.date = data.get("upload_date")
+        try:
+            self.total_seconds = int(data.get("duration"))
+        except (TypeError, ValueError):
+            self.total_seconds = 0
+        if self.date:
+            self.upload_date = date[6:8] + "." + date[4:6] + "." + date[0:4]
+        else:
+            self.upload_date = "???"
+        self.title = data.get("title")
+        self.thumbnail = data.get("thumbnail")
+        self.description = data.get("description")
+        self.human_duration = self.parse_duration(self.total_seconds)
+        self.duration = self.timestamp_duration(self.total_seconds)
+        self.tags = data.get("tags")
+        self.url = data.get("webpage_url")
+        self.views = data.get("view_count")
+        self.likes = data.get("like_count")
+        self.dislikes = data.get("dislike_count")
+        self.stream_url = data.get("url")
+
+        # database stuff
+        self.database = False
+        self.registered_at = None
+        self.last_updated = None
+
+    def __str__(self):
+        return f"`{self.title}`"
+
+    @property
+    def volume(self):
+        return self._volume
+
+    @volume.setter
+    def volume(self, volume: float):
+        self._volume = volume
+        if self.source:
+            self.source.volume = volume
+
+    def make_source(self):
+        if self.source:
+            self.source.cleanup()
+            self.source = None
+
+        source = discord.FFmpegPCMAudio(self.filename, **self.ffmpeg_options)
+        self.source = discord.PCMVolumeTransformer(source, self.volume)
+
+    def discard_source(self):
+        self.source.cleanup()
+        self.source = None
+
+    @classmethod
+    def from_record(cls, record, ctx):
+        filename = record["filename"]
+        info = record["info"]
+        registered_at = record["registered_at"]
+        last_updated = record["last_updated"]
+
+        self = cls(ctx, data=info, filename=filename)
+
+        self.database = True
+        self.registered_at = registered_at
+        self.last_updated = last_updated
+        self.db_id = record["id"]
+        self.plays = record["plays"]
+
+        return self
+
+    @classmethod
+    async def get_song_from_db(cls, ctx, search, *, loop):
+        loop = loop or asyncio.get_event_loop()
+
+        ytdl_log.info(f"Searching database for '{search}'")
+
+        song_id = cls.parse_youtube_id(search)
+
+        ytdl_log.info(f"Searching database for id: {song_id or search}")
+        song = await cls.fetch_from_database(ctx, song_id or search)
+
+        if song:
+            ytdl_log.info(f"Found song in database: {song.id}")
+            return song
+
+        query = """SELECT *
+                   FROM songs
+                   ORDER BY similarity(title, $1) DESC
+                """
+
+        record = await ctx.db.fetchrow(query, search)
+
+        if not record:
+            return await ctx.send(f":x: Could not find a match for `{search}`")
+
+        return cls.from_record(record, ctx)
+
+    @classmethod
+    async def search_song_aliases(cls, ctx, search):
+        query = """SELECT songs.*, song_aliases.expires_at
+                   FROM song_aliases
+                   INNER JOIN songs ON songs.id = song_aliases.song_id
+                   WHERE (song_aliases.user_id=$1 OR song_aliases.user_id IS NULL) AND song_aliases.alias=$2;
+                """
+
+        record = await ctx.db.fetchrow(query, ctx.author.id, search.lower())
+
+        if not record:
+            return None
+
+        expires_at = record.get("expires_at")
+
+        if expires_at and expires_at < datetime.datetime.utcnow():
+            query = """DELETE FROM song_aliases
+                       WHERE (song_aliases.user_id=$1 OR song_aliases.user_id IS NULL) AND song_aliases.alias=$2;
+                    """
+            await ctx.db.execute(query, ctx.author.id, search.lower())
+            return None
+
+        return cls.from_record(record, ctx)
+
+    @classmethod
+    async def fetch_from_database(cls, ctx, song_id, extractor="youtube"):
+        query = """SELECT * FROM songs
+                   WHERE song_id=$1 AND extractor=$2;
+                """
+
+        record = await ctx.db.fetchrow(query, song_id, extractor)
+
+        if not record:
+            return None
+
+        return cls.from_record(record, ctx)
+
+    @staticmethod
+    def parse_youtube_id(search):
+        yt_urls = re.compile(
+            r"(?:https?://)?(?:www.)?(?:youtube.com|youtu.be)/(?:watch\?v=)?([^\s]+)"
+        )
+        match = yt_urls.match(search)
+
+        if match:
+            return match.groups()[0]
+
+        return None
+
+    @classmethod
+    async def resolve_webpage_url(cls, ctx, search, *, send_errors=True):
+        loop = ctx.bot.loop
+
+        partial = functools.partial(
+            cls.ytdl.extract_info, search, download=False, process=False
+        )
+        try:
+            data = await loop.run_in_executor(None, partial)
+
+        except youtube_dl.DownloadError as e:
+            ytdl_log.warning(f"Error while searching for '{search}': {e}")
+            if send_errors:
+                await ctx.send(
+                    f"**:x: Error while searching for** `{search}`\n```\n{e}\n```"
+                )
+            return
+
+        if data is None:
+            raise YTDLError("Couldn't find anything that matches `{}`".format(search))
+
+        if "entries" not in data:
+            process_info = data
+        else:
+            process_info = None
+            for entry in data["entries"]:
+                if entry:
+                    process_info = entry
+                    break
+
+            if process_info is None:
+                raise YTDLError(
+                    "Couldn't find anything that matches `{}`".format(search)
+                )
+
+        webpage_url = process_info.get("webpage_url")
+
+        if not webpage_url:
+            return search, True, process_info
+
+        ytdl_log.info(f"Found URL for {search}: '{webpage_url}'")
+
+        song_id = process_info.get("id")
+        extractor = process_info.get("extractor")
+
+        song = await cls.fetch_from_database(ctx, song_id, extractor)
+
+        if song:
+            ytdl_log.info(
+                f"Song '{extractor}-{song_id}' in database, skipping further extraction"
+            )
+            return song
+
+        # YTDL is weird about file extensions
+        # Since the file extension is always .NA, I'll have to
+        # take off the file extension and the cache/.
+        # Then I have to loop through the files in the cache,
+        # and take off their file extensions.
+        # I can then compare the filename to each file in
+        # the cache to see if the song has been downloaded.
+        # There are probably a thousand better ways to do this...
+        # ¯\_(ツ)_/¯
+
+        def is_in_cache(filename):
+            for f in os.listdir("cache"):
+                name = os.path.splitext(f)[0]
+
+                if filename == name:
+                    return True
+
+            return False
+
+        filename = cls.ytdl.prepare_filename(process_info)[6:-3]
+
+        if is_in_cache(filename):
+            ytdl_log.info(f"Song {song_id} is already downloaded. Skipping download.")
+            download = False
+        else:
+            ytdl_log.info(f"Downloading song {song_id}...")
+            download = True
+
+        return webpage_url, download, process_info
+
+    @classmethod
+    async def get_song(
+        cls,
+        ctx: commands.Context,
+        search: str,
+        *,
+        loop: asyncio.BaseEventLoop = None,
+        send_errors=True,
+        skip_resolve=False,
+    ):
+        loop = loop or asyncio.get_event_loop()
+
+        ytdl_log.info(f"Searching for '{search}'")
+
+        song_id = cls.parse_youtube_id(search)
+
+        song_id = song_id or search
+
+        ytdl_log.info(f"Searching database for id: {song_id}")
+        song = await cls.fetch_from_database(ctx, song_id)
+
+        if song:
+            ytdl_log.info(f"Found song in database: {song.id}")
+            return song
+
+        ytdl_log.info("Searching song aliases")
+        song = await cls.search_song_aliases(ctx, search)
+
+        if song:
+            ytdl_log.info(f"Found song alias in database: {song.id}")
+            return song
+
+        ytdl_log.info("Song not in database, searching youtube")
+
+        if not skip_resolve:
+            result = await cls.resolve_webpage_url(
+                ctx, search, send_errors=send_errors
+            )
+            if not result:
+                return
+
+            if isinstance(result, Song):
+                return result
+
+            webpage_url, download, resolved_info = result
+
+            duration = resolved_info.get("duration")
+            title = resolved_info.get("title", search)
+            if duration:
+                try:
+                    duration = int(duration)
+                except ValueError:
+                    pass
+                else:
+                    if duration >= 60 * 60 * 3:  # 3 hours
+                        confirm = await ctx.confirm(
+                            f"Song `{title}` is over 3 hours long.\n"
+                            "If you didn't intend this, please cancel this request. "
+                            f"Consider using `{ctx.prefix}search <song>` to select from a list of songs.\n"
+                            "Confirm selected song?"
+                        )
+                        if not confirm:
+                            raise Aborted
+
+        else:
+            webpage_url = search
+            download = True
+
+        partial = functools.partial(
+            cls.ytdl.extract_info, webpage_url, download=download
+        )
+        try:
+            processed_info = await loop.run_in_executor(None, partial)
+        except youtube_dl.DownloadError as e:
+            ytdl_log.warning(f"Error while downloading '{webpage_url}': {e}")
+            if send_errors:
+                await ctx.send(
+                    f"**:x: Error while downloading** `{webpage_url}`\n```\n{e}\n```"
+                )
+                return
+        else:
+            if processed_info is None:
+                raise YTDLError("Couldn't fetch `{}`".format(webpage_url))
+
+            ytdl_log.info("Fetched song info")
+
+            if "entries" not in processed_info:
+                info = processed_info
+            else:
+                info = None
+                while info is None:
+                    try:
+                        info = processed_info["entries"].pop(0)
+                    except IndexError as e:
+                        print(e)
+                        raise YTDLError(
+                            "Couldn't retrieve any matches for `{}`".format(webpage_url)
+                        )
+
+            filename = cls.ytdl.prepare_filename(info)
+
+            song_id = info.get("id")
+            extractor = info.get("extractor")
+
+            song = await cls.fetch_from_database(ctx, song_id, extractor)
+
+            if not song:
+                ytdl_log.info(f"Song '{extractor}-{song_id}' not in database, inserting")
+                query = """INSERT INTO songs (filename, title, song_id, extractor, info)
+                           VALUES ($1, $2, $3, $4, $5::jsonb)
+                           RETURNING songs.id;
+                        """
+
+                song_id = await ctx.db.fetchval(
+                    query, filename, info.get("title"), song_id, extractor, info
+                )
+
+            else:
+                ytdl_log.info(
+                    f"Song '{extractor}-{song_id}' is already in database, skipping insertion"
+                )
+                song_id = song.db_id
+
+            query = """INSERT INTO song_aliases (alias, expires_at, song_id)
+                       VALUES ($1, $2, $3);
+                    """
+
+            expires = datetime.datetime.utcnow() + datetime.timedelta(days=30)
+
+            ytdl_log.info(f"Inserting song alias '{search.lower()}' into database...")
+            async with ctx.db.acquire() as conn:
+                async with conn.transaction():
+                    try:
+                        await ctx.db.execute(query, search.lower(), expires, song_id)
+
+                    except asyncpg.UniqueViolationError:
+                        ytdl_log.info(
+                            "Could not insert song alias, there is already an identical one."
+                        )
+
+            song = cls(
+                ctx,
+                data=info,
+                filename=filename,
+            )
+
+            music = ctx.bot.get_cog("Music")
+            if music:
+                ctx.bot.loop.create_task(music.check_song_duration(ctx, song))
+
+            return song
+
+    @classmethod
+    async def get_playlist(
+        cls,
+        ctx: commands.Context,
+        search: str,
+        progress_message,
+        *,
+        loop: asyncio.BaseEventLoop = None,
+    ):
+        loop = loop or asyncio.get_event_loop()
+
+        ytdl_log.info("Searching for playlist")
+
+        partial = functools.partial(
+            cls.playlist_ytdl.extract_info, search, download=False, process=False
+        )
+        unproccessed = await loop.run_in_executor(None, partial)
+
+        if unproccessed is None:
+            raise YTDLError("Couldn't find anything that matches `{}`".format(search))
+
+        if "entries" not in unproccessed:
+            data_list = [unproccessed]
+        else:
+            data_list = []
+            for entry in unproccessed["entries"]:
+                if entry:
+                    data_list.append(entry)
+
+            if len(data_list) == 0:
+                raise YTDLError("Playlist is empty")
+
+        length = len(data_list)
+        progress_message.change_label(0, emoji=ctx.tick(True))
+        progress_message.change_label(1, text=f"Getting songs (0/{length})")
+
+        ytdl_log.info("Fetching songs in playlist")
+
+        playlist = []
+        counter = 0
+        for i, video in enumerate(data_list):
+            webpage_url = video["url"]
+            ytdl_log.info(f"Song: '{webpage_url}'")
+
+            song_id = video.get("id")
+            extractor = video.get("extractor")
+
+            # yes I know this is prone to failure, but I don't care
+            extractor = extractor or "youtube"
+
+            song = await cls.fetch_from_database(ctx, song_id, extractor)
+
+            if song:
+                ytdl_log.info(
+                    f"Song '{extractor}-{song_id}' in database, skipping further extraction"
+                )
+                playlist.append(song)
+                progress_message.change_label(1, text=f"Getting songs ({i+1}/{length})")
+                progress_message.change_label(1, emoji=ctx.tick(True))
+                continue
+
+            filename = cls.playlist_ytdl.prepare_filename(video)[:-3] + ".webm"
+            if os.path.isfile(filename):
+                ytdl_log.info("Song is already downloaded. Skipping download.")
+                download = False
+            else:
+                ytdl_log.info("Downloading song...")
+                download = True
+
+            full = functools.partial(
+                cls.playlist_ytdl.extract_info, webpage_url, download=download
+            )
+            try:
+                data = await loop.run_in_executor(None, full)
+            except youtube_dl.DownloadError:
+                counter += 1
+            else:
+
+                if data is None:
+                    await ctx.send(f"Couldn't fetch `{webpage_url}`")
+
+                if "entries" not in data:
+                    info = data
+                else:
+                    info = None
+                    while info is None:
+                        try:
+                            info = data["entries"].pop(0)
+                        except IndexError as e:
+                            print(e)
+                            await ctx.send(
+                                f"Couldn't retrieve any matches for `{webpage_url}`"
+                            )
+
+                song_id = info.get("id")
+                extractor = info.get("extractor")
+                filename = cls.playlist_ytdl.prepare_filename(info)
+
+                song = await cls.fetch_from_database(ctx, song_id, extractor)
+
+                if not song:
+                    ytdl_log.info(f"Song '{extractor}-{song_id}' not in database, inserting")
+                    query = """INSERT INTO songs (filename, title, song_id, extractor, info)
+                               VALUES ($1, $2, $3, $4, $5::jsonb)
+                            """
+
+                    await ctx.db.execute(
+                        query, filename, info.get("title"), song_id, extractor, info
+                    )
+
+                else:
+                    ytdl_log.info(
+                        f"Song '{extractor}-{song_id}' is already in database, skipping insertion"
+                    )
+
+                source = cls(
+                    ctx,
+                    data=info,
+                    filename=filename,
+                )
+
+                music = ctx.bot.get_cog("Music")
+                if music:
+                    ctx.bot.loop.create_task(music.check_song_duration(ctx, source))
+
+                playlist.append(source)
+
+            progress_message.change_label(1, text=f"Getting songs ({i+1}/{length})")
+            progress_message.change_label(1, emoji=ctx.tick(True))
+
+        return playlist, counter
+
+    @classmethod
+    async def search_ytdl(cls, ctx, search):
+        loop = ctx.bot.loop
+
+        async with ctx.typing():
+            partial = functools.partial(cls.ytdl.extract_info, search, download=False)
+            info = await loop.run_in_executor(None, partial)
+
+        if not info or not info["entries"]:
+            await ctx.send("No results found.")
+            return
+
+        pages = SongSelector(ctx=ctx, songs=info["entries"])
+        entry = await pages.start()
+
+        if not entry:
+            await ctx.send("Aborted.")
+            return
+
+        async with ctx.typing():
+            song = await cls.get_song(ctx, entry["webpage_url"])
+
+        return song
+
+    @staticmethod
+    def parse_duration(duration: int):
+        minutes, seconds = divmod(duration, 60)
+        hours, minutes = divmod(minutes, 60)
+        days, hours = divmod(hours, 24)
+
+        duration_str = []
+        if days > 0:
+            duration_str.append(f"{plural(days):day}")
+        if hours > 0:
+            duration_str.append(f"{plural(hours):hour}")
+        if minutes > 0:
+            duration_str.append(f"{plural(minutes):minute}")
+        if seconds > 0:
+            duration_str.append(f"{plural(seconds):second}")
+
+        if len(duration_str) == 0:
+            return Song.timestamp_duration(duration)
+
+        if len(duration_str) == 1:
+            return duration_str[0]
+
+        elif len(duration_str) == 2:
+            return " and ".join(duration_str)
+
+        else:
+            return ", ".join(duration_str[:-1]) + f", and {duration_str[-1]}"
+
+    @staticmethod
+    def timestamp_duration(duration: int):
+        minutes, seconds = divmod(duration, 60)
+        hours, minutes = divmod(minutes, 60)
+        days, hours = divmod(hours, 24)
+
+        duration = ""
+
+        if days > 0:
+            duration += f"{plural(days):day}, "
+
+        if hours > 0:
+            duration += f"{hours}:"
+            minutes = f"{minutes:02d}"
+        duration += f"{minutes}:{seconds:02d}"
+        return duration
+
+
+
+
+
+class VoiceError(commands.CommandError):
+    pass
+
+
+class SongQueue(asyncio.Queue):
+    def __getitem__(self, item):
+        if isinstance(item, slice):
+            return list(itertools.islice(self._queue, item.start, item.stop, item.step))
+        else:
+            return self._queue[item]
+
+    def __iter__(self):
+        return self._queue.__iter__()
+
+    def __len__(self):
+        return self.qsize()
+
+    def clear(self):
+        self._queue.clear()
+
+    def shuffle(self):
+        random.shuffle(self._queue)
+
+    def remove(self, index: int):
+        del self._queue[index]
+
+    def to_list(self):
+        output = []
+        for item in self._queue:
+            output.append(item)
+        return output
+
+
+class PlayerStatus(enum.Enum):
+    PLAYING = 0
+    PAUSED = 1
+    WAITING = 2
+    CLOSED = 3
+
+
+class Player:
+    def __init__(self, bot: commands.Bot, ctx: commands.Context):
+        player_log.info(f"{ctx.guild}: Creating player...")
+
+        self.bot = bot
+        self.ctx = ctx
+
+        self.current = None
+        self.voice = None
+        self.text_channel = ctx.channel
+        self.next = asyncio.Event()
+        self.songs = SongQueue()
+        self.duration = stopwatch.StopWatch()
+        self.closed = False
+        self.startover = False
+
+        self.status = PlayerStatus.WAITING
+
+        self._notify = False
+        self._loop = False
+        self._loop_queue = False
+        self._volume = 0.5
+        self._votes = {}
+
+        player_log.info(f"{ctx.guild}: Starting player loop...")
+        self.audio_player = bot.loop.create_task(self.player_loop())
+
+    def __del__(self):
+        self.audio_player.cancel()
+
+    def __repr__(self):
+        channel = self.voice.channel if self.voice else None
+        return f"<Player guild='{self.ctx.guild}', channel='{channel}'>"
+
+    @property
+    def loop(self):
+        return self._loop
+
+    @loop.setter
+    def loop(self, value: bool):
+        self._loop = value
+
+    @property
+    def notify(self):
+        return self._notify
+
+    @notify.setter
+    def notify(self, value: bool):
+        self._notify = value
+
+    @property
+    def loop_queue(self):
+        return self._loop_queue
+
+    @loop_queue.setter
+    def loop_queue(self, value: bool):
+        self._loop_queue = value
+
+    @property
+    def volume(self):
+        return self._volume
+
+    @volume.setter
+    def volume(self, value: float):
+        self._volume = value
+
+    @property
+    def is_playing(self):
+        if self.voice:
+            if self.voice.is_paused():
+                # The player is techincally in
+                # the middle of playing a song
+                return True
+            return self.voice.is_playing() is True and self.current is not None
+        return self.voice is not None and self.current is not None
+
+    @property
+    def has_started(self):
+        return self.voice is not None and self.current is not None
+
+    @staticmethod
+    def create_duration(current, total):
+        if total == 0:
+            return "`Unknown Duration`"
+
+        decimal = current / total
+        position = round(decimal * 30)
+        bar = "`"
+        for i in range(30):
+            to_add = "▬"
+            if position == i:
+                to_add = "🔘"
+            bar += to_add
+        bar += "`"
+        return bar
+
+    @staticmethod
+    def now_playing_embed(song, title="Now playing", *, duration=None, db_info=False, filesize=None, show_context=False):
+        em = discord.Embed(
+            title=title,
+            description=f"```yml\n{song.title}\n```",
+            color=discord.Color.green(),
+        )
+        if not duration:
+            em.add_field(name="Duration", value=song.duration)
+        else:
+            seconds = duration.total_seconds()
+            formatted = Song.timestamp_duration(int(seconds))
+            bar = Player.create_duration(seconds, song.total_seconds)
+            em.add_field(
+                name="Duration",
+                value=f"{formatted}/{song.duration} {bar}",
+                inline=False,
+            )
+
+        if not db_info:
+            em.add_field(name="Requested by", value=song.requester.mention)
+
+        if song.uploader:
+            em.add_field(name="Uploader", value=f"[{song.uploader}]({song.uploader_url})")
+        em.add_field(name="Source", value=song.extractor.capitalize())
+        em.add_field(name="URL", value=f"[Click]({song.url})")
+        if song.thumbnail:
+            em.set_thumbnail(url=song.thumbnail)
+
+        if song.database:
+            em.set_footer(text=f"Song cached in database (ID: {song.db_id}). Last updated")
+            em.timestamp = song.last_updated
+
+            if db_info:
+                em.add_field(name="Plays", value=f"{song.plays:,}")
+                em.add_field(name="First cached", value=humantime.fulltime(song.registered_at))
+                em.add_field(name="Filename", value=f"`{song.filename}`")
+                em.add_field(name="Platform ID", value=song.id)
+
+                if filesize:
+                    em.add_field(name="File size", value=filesize)
+
+        return em
+
+    async def player_loop(self):
+        ctx = self.ctx
+        try:
+            while not self.bot.is_closed() and not self.closed:
+                self.next.clear()
+                self.duration.stop()
+
+                if self.loop_queue and not self.startover:
+                    await self.songs.put(self.current)
+
+                if not self.loop:
+                    self.status = PlayerStatus.WAITING
+                    try:
+                        async with timeout(180):  # 3 minutes
+                            player_log.info(f"{ctx.guild}: Getting a song from the queue...")
+                            self.current = await self.songs.get()
+                    except asyncio.TimeoutError:
+                        player_log.info(
+                            f"{ctx.guild}: Timed out while waiting for song. Stopping..."
+                        )
+                        await self.stop()
+
+                        if (
+                            ctx.guild.id in ctx.bot.players.keys()
+                            and ctx.bot.players[ctx.guild.id] is self
+                        ):
+                            del ctx.bot.players[ctx.guild.id]
+                        return
+
+                self.current.volume = self._volume
+
+                self.current.make_source()
+                self.current.ffmpeg_options = self.current.FFMPEG_OPTIONS.copy()
+
+                player_log.info(f"{ctx.guild}: Playing song '{self.current.title}'")
+                self.voice.play(self.current.source, after=self.play_next_song)
+
+                # Start our stopwatch for keeping track of position
+                self.duration.start()
+
+                # Set status to playing
+                self.status = PlayerStatus.PLAYING
+
+                query = "UPDATE songs SET plays = plays + 1 WHERE song_id=$1 AND extractor=$2;"
+                await self.bot.pool.execute(
+                    query, self.current.id, self.current.extractor
+                )
+
+                if not self.loop and self.notify and not self.startover:
+                    await self.text_channel.send(
+                        f"**:notes: Now playing** `{self.current.title}`"
+                    )
+
+                self.startover = False
+
+                self._votes.clear()
+
+                await self.next.wait()
+
+                self.current.discard_source()
+
+        except Exception as exc:
+            player_log.warning(f"{ctx.guild}: Exception in player_loop")
+            traceback.print_exception(
+                type(exc), exc, exc.__traceback__, file=sys.stderr
+            )
+
+            player_log.info(f"{ctx.guild}: Restarting task...")
+            self.audio_player.cancel()
+            self.audio_player = self.bot.loop.create_task(self.player_loop())
+
+    def play_next_song(self, error=None):
+        if error:
+            raise VoiceError(str(error))
+
+        self.next.set()
+
+    def skip(self):
+        if self.is_playing:
+            self.voice.stop()
+
+    async def stop(self):
+        self.closed = True
+        self.status = PlayerStatus.CLOSED
+
+        if self.voice:
+            player_log.info(f"{self.ctx.guild}: Stopping and disconnecting from voice")
+            self.voice.stop()
+            await self.voice.disconnect()
+            self.voice = None
+
+        self.songs.clear()
+
+    def pause(self):
+        if self.is_playing and self.voice.is_playing():
+            player_log.info(f"{self.ctx.guild}: Pausing...")
+            self.voice.pause()
+            self.duration.pause()
+            self.status = PlayerStatus.PAUSED
+
+    def resume(self):
+        if self.is_playing and self.voice.is_paused():
+            player_log.info(f"{self.ctx.guild}: Resuming...")
+            self.voice.resume()
+            self.duration.unpause()
+            self.status = PlayerStatus.PLAYING
+
+
 def hover_link(ctx, msg, text="`?`"):
     return (
         f"[{text}](https://www.discordapp.com/"
@@ -82,7 +1166,7 @@ class QueuePages(menus.ListPageSource):
 
         queue = player.songs._queue
         total_duration = sum(int(s.data.get("duration")) for s in queue)
-        self.total_duration = ytdl.Song.parse_duration(total_duration)
+        self.total_duration = Song.parse_duration(total_duration)
 
     def format_song(self, song):
         return f"[{song.title}]({song.url}) `{song.duration}` {song.requester.mention}"
@@ -99,7 +1183,7 @@ class QueuePages(menus.ListPageSource):
         queue.append("Key:")
         queue.append(f"`#` {hover} `Duration` @Requester\n")
 
-        if menu.current_page == 0 and player.current and player.status != music_player.PlayerStatus.WAITING:
+        if menu.current_page == 0 and player.current and player.status != PlayerStatus.WAITING:
             queue.append(f"**Now Playing:**\n{self.format_song(player.current)}\n")
 
         if ctx.player.songs:
@@ -326,7 +1410,7 @@ class Music(commands.Cog):
         if old_player is not None and not old_player.closed:
             raise AlreadyActivePlayer("There is already an active player.")
 
-        player = music_player.Player(self.bot, ctx)
+        player = Player(self.bot, ctx)
         self.players[ctx.guild.id] = player
         ctx.player = player
         return player
@@ -337,8 +1421,8 @@ class Music(commands.Cog):
 
     async def cog_command_error(self, ctx, error: commands.CommandError):
         overridden_errors = (
-            music_player.VoiceError,
-            ytdl.YTDLError,
+            VoiceError,
+            YTDLError,
             NoPlayerError,
             NotListeningError,
             CannotJoinVoice,
@@ -393,48 +1477,6 @@ class Music(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def reload_music(self, ctx):
-        modules = [music_player, ytdl]
-
-        output = []
-
-        for module in modules:
-            try:
-                importlib.reload(module)
-
-            except Exception as e:
-                formatted = "".join(
-                    traceback.format_exception(type(e), e, e.__traceback__, 1)
-                )
-                output.append(
-                    ctx.tick(
-                        False,
-                        f"Failed to reload `{module.__name__}`"
-                        f"\n```py\n{formatted}\n```",
-                    )
-                )
-
-            else:
-                output.append(ctx.tick(True, f"Reloaded `{module.__name__}`"))
-
-        await ctx.send("\n".join(output))
-
-    @commands.command()
-    @commands.is_owner()
-    async def reload_music_player(self, ctx):
-        importlib.reload(music_player)
-
-        await ctx.send("Reloaded music_player")
-
-    @commands.command()
-    @commands.is_owner()
-    async def reload_ytdl(self, ctx):
-        importlib.reload(ytdl)
-
-        await ctx.send("Reloaded ytdl")
-
-    @commands.command()
-    @commands.is_owner()
     async def stopall(self, ctx):
         """Stops all players."""
 
@@ -471,10 +1513,10 @@ class Music(commands.Cog):
     async def allplayers(self, ctx):
         """View all players"""
         status_mapping = {
-            music_player.PlayerStatus.PLAYING: "🎶",
-            music_player.PlayerStatus.PAUSED: "⏸️",
-            music_player.PlayerStatus.WAITING: "🕐",
-            music_player.PlayerStatus.CLOSED: "💤",
+            PlayerStatus.PLAYING: "🎶",
+            PlayerStatus.PAUSED: "⏸️",
+            PlayerStatus.WAITING: "🕐",
+            PlayerStatus.CLOSED: "💤",
         }
 
         v_emote = "<:voice_channel:665577300552843294>"
@@ -812,7 +1854,7 @@ class Music(commands.Cog):
             player = self.create_player(ctx)
 
         if not channel and not ctx.author.voice:
-            raise music_player.VoiceError(
+            raise VoiceError(
                 "You are neither connected to a voice channel nor specified a channel to join."
             )
 
@@ -933,11 +1975,11 @@ class Music(commands.Cog):
         if position < 0:
             raise BadSongPosition()
 
-        timestamp = ytdl.Song.timestamp_duration(position)
+        timestamp = Song.timestamp_duration(position)
 
         current = ctx.player.current
 
-        song = ytdl.Song(
+        song = Song(
             ctx,
             data=current.data,
             filename=current.filename,
@@ -1259,7 +2301,7 @@ class Music(commands.Cog):
         async def startover_song(total, required):
             current = ctx.player.current
 
-            song = ytdl.Song(
+            song = Song(
                 ctx,
                 data=current.data,
                 filename=current.filename,
@@ -1288,14 +2330,16 @@ class Music(commands.Cog):
         try:
             record = await ctx.db.fetchrow("SELECT * FROM songs WHERE title=$1 AND song_id=$2;", song.title, song.id)
             if record:
-                song = ytdl.Song.from_record(record, ctx)
+                song = Song.from_record(record, ctx)
 
             partial = functools.partial(self.get_file_size, song.filename)
             size = await self.bot.loop.run_in_executor(None, partial)
             filesize = humanize.naturalsize(size, binary=True)
 
-            em = music_player.Player.now_playing_embed(song, "3+ Hour Song Downloaded", db_info=True, filesize=filesize)
+            em = Player.now_playing_embed(song, "3+ Hour Song Downloaded", db_info=True, filesize=filesize)
             em.add_field(name="Context", value=f"[Jump to message]({ctx.message.jump_url})")
+            em.add_field(name="Guild", value=f"{song.requester.guild} ({song.requester.guild.id})")
+            em.add_field(name="User", value=f"{song.requester} ({song.requester.id})")
             await ctx.console.send(embed=em)
 
         except Exception:
@@ -1318,11 +2362,11 @@ class Music(commands.Cog):
         await progress_message.start(ctx)
 
         try:
-            playlist, failed_songs = await ytdl.Song.get_playlist(
+            playlist, failed_songs = await Song.get_playlist(
                 ctx, url, progress_message, loop=self.bot.loop
             )
 
-        except ytdl.YTDLError as e:
+        except YTDLError as e:
             print(e)
             await ctx.send(
                 f"An error occurred while processing this request:\n{str(e)}"
@@ -1353,7 +2397,7 @@ class Music(commands.Cog):
                     description += f"\n• [{song.title}]({song.url}) \
                     `{song.duration}`\n...and {songs_left} more song(s)"
 
-            total_duration = ytdl.Song.parse_duration(total_duration)
+            total_duration = Song.parse_duration(total_duration)
             description += f"\nTotal duration: {total_duration}"
             if failed_songs > 0:
                 description += (
@@ -1408,15 +2452,15 @@ class Music(commands.Cog):
             try:
                 async with timeout(180):  # 3m
                     if location_type is LocationType.db:
-                        song = await ytdl.Song.get_song_from_db(
+                        song = await Song.get_song_from_db(
                             ctx, query, loop=self.bot.loop
                         )
                     else:
-                        song = await ytdl.Song.get_song(
+                        song = await Song.get_song(
                             ctx, query, loop=self.bot.loop, skip_resolve=skip_resolve
                         )
 
-            except ytdl.YTDLError as e:
+            except YTDLError as e:
                 print(e)
                 await ctx.send(
                     f"An error occurred while processing this request:\n{str(e)}"
@@ -1424,6 +2468,9 @@ class Music(commands.Cog):
 
             except asyncio.TimeoutError:
                 await ctx.send("Timed out while fetching song. Sorry.")
+
+            except Aborted:
+                await ctx.send("Aborted.")
 
             else:
                 if not song:
@@ -1524,10 +2571,10 @@ class Music(commands.Cog):
         failed_songs = 0
         for i, video in enumerate(videos):
             try:
-                song = await ytdl.Song.get_song(
+                song = await Song.get_song(
                     ctx, video, loop=self.bot.loop, send_errors=False
                 )
-            except ytdl.YTDLError as e:
+            except YTDLError as e:
                 await ctx.send(
                     f"An error occurred while processing this request:\n{str(e)}"
                 )
@@ -1563,7 +2610,7 @@ class Music(commands.Cog):
                 songs_left = len(playlist) - (i + 1)
                 description += f"\n• [{song.title}]({song.url}) `{song.duration}`\n...and {songs_left} more song(s)"
 
-        total_duration = ytdl.Song.parse_duration(total_duration)
+        total_duration = Song.parse_duration(total_duration)
         description += f"\nTotal duration: {total_duration}"
         if failed_songs > 0:
             description += (
@@ -1719,9 +2766,9 @@ class Music(commands.Cog):
         await ctx.send(f"**:mag: Searching** `{original}`")
 
         try:
-            song = await ytdl.Song.search_ytdl(ctx, query)
+            song = await Song.search_ytdl(ctx, query)
 
-        except ytdl.YTDLError as e:
+        except YTDLError as e:
             print(e)
             await ctx.send(
                 f"An error occurred while processing this request:\n{str(e)}"
@@ -1751,7 +2798,7 @@ class Music(commands.Cog):
             player = self.create_player(ctx)
 
         partial = functools.partial(
-            ytdl.Song.ytdl.extract_info,
+            Song.ytdl.extract_info,
             "hat kid electro",
             download=False,
             process=False,
@@ -1843,8 +2890,8 @@ class Music(commands.Cog):
         total = round(total)
         total_with_plays = round(total_with_plays)
 
-        duration = ytdl.Song.parse_duration(total)
-        duration_with_plays = ytdl.Song.parse_duration(total_with_plays)
+        duration = Song.parse_duration(total)
+        duration_with_plays = Song.parse_duration(total_with_plays)
 
         cache_size = await self.bot.loop.run_in_executor(None, self.get_cache_size)
 
@@ -1891,7 +2938,7 @@ class Music(commands.Cog):
         songs = []
         for song_id, title, plays, last_updated, duration in records:
             formatted = humantime.timedelta(last_updated, brief=True, accuracy=1, discord_fmt=False)
-            dur = ytdl.Song.timestamp_duration(round(duration)) if duration else "none"
+            dur = Song.timestamp_duration(round(duration)) if duration else "none"
             songs.append(
                 f"{title} # ID: {song_id} ({plays:,} plays) duration: {dur} last updated {formatted}"
             )
@@ -1924,13 +2971,13 @@ class Music(commands.Cog):
             if not record:
                 return await ctx.send("No matching songs found.")
 
-        song = ytdl.Song.from_record(record, ctx)
+        song = Song.from_record(record, ctx)
 
         partial = functools.partial(self.get_file_size, song.filename)
         size = await self.bot.loop.run_in_executor(None, partial)
         filesize = humanize.naturalsize(size, binary=True)
 
-        em = music_player.Player.now_playing_embed(song, "Song Info", db_info=True, filesize=filesize)
+        em = Player.now_playing_embed(song, "Song Info", db_info=True, filesize=filesize)
         await ctx.send(embed=em)
 
     @flags.add_flag("--delete-file", action="store_true")
@@ -1971,7 +3018,7 @@ class Music(commands.Cog):
         webpage_url = old_info["webpage_url"]
 
         partial = functools.partial(
-            ytdl.Song.ytdl.extract_info, old_info["webpage_url"], download=False
+            Song.ytdl.extract_info, old_info["webpage_url"], download=False
         )
 
         try:
@@ -2086,7 +3133,7 @@ class Music(commands.Cog):
 
         formatted = []
         for (i, (title, duration)) in enumerate(records):
-            dur = ytdl.Song.timestamp_duration(round(duration)) if duration else "none"
+            dur = Song.timestamp_duration(round(duration)) if duration else "none"
             if len(title) > 30:
                 title = title[:29] + "..."
             formatted.append(
