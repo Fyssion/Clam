@@ -6,14 +6,18 @@ import datetime
 import functools
 import io
 import json
+import pathlib
 import re
 import os.path
+from typing import Any, Dict, List
 
 import discord
 from discord.ext import commands, menus
+from jishaku.codeblocks import codeblock_converter
 from PIL import Image
 
 from clam.utils import checks, colors, emojis, humantime
+from clam.utils.context import Context
 from clam.utils.formats import human_join, plural
 from clam.utils.menus import MenuPages
 
@@ -1259,6 +1263,66 @@ class Tools(commands.Cog):
             pages = MenuPages(SearchPages(matches), ctx=ctx)
             return await pages.start()
         await ctx.send("No matches found.")
+
+    @commands.command()
+    async def pyright(self, ctx: Context, *, code: codeblock_converter) -> None:
+        filename = f"pyright-{ctx.message.id}.py"
+        fp = pathlib.Path(f"./{filename}")
+
+        with open(fp, "w") as f:
+            f.write(code.content)
+
+        # hopefully pyright is in the PATH somewhere
+        # I know I'm hardcoding the version, but I don't care
+        proc = await asyncio.create_subprocess_shell(
+            f"pyright --outputjson {filename} --pythonversion 3.11",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+
+        fp.unlink()
+
+        # process the output
+        output: Dict[str, Any] = json.loads(stdout.decode())
+
+        result: List[str] = []
+
+        version = output["version"]
+        result.append(f"Pyright v{version}")
+        result.append("")
+
+        severity_mapping = {
+            "error": "-",
+            "warning": "-",
+            "information": " ",
+        }
+
+        for diagnostic in output["generalDiagnostics"]:
+            severity = diagnostic["severity"]
+
+            if severity == "information":
+                severity = "info"
+
+            severity_tick = severity_mapping[diagnostic["severity"]]
+            message = diagnostic["message"]
+            line = diagnostic["range"]["start"]["line"]
+            column = diagnostic["range"]["start"]["character"]
+
+            result.append(f"{severity_tick} {line}:{column} - {severity}: {message}")
+
+        result.append("")
+
+        summary = output["summary"]
+        errors = f"{plural(summary['errorCount']):error}"
+        warnings = f"{plural(summary['warningCount']):warning}"
+        info = f"{summary['informationCount']} info"
+
+        result.append(human_join((errors, warnings, info), final="and"))
+        result.append(f"Took {plural(summary['timeInSec']):second}")
+
+        text = "\n".join(result)
+        await ctx.send(f"```diff\n{text}\n```")
 
 
 def setup(bot):
