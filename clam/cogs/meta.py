@@ -138,7 +138,7 @@ class FrontPageSource(menus.PageSource):
 
     def format_page(self, menu, page):
         embed = menu.help.get_base_embed()
-        embed.set_footer(text=embed.Empty)
+        embed.set_footer(text=None)
         embed.description = inspect.cleandoc(
             f"""
             Hello! Welcome to Clam's help page.
@@ -355,7 +355,7 @@ class ClamHelpCommand(commands.HelpCommand):
 
         em = self.get_base_embed()
 
-        em.set_footer(text=em.Empty)
+        em.set_footer(text=None)
 
         cog_name = command.cog.__class__.__name__
         if os.path.isfile(f"assets/cogs/{cog_name}.png"):

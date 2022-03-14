@@ -155,7 +155,7 @@ class Stats(commands.Cog):
             )
 
             em.description = f"There have been **{plural(count[0], pretty=True):command} used**."
-            icon = ctx.guild.icon.url if ctx.guild.icon else discord.Embed.Empty
+            icon = ctx.guild.icon.url if ctx.guild.icon else None
             em.set_author(name=ctx.guild.name, icon_url=icon)
             em.set_footer(text=f"Tracking command usage since")
 
@@ -475,7 +475,7 @@ class Stats(commands.Cog):
         )
 
         em.description = f"There have been **{plural(count[0], pretty=True):command} used**."
-        icon = guild.icon.url if guild.icon else discord.Embed.Empty
+        icon = guild.icon.url if guild.icon else None
         em.set_author(name=guild.name, icon_url=icon)
         em.set_footer(text=f"Tracking command usage since")
 

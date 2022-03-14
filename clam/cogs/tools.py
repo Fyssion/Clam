@@ -1106,9 +1106,9 @@ class Tools(commands.Cog):
 
         em = discord.Embed(description=desc, color=color)
 
-        em.set_thumbnail(url=guild.icon.url if guild.icon else discord.Embed.Empty)
-        em.set_image(url=guild.banner.url if guild.banner else discord.Embed.Empty)
-        em.set_author(name=f"{guild.name} ({guild.id})", icon_url=guild.icon.url if guild.icon else discord.Embed.Empty)
+        em.set_thumbnail(url=guild.icon.url if guild.icon else None)
+        em.set_image(url=guild.banner.url if guild.banner else None)
+        em.set_author(name=f"{guild.name} ({guild.id})", icon_url=guild.icon.url if guild.icon else None)
         em.add_field(
             name="<:owner:649355683598303260> Owner",
             value=guild.owner.mention,
