@@ -428,19 +428,6 @@ class Admin(commands.Cog):
 
         await ctx.send("\n".join(f"{status} `{module}`" for status, module in statuses))
 
-    @commands.group(name="cog")
-    @commands.is_owner()
-    async def _cog(self, ctx):
-        pass
-
-    @_cog.command(name="reload")
-    @commands.is_owner()
-    async def _add_cog(self, ctx, cog):
-        self.bot.add_cog(cog)
-        self.bot.cogs_to_load.append(cog)
-        self.bot.ordered_cogs.append(self.bot.cogs.keys()[-1])
-        return await ctx.send("Cog added.")
-
     def readable(self, value):
         gigs = round(value // 1000000000)
         if gigs <= 0:
