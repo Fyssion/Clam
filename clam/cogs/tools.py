@@ -1124,11 +1124,6 @@ class Tools(commands.Cog):
             value=f"Tier {guild.premium_tier} with {guild.premium_subscription_count} boosts",
             inline=True,
         )
-        em.add_field(
-            name=":earth_americas: Region",
-            value=str(guild.region).replace("-", " ").upper(),
-            inline=True,
-        )
         bot_amount = len([m for m in guild.members if m.bot])
         em.add_field(
             name=":family: Members",
