@@ -164,5 +164,5 @@ class AmongUs(commands.Cog, name="Among Us"):
         await ctx.send(ctx.tick(True, "Cleared code."))
 
 
-def setup(bot):
-    bot.add_cog(AmongUs(bot))
+async def setup(bot):
+    await bot.add_cog(AmongUs(bot))

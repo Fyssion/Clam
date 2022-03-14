@@ -115,8 +115,6 @@ class Highlight(commands.Cog):
         self.bot = bot
         self.emoji = "\N{LOWER LEFT CRAYON}"
 
-        self.bot.loop.create_task(self.prepare_cache())
-
         self._batch_lock = asyncio.Lock(loop=bot.loop)
         self._highlight_data_batch = []
         self.bulk_insert_loop.add_exception_type(asyncpg.PostgresConnectionError)
@@ -128,7 +126,7 @@ class Highlight(commands.Cog):
     async def cog_check(self, ctx):
         return await commands.guild_only().predicate(ctx)
 
-    async def prepare_cache(self):
+    async def cog_load(self):
         while True:
             if hasattr(self.bot, "pool") and self.bot.pool:
                 break
@@ -947,5 +945,5 @@ class Highlight(commands.Cog):
         return True
 
 
-def setup(bot):
-    bot.add_cog(Highlight(bot))
+async def setup(bot):
+    await bot.add_cog(Highlight(bot))

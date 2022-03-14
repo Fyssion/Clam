@@ -3,6 +3,7 @@ import datetime
 import json
 import logging
 import os.path
+import traceback
 
 import aiohttp
 import async_cse
@@ -95,15 +96,21 @@ class Clam(commands.Bot):
         with open("blacklist.json", "r") as f:
             self.blacklist = json.load(f)
 
-        self.dev = self.get_user(224513210471022592)
         self.error_cache = collections.deque(maxlen=100)
         self.console = None
         self.uptime = None
         self.session = None
         self.highlight_words = []
-        self.cleverbot = None
-        self.wolfram = wolframalpha.Client(self.config.wolfram_api_key)
-        self.loop.create_task(self.prepare_bot())
+
+        log.info("Preparing external features...")
+        try:
+            self.google_client = async_cse.Search(self.config.google_api_key)
+            self.cleverbot = cleverbot.Cleverbot(self.config.cleverbot_api_key, tweak1=0, tweak2=100, tweak3=100)
+            self.wolfram = wolframalpha.Client(self.config.wolfram_api_key)
+        except Exception:
+            # let's make this a little friendlier to self-host
+            log.warning("An external feature failed to initialize")
+            traceback.print_exc()
 
         # user_id: spam_amount
         self.spammers = {}
@@ -111,18 +118,31 @@ class Clam(commands.Bot):
             10.0, 12.0, commands.BucketType.user
         )
 
-        self.cogs_to_load = initial_extensions
-
         self.add_check(self.private_cog_check)
 
+    async def setup_hook(self):
+        self.session = aiohttp.ClientSession(loop=self.loop)
+
+        log.info("Connecting to database...")
+        self.pool = await db.Table.create_pool(self.config.database_uri)
+
+        log.info("Loading extensions...")
         log.info("Loading extension 'jishaku'")
-        self.load_extension("jishaku")
+        await self.load_extension("jishaku")
 
-        for cog in initial_extensions:
-            log.info(f"Loading extension '{cog}'")
-            self.load_extension(f"clam.cogs.{cog}")
+        for extension in initial_extensions:
+            log.info(f"Loading extension '{extension}'")
+            await self.load_extension(f"clam.cogs.{extension}")
 
-        self.ordered_cogs = [c for c in self.cogs.keys()]
+        log.info("Preparing status webhook...")
+        if self.config.status_hook:
+            self.status_hook = discord.Webhook.from_url(
+                self.config.status_hook, session=self.session
+            )
+            await self.status_hook.send("Starting Clam...")
+
+        else:
+            self.status_hook = None
 
     def dispatch(self, event, *args, **kwargs):
         # we override dispatch to block any events from
@@ -149,23 +169,6 @@ class Clam(commands.Bot):
                 return
 
         super().dispatch(event, *args, **kwargs)
-
-    async def prepare_bot(self):
-        log.info("Preparing async features...")
-        self.pool = await db.Table.create_pool(self.config.database_uri)
-        self.google_client = async_cse.Search(self.config.google_api_key)
-        self.session = aiohttp.ClientSession(loop=self.loop)
-        self.cleverbot = cleverbot.Cleverbot(self.config.cleverbot_api_key, tweak1=0, tweak2=100, tweak3=100)
-
-        log.info("Preparing status hook...")
-        if self.config.status_hook:
-            self.status_hook = discord.Webhook.from_url(
-                self.config.status_hook, session=self.session
-            )
-            await self.status_hook.send("Starting Clam...")
-
-        else:
-            self.status_hook = None
 
     def add_to_blacklist(self, user):
         self.blacklist.append(str(user.id))

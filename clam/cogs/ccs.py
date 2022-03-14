@@ -242,5 +242,5 @@ class CCS(commands.Cog):
         await general.send(f"{emojis.GREEN_TICK} Added bot `{member}`")
 
 
-def setup(bot):
-    bot.add_cog(CCS(bot))
+async def setup(bot):
+    await bot.add_cog(CCS(bot))

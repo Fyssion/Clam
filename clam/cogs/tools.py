@@ -1325,5 +1325,5 @@ class Tools(commands.Cog):
         await ctx.send(f"```diff\n{text}\n```")
 
 
-def setup(bot):
-    bot.add_cog(Tools(bot))
+async def setup(bot):
+    await bot.add_cog(Tools(bot))

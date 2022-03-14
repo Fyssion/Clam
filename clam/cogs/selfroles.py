@@ -222,6 +222,9 @@ class Selfroles(commands.Cog):
         self.emoji = "\N{LABEL}"
 
         self.active_menus = []
+
+        # this is a task because the bot must be ready for it to run.
+        # if run in `load_cog`, it will hang forever.
         self.bot.loop.create_task(self.start_reactionrole_menus())
 
     @commands.Cog.listener()
@@ -890,5 +893,5 @@ class Selfroles(commands.Cog):
         await ctx.send(ctx.tick(True, "Successfully updated reaction role menu."))
 
 
-def setup(bot):
-    bot.add_cog(Selfroles(bot))
+async def setup(bot):
+    await bot.add_cog(Selfroles(bot))

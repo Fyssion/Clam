@@ -1728,5 +1728,5 @@ class Internet(commands.Cog):
         await self.do_docs(ctx, "tornado", obj)
 
 
-def setup(bot):
-    bot.add_cog(Internet(bot))
+async def setup(bot):
+    await bot.add_cog(Internet(bot))

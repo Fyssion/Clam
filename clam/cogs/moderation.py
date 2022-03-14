@@ -2638,5 +2638,5 @@ class Moderation(commands.Cog):
         await self.detect_forbidden_word(after)
 
 
-def setup(bot):
-    bot.add_cog(Moderation(bot))
+async def setup(bot):
+    await bot.add_cog(Moderation(bot))

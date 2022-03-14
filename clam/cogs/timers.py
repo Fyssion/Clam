@@ -420,5 +420,5 @@ class Timers(commands.Cog):
             return
 
 
-def setup(bot):
-    bot.add_cog(Timers(bot))
+async def setup(bot):
+    await bot.add_cog(Timers(bot))

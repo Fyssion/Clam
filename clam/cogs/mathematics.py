@@ -158,5 +158,5 @@ class Math(commands.Cog):
         await ctx.send(f"Midpoint formula: `{formula}`\nSolution: `{ans}`")
 
 
-def setup(bot):
-    bot.add_cog(Math(bot))
+async def setup(bot):
+    await bot.add_cog(Math(bot))

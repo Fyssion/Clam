@@ -896,5 +896,5 @@ class Meta(commands.Cog):
         await ctx.send(final_url, embed=license_notice_embed)
 
 
-def setup(bot):
-    bot.add_cog(Meta(bot))
+async def setup(bot):
+    await bot.add_cog(Meta(bot))

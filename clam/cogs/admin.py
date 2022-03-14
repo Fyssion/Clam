@@ -676,5 +676,5 @@ class Admin(commands.Cog):
         await dm_session.channel.trigger_typing()
 
 
-def setup(bot):
-    bot.add_cog(Admin(bot))
+async def setup(bot):
+    await bot.add_cog(Admin(bot))

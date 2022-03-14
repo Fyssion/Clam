@@ -617,5 +617,5 @@ class Settings(commands.Cog):
         await pages.start()
 
 
-def setup(bot):
-    bot.add_cog(Settings(bot))
+async def setup(bot):
+    await bot.add_cog(Settings(bot))
