@@ -54,7 +54,7 @@ class TenSeconds(SinglePlayerGame):
         self.ten_seconds = datetime.datetime.utcnow() + datetime.timedelta(seconds=10)
 
     @discord.ui.button(emoji="\N{CLOCK FACE TWO OCLOCK}")
-    async def time_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def time_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         tm = datetime.datetime.utcnow()
         end_time = tm - datetime.timedelta(microseconds=tm.microsecond % 100000)
         tm = self.ten_seconds
@@ -340,27 +340,27 @@ class Connect4(MultiPlayerGame):
         await self.display(interaction)
 
     @discord.ui.button(label="1")
-    async def one_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def one_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.play_piece(interaction, 1)
 
     @discord.ui.button(label="2")
-    async def two_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def two_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.play_piece(interaction, 2)
 
     @discord.ui.button(label="3️")
-    async def three_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def three_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.play_piece(interaction, 3)
 
     @discord.ui.button(label="4️", row=1)
-    async def four_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def four_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.play_piece(interaction, 4)
 
     @discord.ui.button(label="5️", row=1)
-    async def five_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def five_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.play_piece(interaction, 5)
 
     @discord.ui.button(label="6️", row=1)
-    async def six_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def six_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.play_piece(interaction, 6)
 
 

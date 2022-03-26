@@ -184,7 +184,7 @@ class SongSelector(discord.ui.View):
             pass
 
     @discord.ui.button(label="Select", style=discord.ButtonStyle.green)
-    async def select_pages(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def select_pages(self, interaction: discord.Interaction, button: discord.ui.Button):
         """select the current page"""
         self.selected_page = self.current_page
         await interaction.response.defer()
@@ -192,17 +192,17 @@ class SongSelector(discord.ui.View):
         self.stop()
 
     @discord.ui.button(label="Previous")
-    async def go_to_previous_page(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def go_to_previous_page(self, interaction: discord.Interaction, button: discord.ui.Button):
         """go to the previous page"""
         await self.show_checked_page(interaction, self.current_page - 1)
 
     @discord.ui.button(label="Next")
-    async def go_to_next_page(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def go_to_next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
         """go to the next page"""
         await self.show_checked_page(interaction, self.current_page + 1)
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
-    async def stop_pages(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def stop_pages(self, interaction: discord.Interaction, button: discord.ui.Button):
         """stops the pagination session."""
         await interaction.response.defer()
         await self.message.delete()
