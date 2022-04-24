@@ -53,6 +53,13 @@ class TenSeconds(SinglePlayerGame):
         self.message = await self.ctx.send(embed=em, view=self)
         self.ten_seconds = datetime.datetime.utcnow() + datetime.timedelta(seconds=10)
 
+    async def on_timeout(self):
+        em = self.message.embeds[0]
+        em.description = "Game timed out."
+
+        self.time_button.disabled = True
+        await self.message.edit(embed=em, view=self)
+
     @discord.ui.button(emoji="\N{CLOCK FACE TWO OCLOCK}")
     async def time_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         tm = datetime.datetime.utcnow()
