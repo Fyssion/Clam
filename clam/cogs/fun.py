@@ -133,7 +133,7 @@ class Fun(commands.Cog):
                 "It could go either way",
             ]
         )
-        await quote(ctx.message, result, quote=question)
+        await quote(ctx, result, quote=question)
 
     @commands.group(aliases=["cleverbot"], invoke_without_command=True)
     @commands.cooldown(5, 10, commands.BucketType.user)
@@ -162,7 +162,7 @@ class Fun(commands.Cog):
             else:
                 reply = await convo.say(anything)
 
-            await quote(ctx.message, reply, quote=anything)
+            await quote(ctx, reply, quote=anything)
 
     @ask.command(name="reset")
     async def ask_reset(self, ctx):

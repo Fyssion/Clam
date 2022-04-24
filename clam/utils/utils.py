@@ -7,12 +7,12 @@ import zlib
 import discord
 
 
-async def quote(message, content, *, quote=None, **kwargs):
-    quote = quote or message.content
+async def quote(ctx, content, *, quote=None, **kwargs):
+    quote = quote or ctx.content
     quote = discord.utils.escape_mentions(quote)
     quote = quote.replace("\n", "\n> ")
-    formatted = f"> {quote}\n{message.author.mention} {content}"
-    await message.channel.send(formatted, **kwargs)
+    formatted = f"> {quote}\n{ctx.author.mention} {content}"
+    await ctx.send(formatted, **kwargs)
 
 
 async def reply_to(message, content, **kwargs):
