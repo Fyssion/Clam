@@ -310,7 +310,7 @@ class Admin(commands.Cog):
         extension = f"clam.cogs.{cog.lower()}"
 
         try:
-            self.bot.reload_extension(extension)
+            await self.bot.reload_extension(extension)
             await ctx.send(f"{OK_SIGN}")
             self.log.info(f"Extension '{cog}' successfully reloaded.")
         except Exception as e:
@@ -359,11 +359,11 @@ class Admin(commands.Cog):
         ret.sort(reverse=True)
         return ret
 
-    def reload_or_load_extension(self, module):
+    async def reload_or_load_extension(self, module):
         try:
-            self.bot.reload_extension(module)
+            await self.bot.reload_extension(module)
         except commands.ExtensionNotLoaded:
-            self.bot.load_extension(module)
+            await self.bot.load_extension(module)
 
     @_reload.command(name="all")
     async def _reload_all(self, ctx):
@@ -415,7 +415,7 @@ class Admin(commands.Cog):
                         statuses.append((ctx.tick(True), module))
             else:
                 try:
-                    self.reload_or_load_extension(module)
+                    await self.reload_or_load_extension(module)
                 except commands.ExtensionError as e:
                     traceback_data = "".join(
                         traceback.format_exception(type(e), e, e.__traceback__, 1)
