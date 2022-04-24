@@ -113,7 +113,7 @@ class Fun(commands.Cog):
         else:
             return str(num)
 
-    @commands.command(name="8ball", aliases=["eightball"])
+    @commands.hybrid_command(name="8ball", aliases=["eightball"])
     async def eightball(self, ctx, *, question):
         """Ask the all-knowing."""
 
@@ -385,7 +385,7 @@ class Fun(commands.Cog):
         await message.remove_reaction(emoji, ctx.me)
         await bot_message.delete()
 
-    @commands.command()
+    @commands.hybrid_command()
     async def flipcoin(self, ctx):
         """Flips a virtual coin and shows the result."""
 

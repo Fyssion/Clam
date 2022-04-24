@@ -18,9 +18,11 @@ import discord
 import humanize
 import youtube_dl
 from async_timeout import timeout
+from discord import app_commands
 from discord.ext import commands, flags, menus
 
 from clam.utils import colors, db, humantime, stopwatch
+from clam.utils.context import Context
 from clam.utils.emojis import GREEN_TICK, LOADING, RED_TICK
 from clam.utils.flags import NoUsageFlagCommand
 from clam.utils.formats import plural
@@ -30,7 +32,6 @@ log = logging.getLogger("clam.music")
 bin_log = logging.getLogger("clam.music.bin")
 ytdl_log = logging.getLogger("clam.music.ytdl")
 player_log = logging.getLogger("clam.music.player")
-
 
 
 class SongsTable(db.Table, table_name="songs"):
@@ -1431,7 +1432,7 @@ class Music(commands.Cog):
         )
 
         if isinstance(error, overridden_errors):
-            await ctx.send(str(error))
+            await ctx.send(str(error), ephemeral=True)
             ctx.handled = True
 
     async def stop_all_players(self, *, save_queues=True):
@@ -1833,12 +1834,13 @@ class Music(commands.Cog):
         if result is False:
             return
 
-        await ctx.send(
-            ctx.tick(
-                True,
-                f"**Connected to ** {v_emote}`{destination}` and **bound to** {t_emote}`{ctx.channel}`",
+        if ctx.interaction is None or ctx.interaction.is_expired():
+            await ctx.send(
+                ctx.tick(
+                    True,
+                    f"**Connected to ** {v_emote}`{destination}` and **bound to** {t_emote}`{ctx.channel}`",
+                )
             )
-        )
 
     @commands.command()
     @commands.guild_only()
@@ -1894,7 +1896,7 @@ class Music(commands.Cog):
         ) as post:
             return url + "/" + (await post.json())["key"]
 
-    @commands.command(aliases=["disconnect", "dc"])
+    @commands.hybrid_command(aliases=["disconnect", "dc"])
     @commands.guild_only()
     @is_dj(only_member_check=True)
     async def leave(self, ctx):
@@ -1925,7 +1927,8 @@ class Music(commands.Cog):
         else:
             return ":sound:"
 
-    @commands.command()
+    @commands.hybrid_command()
+    @app_commands.describe(volume="The volume to change to")
     @commands.guild_only()
     @is_dj(only_member_check=True)
     async def volume(self, ctx, *, volume: int = None):
@@ -1953,7 +1956,8 @@ class Music(commands.Cog):
             f"**{self.get_volume_emoji(volume)} Volume set to:** `{volume}%`"
         )
 
-    @commands.command()
+    @commands.hybrid_command()
+    @app_commands.describe(position="The position in the song to jump to")
     @commands.guild_only()
     @is_dj(only_member_check=True)
     async def seek(self, ctx, position: SongPosition):
@@ -2006,7 +2010,7 @@ class Music(commands.Cog):
 
         await ctx.send(f"**:fast_forward: Seeking to** `{timestamp}`")
 
-    @commands.command(aliases=["current", "playing", "np"])
+    @commands.hybrid_command(aliases=["current", "playing", "np"])
     @commands.guild_only()
     async def now(self, ctx):
         """Shows the currently playing song."""
@@ -2026,7 +2030,7 @@ class Music(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.guild_only()
     @is_dj()
     async def pause(self, ctx):
@@ -2040,7 +2044,7 @@ class Music(commands.Cog):
         else:
             await ctx.send("Not currently playing.")
 
-    @commands.command(aliases=["unpause"])
+    @commands.hybrid_command(aliases=["unpause"])
     @commands.guild_only()
     @is_dj()
     async def resume(self, ctx):
@@ -2054,7 +2058,7 @@ class Music(commands.Cog):
         else:
             await ctx.send("Not currently paused.")
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.guild_only()
     @is_dj()
     async def stop(self, ctx):
@@ -2069,14 +2073,17 @@ class Music(commands.Cog):
 
         await ctx.send("**\N{BLACK SQUARE FOR STOP} Song stopped and queue cleared.**")
 
-    @commands.command(aliases=["next", "s"])
+    @commands.hybrid_command(aliases=["next", "s"])
     @commands.guild_only()
     @is_listening()
     async def skip(self, ctx):
         """Votes to skip a song. The song's requester can automatically skip."""
 
         async def skip_song(total, required):
-            await ctx.message.add_reaction("⏭")
+            if ctx.interaction is None or ctx.interaction.is_expired():
+                await ctx.message.add_reaction("⏭")
+            else:
+                await ctx.send("**⏭ Skipped**")
 
             if required != 1:
                 await ctx.send(
@@ -2094,7 +2101,9 @@ class Music(commands.Cog):
 
         await self.votes(ctx, "skip", skip_song)
 
-    @commands.command()
+    @commands.hybrid_command()
+    @app_commands.describe(position="The position of the song in the queue")
+    @app_commands.rename(position="song")
     @commands.guild_only()
     async def skipto(self, ctx, *, position: int):
         """Skips to a song in the queue."""
@@ -2124,7 +2133,7 @@ class Music(commands.Cog):
 
         await self.votes(ctx, "skipto", skipto_song)
 
-    @commands.group(aliases=["q", "playlist"], invoke_without_command=True)
+    @commands.hybrid_group(aliases=["q", "playlist"], fallback="show", invoke_without_command=True)
     @commands.guild_only()
     async def queue(self, ctx):
         """Shows the song queue."""
@@ -2196,9 +2205,10 @@ class Music(commands.Cog):
         await self.votes(ctx, "shuffle", shuffle_queue)
 
     @queue.command(name="remove", aliases=["delete"])
+    @app_commands.describe(song="The index of the song in the queue")
     @commands.guild_only()
     @is_listening()
-    async def queue_remove(self, ctx, index: int):
+    async def queue_remove(self, ctx, song: int):
         """Removes a song from the queue."""
 
         async def remove_song(total, required):
@@ -2208,17 +2218,17 @@ class Music(commands.Cog):
             else:
                 votes_msg = ""
 
-            to_be_removed = ctx.player.songs[index - 1].title
-            ctx.player.songs.remove(index - 1)
+            to_be_removed = ctx.player.songs[song - 1].title
+            ctx.player.songs.remove(song - 1)
             await ctx.send(f"{votes_msg}**\N{WASTEBASKET} Removed** `{to_be_removed}`")
 
         if len(ctx.player.songs) == 0:
             return await ctx.send("Queue is empty.")
 
-        if index > len(ctx.player.songs):
+        if song > len(ctx.player.songs):
             length = len(ctx.player.songs)
             raise commands.BadArgument(
-                f"There is no song at position {index}. Queue length is only {length}."
+                f"There is no song at position {song}. Queue length is only {length}."
             )
 
         await self.votes(ctx, "remove", remove_song)
@@ -2236,7 +2246,7 @@ class Music(commands.Cog):
         else:
             await ctx.send("**:no_bell: Now playing notifications disabled**")
 
-    @commands.group(name="loop", invoke_without_command=True)
+    @commands.hybrid_group(name="loop", fallback="single", invoke_without_command=True)
     @commands.guild_only()
     async def loop(self, ctx):
         """Toggles repeat for the current song."""
@@ -2289,7 +2299,7 @@ class Music(commands.Cog):
 
         await self.votes(ctx, "loop queue", do_loop_queue)
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.guild_only()
     @is_dj(only_member_check=True)
     async def startover(self, ctx):
@@ -2675,10 +2685,10 @@ class Music(commands.Cog):
 
         return query, location_type
 
-    @commands.command(aliases=["p", "yt"])
-    @commands.guild_only()
+    @commands.hybrid_command(aliases=["p", "yt"])
+    @app_commands.describe(song="What song to play")
     # @commands.max_concurrency(1, commands.BucketType.guild, wait=True)
-    async def play(self, ctx, *, search=None):
+    async def play(self, ctx, *, song: str):
         """Plays a song in a voice channel.
 
         You can specify where to search for the song with `source: search`.
@@ -2695,26 +2705,14 @@ class Music(commands.Cog):
           - `search here` - Searches Youtube
           - `db: a song` - Searches the database
         """
+        if not ctx.guild:
+            raise commands.NoPrivateMessage()
 
         if not ctx.player:
             player = self.create_player(ctx)
             ctx.player = player
 
-        if (
-            not search
-            and ctx.player.is_playing
-            and ctx.player.voice.is_paused()
-            and ctx.author.guild_permissions.manage_guild
-        ):
-            ctx.player.resume()
-            return await ctx.send(
-                f"**:arrow_forward: Resuming** `{ctx.player.current.title}`"
-            )
-
-        if not search:
-            return await ctx.send("Please specify a song to play/search for.")
-
-        query, location_type = self.parse_search(search)
+        query, location_type = self.parse_search(song)
 
         await self.play_song(ctx, location_type, query)
 

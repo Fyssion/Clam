@@ -6,6 +6,7 @@ import logging
 
 import asyncpg
 import discord
+from discord import app_commands
 from discord.ext import commands, menus
 from jishaku.models import copy_context_with
 
@@ -241,7 +242,7 @@ class Selfroles(commands.Cog):
         query = "DELETE FROM selfroles WHERE guild_id=$1 AND role_id=$2"
         await self.bot.pool.execute(query, role.guild.id, role.id)
 
-    @commands.group(aliases=["role"], invoke_without_command=True)
+    @commands.hybrid_group(aliases=["role"], invoke_without_command=True)
     @commands.bot_has_permissions(manage_roles=True)
     async def selfrole(self, ctx):
         """Commands to manage selfroles."""
@@ -249,6 +250,7 @@ class Selfroles(commands.Cog):
         await ctx.send_help(ctx.command)
 
     @selfrole.command(name="add", aliases=["sub"])
+    @app_commands.describe(role="The role to give you")
     @commands.bot_has_permissions(manage_roles=True)
     async def selfrole_add(self, ctx, *, role: SelfRole):
         """Adds a role to you.
@@ -270,6 +272,7 @@ class Selfroles(commands.Cog):
         await ctx.send(ctx.tick(True, f"You now have the role `{role.role.name}`"))
 
     @selfrole.command(name="remove", aliases=["unsub"])
+    @app_commands.describe(role="The role to remove from you")
     @commands.bot_has_permissions(manage_roles=True)
     async def selfrole_remove(self, ctx, *, role: SelfRole):
         """Removes a role from you.
@@ -317,6 +320,7 @@ class Selfroles(commands.Cog):
             raise commands.BadArgument(f"Selfrole '{escaped}' not found.")
 
     @selfrole.command(name="create", aliases=["new"])
+    @app_commands.describe(name="The name of the role", description="The description of the role")
     @checks.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
     async def selfrole_create(
@@ -342,6 +346,7 @@ class Selfroles(commands.Cog):
         await ctx.send(ctx.tick(True, f"Created selfrole `{role.name}`"))
 
     @selfrole.command(name="delete")
+    @app_commands.describe(role="The role to delete")
     @checks.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
     async def selfrole_delete(self, ctx, *, role: discord.Role):
@@ -366,6 +371,7 @@ class Selfroles(commands.Cog):
         )
 
     @selfrole.command(name="set")
+    @app_commands.describe(role="The role to bind to a selfrole", description="The description of the role")
     @checks.has_permissions(manage_roles=True)
     async def selfrole_set(
         self, ctx, role: discord.Role, *, description: SelfRoleDescription = None
@@ -384,6 +390,7 @@ class Selfroles(commands.Cog):
         await ctx.send(ctx.tick(True, f"Bound new selfrole to `{role.name}`"))
 
     @selfrole.command(name="edit", aliases=["update"])
+    @app_commands.describe(role="The role to edit", description="The role's new description")
     @checks.has_permissions(manage_roles=True)
     async def selfrole_edit(
         self, ctx, role: discord.Role, *, description: SelfRoleDescription = None
@@ -414,6 +421,7 @@ class Selfroles(commands.Cog):
         await ctx.send(ctx.tick(True, message))
 
     @selfrole.command(name="unbind")
+    @app_commands.describe(role="The role to unbind")
     @checks.has_permissions(manage_roles=True)
     async def selfrole_unbind(self, ctx, *, role: discord.Role):
         """Unbinds a selfrole from a role without deleting it.

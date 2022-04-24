@@ -518,10 +518,9 @@ class Meta(commands.Cog):
         )
 
         description = (
-            "An unexpected error has occured:"
+            "An unexpected error has occurred:"
             f"```py\n{error}```\n"
-            "The developer has been notified."
-            "\nConfused? Join my [support server.](https://www.discord.gg/eHxvStNJb7)"
+            "Sorry about that. My developer has been notified."
         )
 
         em.description = description
@@ -548,7 +547,7 @@ class Meta(commands.Cog):
         extra_info += f"\n\nAn unexpected error has occured: ```py\n{error}```\n"
         em.description = extra_info
 
-        await ctx.console.send(embed=em)
+        await ctx.console.send(embed=em, ephemeral=True)
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
@@ -569,39 +568,39 @@ class Meta(commands.Cog):
 
         if isinstance(error, commands.NoPrivateMessage):
             message = await ctx.send(
-                f"{ctx.tick(False)} This command can't be used in DMs. Sorry."
+                f"{ctx.tick(False)} This command can't be used in DMs. Sorry.", ephemeral=True
             )
 
         elif isinstance(error, commands.ArgumentParsingError):
-            message = await ctx.send(f"{ctx.tick(False)} {error}")
+            message = await ctx.send(f"{ctx.tick(False)} {error}", ephemeral=True)
 
         elif isinstance(error, commands.CommandOnCooldown):
             await ctx.send(
-                f"{ctx.tick(False)} You are on cooldown. Try again after {int(error.retry_after)} seconds."
+                f"{ctx.tick(False)} You are on cooldown. Try again after {int(error.retry_after)} seconds.", ephemeral=True
             )
 
         elif isinstance(error, commands.MaxConcurrencyReached):
-            await ctx.send(ctx.tick(False, str(error)))
+            await ctx.send(ctx.tick(False, str(error)), ephemeral=True)
 
         elif isinstance(error, commands.errors.BotMissingPermissions):
             perms = ""
 
-            for perm in error.missing_perms:
+            for perm in error.missing_permissions:
                 formatted = (
                     str(perm).replace("_", " ").replace("guild", "server").capitalize()
                 )
                 perms += f"\n- `{formatted}`"
 
             message = await ctx.send(
-                f"{ctx.tick(False)} I am missing some required permission(s):{perms}"
+                f"{ctx.tick(False)} I am missing some required permission(s):{perms}", ephemeral=True
             )
 
         elif isinstance(error, commands.errors.BadArgument):
-            message = await ctx.send(f"{ctx.tick(False)} {error}")
+            message = await ctx.send(f"{ctx.tick(False)} {error}", ephemeral=True)
 
         elif isinstance(error, commands.errors.MissingRequiredArgument):
             message = await ctx.send(
-                f"{ctx.tick(False)} Missing a required argument: `{error.param.name}`"
+                f"{ctx.tick(False)} Missing a required argument: `{error.param.name}`", ephemeral=True
             )
 
         elif (
@@ -844,7 +843,7 @@ class Meta(commands.Cog):
 
     @commands.command()
     async def source(self, ctx, *, command: str = None):
-        """Displays my full source code or for a specific command.
+        """Displays my source code for a specific command.
 
         To display the source code of a subcommand, you can separate it
         by periods, e.g. tag.create for the create subcommand of the tag

@@ -500,7 +500,7 @@ class Games(commands.Cog):
         else:
             ctx.hangman = None
 
-    @commands.command()
+    @commands.hybrid_command()
     async def connect4(self, ctx, *, opponent: discord.Member):
         """Starts a game of Connect 4."""
 
@@ -516,7 +516,7 @@ class Games(commands.Cog):
         game = Connect4(ctx=ctx, players=[ctx.author, opponent])
         await game.start()
 
-    @commands.command(name="10s")
+    @commands.hybrid_command(name="10s")
     async def ten_seconds(self, ctx):
         """Can you count to 10 seconds?
 

@@ -895,7 +895,7 @@ class Internet(commands.Cog):
 
         return output
 
-    @commands.command(aliases=["mc"])
+    @commands.hybrid_command(aliases=["mc"])
     @commands.cooldown(2, 30, commands.BucketType.user)
     async def minecraft(self, ctx, *, user):
         """Shows information about a Minecraft user."""
@@ -1368,7 +1368,7 @@ class Internet(commands.Cog):
 
         return await self.make_chess_request(self.CHESSCOM_BASE_URL + route, data=data)
 
-    @commands.group(invoke_without_command=True)
+    @commands.hybrid_command()
     async def lichess(self, ctx, *, username):
         """Shows info about a Lichess.org user."""
 

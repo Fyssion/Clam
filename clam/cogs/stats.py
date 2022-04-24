@@ -110,9 +110,16 @@ class Stats(commands.Cog):
             destination = f"#{message.channel} ({message.guild})"
             guild_id = ctx.guild.id
 
+        if ctx.interaction is None:
+            command_content = message.content
+        else:
+            args = " ".join((f"{k}: {v}" for k, v in ctx.interaction.namespace))
+            command_content = f"{ctx.prefix}{command} {args}"
+
         log.info(
-            f"{message.created_at}: {message.author} in {destination}: {message.content}"
+            f"{message.created_at}: {message.author} in {destination}: {command_content}"
         )
+
         async with self._batch_lock:
             self._data_batch.append(
                 {

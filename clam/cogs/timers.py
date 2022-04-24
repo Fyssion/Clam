@@ -30,6 +30,7 @@ import textwrap
 
 import asyncpg
 import discord
+from discord import app_commands
 from discord.ext import commands, tasks, menus
 
 from clam.utils import colors, db, humantime
@@ -259,10 +260,12 @@ class Timers(commands.Cog):
 
         return timer
 
-    @commands.group(
-        aliases=["reminder", "timer"], invoke_without_command=True
+    @commands.hybrid_group(
+        aliases=["remind", "timer"], fallback="create", invoke_without_command=True
     )
-    async def remind(
+    @app_commands.describe(when="When to remind you and what to remind you of")
+    @app_commands.rename(when="reminder")
+    async def reminder(
         self,
         ctx,
         *,
@@ -297,7 +300,9 @@ class Timers(commands.Cog):
             f"{ctx.tick(True)} Set a reminder for **`{delta}`** with {friendly_message}"
         )
 
-    @remind.command(name="list", aliases=["all"], ignore_extra=False)
+
+
+    @reminder.command(name="list", aliases=["all"], ignore_extra=False)
     async def remind_list(self, ctx):
         """Shows your running reminders."""
 
@@ -317,7 +322,7 @@ class Timers(commands.Cog):
         pages = MenuPages(TimerPageSource(records), ctx=ctx)
         await pages.start()
 
-    @remind.command(name="here", ignore_extra=False)
+    @reminder.command(name="here", ignore_extra=False)
     async def remind_here(self, ctx):
         """Shows your running reminders in the current channel."""
 
@@ -338,7 +343,8 @@ class Timers(commands.Cog):
         pages = MenuPages(TimerPageSource(records), ctx=ctx)
         await pages.start()
 
-    @remind.command(name="delete", aliases=["remove", "cancel"], ignore_extra=False)
+    @reminder.command(name="delete", aliases=["remove", "cancel"], ignore_extra=False)
+    @app_commands.describe(id="The ID of the reminder to delete")
     async def remind_delete(self, ctx, *, id: int):
         """Deletes a reminder by its ID.
 
@@ -360,7 +366,7 @@ class Timers(commands.Cog):
 
         await ctx.send(f"{ctx.tick(True)} Successfully deleted reminder.")
 
-    @remind.command(name="clear", ignore_extra=False)
+    @reminder.command(name="clear", ignore_extra=False)
     async def remind_clear(self, ctx):
         """Clears all reminders you have set."""
 
@@ -412,6 +418,7 @@ class Timers(commands.Cog):
         )
 
         if message_id:
+            # TODO: fix the jump url for slash command reminders
             em.description += f"\n\n[Jump to message](https://discord.com/channels/{guild_id}/{channel.id}/{message_id})"
 
         try:

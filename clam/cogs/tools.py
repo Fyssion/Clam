@@ -12,6 +12,7 @@ import os.path
 from typing import Any, Dict, List
 
 import discord
+from discord import app_commands
 from discord.ext import commands, menus
 from jishaku.codeblocks import codeblock_converter
 from PIL import Image
@@ -931,7 +932,8 @@ class Tools(commands.Cog):
         except TypeError:
             return None
 
-    @commands.command(aliases=["pfp"])
+    @commands.hybrid_command(aliases=["pfp"])
+    @app_commands.describe(user="Who's avatar to show")
     async def avatar(self, ctx, *, user: GlobalUser = None):
         """Shows a user's avatar."""
 
@@ -962,11 +964,15 @@ class Tools(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @commands.command(aliases=["memberinfo", "ui", "whois"])
+    @commands.hybrid_command(aliases=["memberinfo", "ui", "whois"])
+    @app_commands.describe(user="Who to show info about")
     async def userinfo(self, ctx, *, user: GlobalUser = None):
         """Shows info about a user."""
 
-        await ctx.trigger_typing()
+        if ctx.interaction is None:
+            await ctx.trigger_typing()
+
+        await ctx.defer()
 
         user = user or ctx.author
 
@@ -995,14 +1001,14 @@ class Tools(commands.Cog):
         desc = " ".join(badges)
         if user.id == self.bot.owner_id:
             created_or_owns = "created" if user.id == 224513210471022592 else "owns"
-            desc += f"\n:gear: This user {created_or_owns} this bot."
+            desc += f"\n:gear: This user {created_or_owns} {self.bot.user.name}."
         if user == self.bot.user:
-            desc += "\n:wave:Hey, that's me!"
+            desc += "\n:wave: Hey, that's me!"
         if user.bot is True:
             verified = "verified " if user.public_flags.verified_bot else ""
             desc += f"\n:robot: This user is a {verified}bot."
         if is_member and user.id == ctx.guild.owner_id:
-            desc += "\n<:owner:649355683598303260> This user owns this server."
+            desc += "\n<:owner:649355683598303260> This user is the server owner."
         if is_member and user.premium_since:
             formatted = user.premium_since.strftime("%b %d, %Y at %#I:%M %p")
             desc += (
@@ -1083,11 +1089,15 @@ class Tools(commands.Cog):
 
         await ctx.send(embed=em)
 
-    @commands.command(aliases=["guildinfo"])
+    @commands.hybrid_command(aliases=["guildinfo"])
     async def serverinfo(self, ctx):
         """Shows info about the server."""
 
-        await ctx.trigger_typing()
+        if ctx.interaction is None:
+            await ctx.trigger_typing()
+
+        await ctx.defer()
+
         guild = ctx.guild
         if guild.unavailable:
             return await ctx.send(
