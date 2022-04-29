@@ -281,18 +281,12 @@ class Stars(commands.Cog):
             return self._message_cache[message_id]
         except KeyError:
             try:
-                o = discord.Object(id=message_id + 1)
-                pred = lambda m: m.id == message_id
-                # don't wanna use get_message due to poor rate limit (1/1s) vs (50/1s)
-                msg = await channel.history(limit=1, before=o).next()
-
-                if msg.id != message_id:
-                    return None
-
+                msg = await channel.fetch_message(message_id)
+            except discord.HTTPException:
+                return None
+            else:
                 self._message_cache[message_id] = msg
                 return msg
-            except Exception:
-                return None
 
     async def reaction_action(self, fmt, payload):
         if str(payload.emoji) != "\N{WHITE MEDIUM STAR}":
