@@ -544,10 +544,10 @@ class Meta(commands.Cog):
             kwargs = [str(a) for a in ctx.kwargs]
             extra_info += f"\nKwargs: `{', '.join(kwargs)}`"
 
-        extra_info += f"\n\nAn unexpected error has occured: ```py\n{error}```\n"
+        extra_info += f"\n\nAn unexpected error has occurred: ```py\n{error}```\n"
         em.description = extra_info
 
-        await ctx.console.send(embed=em, ephemeral=True)
+        await ctx.console.send(embed=em)
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
