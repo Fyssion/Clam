@@ -970,7 +970,7 @@ class Tools(commands.Cog):
         """Shows info about a user."""
 
         if ctx.interaction is None:
-            await ctx.trigger_typing()
+            await ctx.typing()
 
         await ctx.defer()
 
@@ -1094,7 +1094,7 @@ class Tools(commands.Cog):
         """Shows info about the server."""
 
         if ctx.interaction is None:
-            await ctx.trigger_typing()
+            await ctx.typing()
 
         await ctx.defer()
 

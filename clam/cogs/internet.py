@@ -694,7 +694,7 @@ class Internet(commands.Cog):
     async def g(self, ctx, *, query):
         """Searches google and gives you the top result."""
 
-        await ctx.trigger_typing()
+        await ctx.typing()
         try:
             card, entries = await self.get_google_entries(query)
         except RuntimeError as e:
@@ -1640,7 +1640,7 @@ class Internet(commands.Cog):
             return
 
         if not hasattr(self, "_docs_cache"):
-            await ctx.trigger_typing()
+            await ctx.typing()
             await self.build_docs_lookup_table(page_types)
 
         obj = re.sub(r"^(?:discord\.(?:ext\.)?)?(?:commands\.)?(.+)", r"\1", obj)

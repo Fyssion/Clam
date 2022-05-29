@@ -3085,7 +3085,7 @@ class Music(commands.Cog):
     async def musicdb_stats(self, ctx):
         """Shows stats about the music database."""
 
-        await ctx.trigger_typing()
+        await ctx.typing()
 
         places = (
             "`1.`",

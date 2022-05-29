@@ -139,7 +139,7 @@ class Stats(commands.Cog):
     async def stats(self, ctx, *, member: discord.Member = None):
         """Shows bot usage stats for the server or a member."""
 
-        await ctx.trigger_typing()
+        await ctx.typing()
 
         places = (
             "`1.`",

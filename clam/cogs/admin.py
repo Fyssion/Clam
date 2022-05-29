@@ -662,7 +662,7 @@ class Admin(commands.Cog):
         if user.bot:
             return
 
-        await dm_session.user.trigger_typing()
+        await dm_session.user.typing()
 
     @commands.Cog.listener("on_typing")
     async def typing_recieve(self, channel, user, when):
@@ -673,7 +673,7 @@ class Admin(commands.Cog):
         if user.bot:
             return
 
-        await dm_session.channel.trigger_typing()
+        await dm_session.channel.typing()
 
 
 async def setup(bot):
