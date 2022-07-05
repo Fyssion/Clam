@@ -821,7 +821,6 @@ class Tags(commands.Cog):
         if not record:
             raise commands.BadArgument("Tag not found.")
 
-        print(record)
         tag_id, owner_id = record
 
         bypass_owner_check = (

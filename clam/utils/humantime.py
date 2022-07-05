@@ -236,7 +236,6 @@ class UserFriendlyTime(commands.Converter):
                 data = {k: int(v) for k, v in match.groupdict(default=0).items()}
                 remaining = argument[match.end() :].strip()
                 result.dt = now + relativedelta(**data)
-                print(relativedelta)
                 return await result.check_constraints(ctx, now, remaining)
 
             # apparently nlp does not like "from now"

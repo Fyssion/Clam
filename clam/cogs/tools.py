@@ -93,7 +93,6 @@ class SearchPages(menus.ListPageSource):
                 current = f"Found **{len(data)}** {'matches' if len(data) > 1 else 'match'}! ```ini\n"
                 if i + 1 < pages_limit:
                     pages_limit = i + 1
-        print(pages_limit)
         super().__init__(data, per_page=pages_limit)
 
     async def format_page(self, menu, entries):
