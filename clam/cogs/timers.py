@@ -284,22 +284,30 @@ class Timers(commands.Cog):
         `{prefix}remind attend the tourney on may 25th`
         """
 
-        timer = await self.create_timer(
-            when.dt,
-            "reminder",
-            ctx.author.id,
-            ctx.channel.id,
-            when.arg,
+        args = (ctx.author.id, ctx.channel.id, when.arg)
+        kwargs = dict(
             connection=ctx.db,
             created=ctx.message.created_at,
             message_id=ctx.message.id,
         )
+        timer = await self.create_timer(
+            when.dt,
+            "reminder",
+            *args,
+            **kwargs,
+        )
         delta = humantime.timedelta(when.dt, source=timer.created_at, discord_fmt=False)
         friendly_message = f"message: {when.arg}" if when.arg else "no message"
-        await ctx.send(
+        message = await ctx.send(
             f"{ctx.tick(True)} Set a reminder for **`{delta}`** with {friendly_message}"
         )
 
+        if ctx.interaction is not None:
+            # ctx.message is None, so we need to update the db to point to the bot's message
+            kwargs["message_id"] = message.id
+            extras = {"args": args, "kwargs": kwargs}
+            SQL = "UPDATE timers SET extras=$1 WHERE id=$2;"
+            await ctx.db.execute(SQL, extras, timer.id)
 
 
     @reminder.command(name="list", aliases=["all"], ignore_extra=False)
