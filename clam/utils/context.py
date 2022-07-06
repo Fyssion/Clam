@@ -1,3 +1,5 @@
+from typing import Union
+
 import discord
 from discord.ext import commands
 
@@ -62,3 +64,10 @@ class Context(commands.Context):
 
     def table_pages(self, *args, **kwargs):
         return MenuPages(TablePages(*args, **kwargs), ctx=self)
+
+
+class GuildContext(Context):
+    guild: discord.Guild
+    author: discord.Member
+    channel: Union[discord.TextChannel, discord.VoiceChannel, discord.Thread]
+    me: discord.Member

@@ -7,6 +7,7 @@ import traceback
 
 import aiohttp
 import async_cse
+import asyncpg
 import discord
 import wolframalpha
 from cleverbot import async_ as cleverbot
@@ -38,6 +39,7 @@ def get_command_prefix(bot, message):
 initial_extensions = [
     "admin",
     "among",
+    "autoroles",
     "ccs",
     "events",
     "fun",
@@ -61,6 +63,8 @@ initial_extensions = [
 
 
 class Clam(commands.Bot):
+    pool: asyncpg.Pool
+
     def __init__(self):
         log.info("Loading config...")
         self.config = Config("config.yml")
@@ -124,7 +128,9 @@ class Clam(commands.Bot):
         self.session = aiohttp.ClientSession(loop=self.loop)
 
         log.info("Connecting to database...")
-        self.pool = await db.Table.create_pool(self.config.database_uri)
+        pool = await db.Table.create_pool(self.config.database_uri)
+        assert pool
+        self.pool = pool
 
         log.info("Loading extensions...")
         log.info("Loading extension 'jishaku'")
