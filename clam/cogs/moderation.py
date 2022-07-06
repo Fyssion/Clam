@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import datetime
 import enum
@@ -6,6 +7,7 @@ import io
 import logging
 import os.path
 import re
+import shlex
 import typing
 from collections import Counter, defaultdict
 from urllib.parse import urlparse
@@ -315,6 +317,11 @@ def can_mute():
         return True
 
     return commands.check(predicate)
+
+
+class Arguments(argparse.ArgumentParser):
+    def error(self, message: str):
+        raise RuntimeError(message)
 
 
 class Moderation(commands.Cog):
@@ -1319,23 +1326,10 @@ class Moderation(commands.Cog):
         else:
             await ctx.send(to_send, delete_after=10)
 
-    @flags.add_flag("--user", nargs="+")
-    @flags.add_flag("--contains", nargs="+")
-    @flags.add_flag("--starts", nargs="+")
-    @flags.add_flag("--ends", nargs="+")
-    @flags.add_flag("--before", type=int)
-    @flags.add_flag("--after", type=int)
-    @flags.add_flag("--bot", action="store_true")
-    @flags.add_flag("--embeds", action="store_true")
-    @flags.add_flag("--files", action="store_true")
-    @flags.add_flag("--emoji", action="store_true")
-    @flags.add_flag("--reactions", action="store_true")
-    @flags.add_flag("--or", action="store_true")
-    @flags.add_flag("--not", action="store_true")
-    @commands.group(usage="[search=100]", aliases=["remove"], invoke_without_command=True, cls=NoUsageFlagGroup)
+    @commands.group(usage="[search=100]", aliases=["remove"], invoke_without_command=True)
     @checks.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
-    async def purge(self, ctx, search: typing.Optional[int] = None, **flags):
+    async def purge(self, ctx, search: typing.Optional[int] = None, *, arguments: str = None):
         """Purge messages in a channel using an optional command-line syntax.
 
         Flags:
@@ -1355,28 +1349,50 @@ class Moderation(commands.Cog):
           `--or`         Use logical OR for all flags
           `--not`        Use logical NOT for all flags
         """
+        arguments = arguments or ""
+
+        parser = Arguments(add_help=False, allow_abbrev=False)
+        parser.add_argument('--user', nargs='+')
+        parser.add_argument('--contains', nargs='+')
+        parser.add_argument('--starts', nargs='+')
+        parser.add_argument('--ends', nargs='+')
+        parser.add_argument('--or', action='store_true', dest='_or')
+        parser.add_argument('--not', action='store_true', dest='_not')
+        parser.add_argument('--emoji', action='store_true')
+        parser.add_argument('--bot', action='store_const', const=lambda m: m.author.bot)
+        parser.add_argument('--embeds', action='store_const', const=lambda m: len(m.embeds))
+        parser.add_argument('--files', action='store_const', const=lambda m: len(m.attachments))
+        parser.add_argument('--reactions', action='store_const', const=lambda m: len(m.reactions))
+        parser.add_argument('--after', type=int)
+        parser.add_argument('--before', type=int)
+
+        try:
+            flags = parser.parse_args(shlex.split(arguments))
+        except Exception as e:
+            await ctx.send(str(e))
+            return
 
         predicates = []
-        if flags["bot"]:
+        if flags.bot:
             predicates.append(lambda m: m.author.bot)
 
-        if flags["embeds"]:
+        if flags.embeds:
             predicates.append(lambda m: len(m.embeds))
 
-        if flags["files"]:
+        if flags.files:
             predicates.append(lambda m: len(m.attachments))
 
-        if flags["reactions"]:
+        if flags.reactions:
             predicates.append(lambda m: len(m.reactions))
 
-        if flags["emoji"]:
+        if flags.emoji:
             custom_emoji = re.compile(r"<:(\w+):(\d+)>")
             predicates.append(lambda m: custom_emoji.search(m.content))
 
-        if flags["user"]:
+        if flags.user:
             users = []
             converter = commands.MemberConverter()
-            for u in flags["user"]:
+            for u in flags.user:
                 try:
                     user = await converter.convert(ctx, u)
                     users.append(user)
@@ -1386,26 +1402,26 @@ class Moderation(commands.Cog):
 
             predicates.append(lambda m: m.author in users)
 
-        if flags["contains"]:
+        if flags.contains:
             predicates.append(
-                lambda m: any(sub in m.content for sub in flags["contains"])
+                lambda m: any(sub in m.content for sub in flags.contains)
             )
 
-        if flags["starts"]:
+        if flags.starts:
             predicates.append(
-                lambda m: any(m.content.startswith(s) for s in flags["starts"])
+                lambda m: any(m.content.startswith(s) for s in flags.starts)
             )
 
-        if flags["ends"]:
+        if flags.ends:
             predicates.append(
-                lambda m: any(m.content.endswith(s) for s in flags["ends"])
+                lambda m: any(m.content.endswith(s) for s in flags.ends)
             )
 
-        op = all if not flags["or"] else any
+        op = all if not flags._or else any
 
         def predicate(m):
             r = op(p(m) for p in predicates)
-            if flags["not"]:
+            if flags._not:
                 return not r
             return r
 
@@ -1414,7 +1430,7 @@ class Moderation(commands.Cog):
                 f"This action might delete up to {search} messages. Continue?"
             )
 
-        if flags["after"]:
+        if flags.after:
             if search is None:
                 search = 2000
                 if not await warn_them(search):
@@ -1427,7 +1443,7 @@ class Moderation(commands.Cog):
 
         search = max(0, min(2000, search))  # clamp from 0-2000
         await self.do_purge(
-            ctx, search, predicate, before=flags["before"], after=flags["after"]
+            ctx, search, predicate, before=flags.before, after=flags.after
         )
 
     @purge.command(
