@@ -113,8 +113,7 @@ class Clam(commands.Bot):
             self.wolfram = wolframalpha.Client(self.config.wolfram_api_key)
         except Exception:
             # let's make this a little friendlier to self-host
-            log.warning("An external feature failed to initialize")
-            traceback.print_exc()
+            log.exception("An external feature failed to initialize")
 
         # user_id: spam_amount
         self.spammers = {}
@@ -345,7 +344,7 @@ class Clam(commands.Bot):
         await super().close()
 
     def run(self):
-        super().run(self.config.bot_token)
+        super().run(self.config.bot_token, log_handler=None)
 
 
 if __name__ == "__main__":

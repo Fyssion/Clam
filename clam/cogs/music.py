@@ -1105,11 +1105,8 @@ class Player:
 
                 self.current.discard_source()
 
-        except Exception as exc:
-            player_log.warning(f"{ctx.guild}: Exception in player_loop")
-            traceback.print_exception(
-                type(exc), exc, exc.__traceback__, file=sys.stderr
-            )
+        except Exception:
+            player_log.exception(f"{ctx.guild}: Exception in player_loop")
 
             player_log.info(f"{ctx.guild}: Restarting task...")
             self.audio_player.cancel()
@@ -2806,8 +2803,7 @@ class Music(commands.Cog):
             data = await self.bot.loop.run_in_executor(None, partial)
 
         except youtube_dl.DownloadError as e:
-            print("Could not connect to YouTube")
-            traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
+            self.bot.log.exception("Could not connect to YouTube")
             error = "".join(traceback.format_exception(type(e), e, e.__traceback__, 1))
             return await ctx.send(f"Could not connect to YouTube!```py\n{error}```")
 

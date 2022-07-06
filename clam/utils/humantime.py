@@ -310,9 +310,7 @@ class UserFriendlyTime(commands.Converter):
 
             return await result.check_constraints(ctx, now, remaining)
         except:
-            import traceback
-
-            traceback.print_exc()
+            ctx.bot.log.exception("Error in humantime")
             raise
 
 

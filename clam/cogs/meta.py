@@ -367,9 +367,7 @@ class ClamHelpCommand(commands.HelpCommand):
         await ctx.send(embed=em)
 
     async def on_help_command_error(self, ctx, error):
-        traceback.print_exception(
-            type(error), error, error.__traceback__, file=sys.stderr
-        )
+        self.context.bot.log.exception("Error in help command")
         if isinstance(error, PrivateCog):
             return await ctx.send("You don't have access to that cog.")
 
@@ -613,13 +611,7 @@ class Meta(commands.Cog):
             original = error.original
             # if True: # for debugging
             if not isinstance(original, discord.HTTPException):
-                print(
-                    "Ignoring exception in command {}:".format(ctx.command),
-                    file=sys.stderr,
-                )
-                traceback.print_exception(
-                    type(error), error, error.__traceback__, file=sys.stderr
-                )
+                self.bot.log.error(f"Ignoring exception in command {ctx.command}:", exc_info=error)
 
                 await self.send_unexpected_error(ctx, error)
                 return
