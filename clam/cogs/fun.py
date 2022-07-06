@@ -351,7 +351,7 @@ class Fun(commands.Cog):
             if not deleted:
                 limit += 1
 
-            history = await ctx.channel.history(limit=limit).flatten()
+            history = [message async for message in ctx.channel.history(limit=limit)]
             message = history[limit - 1]
 
         else:

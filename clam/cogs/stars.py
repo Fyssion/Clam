@@ -836,7 +836,7 @@ class Stars(commands.Cog):
         stars = max(stars, 1)
         channel = ctx.starboard.channel
 
-        last_messages = await channel.history(limit=100).map(lambda m: m.id).flatten()
+        last_messages = [m.id async for m in channel.history(limit=100)]
 
         query = """WITH bad_entries AS (
                        SELECT entry_id

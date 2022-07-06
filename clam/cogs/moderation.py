@@ -155,7 +155,7 @@ class BinConverter(commands.Converter):
 
 class BannedUser(commands.Converter):
     async def convert(self, ctx, arg):
-        bans = await ctx.guild.bans()
+        bans = [ban async for ban in ctx.guild.bans()]
 
         # First, see if the arg matches a banned user's name
         # If not, see if the arg startswith a banned user's name

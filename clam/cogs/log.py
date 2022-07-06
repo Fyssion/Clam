@@ -284,7 +284,7 @@ class Log(commands.Cog):
         if not guild_log or not guild_log.log_mod_actions:
             return
 
-        entries = await guild.audit_logs(limit=1).flatten()
+        entries = [entry async for entry in guild.audit_logs(limit=1)]
 
         if not entries:
             return
@@ -478,7 +478,7 @@ class Log(commands.Cog):
             discord.AuditLogAction.ban
             )
 
-        audit_logs = await member.guild.audit_logs(limit=1).flatten()
+        audit_logs = [entry async for entry in member.guild.audit_logs(limit=1)]
         five_seconds_ago = datetime.datetime.utcnow() - datetime.timedelta(seconds=5)
         if audit_logs and audit_logs[0].action in no_nos and audit_logs[0].created_at >= five_seconds_ago:
             return  # don't log kicks/prunes
