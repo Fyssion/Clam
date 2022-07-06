@@ -1624,8 +1624,8 @@ class Internet(commands.Cog):
 
     async def do_docs(self, ctx, key, obj):
         page_types = {
-            "dpy": "https://discordpy.readthedocs.io/en/latest",
-            "dpy-master": "https://discordpy.readthedocs.io/en/master",
+            "dpy": "https://discordpy.readthedocs.io/en/stable",
+            "dpy-latest": "https://discordpy.readthedocs.io/en/latest",
             "python": "https://docs.python.org/3",
             "aiohttp": "https://docs.aiohttp.org/en/stable",
             "asyncpg": "https://magicstack.github.io/asyncpg/current",
@@ -1685,11 +1685,11 @@ class Internet(commands.Cog):
 
         await self.do_docs(ctx, "dpy", obj)
 
-    @docs_dpy.command(name="master", aliases=["ma"])
-    async def docs_dpy_master(self, ctx, *, obj: str = None):
-        """Gives you a documentation link for a discord.py master entity."""
+    @docs_dpy.command(name="latest", aliases=["ma"])
+    async def docs_dpy_latest(self, ctx, *, obj: str = None):
+        """Gives you a documentation link for a discord.py latest entity."""
 
-        await self.do_docs(ctx, "dpy-master", obj)
+        await self.do_docs(ctx, "dpy-latest", obj)
 
     @docs.command(name="aiohttp", aliases=["ah"])
     async def docs_aiohttp(self, ctx, *, obj: str = None):
