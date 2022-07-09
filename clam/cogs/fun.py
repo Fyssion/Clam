@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import calendar
 import datetime
 import math
+import io
 import random
 import asyncio
 import collections
-from typing import Union
+from typing import TYPE_CHECKING, Union
 
 import discord
 from dateutil import tz
@@ -15,6 +18,9 @@ from clam.utils.formats import plural
 from clam.utils.menus import MenuPages
 from clam.utils.tabulate import tabulate
 from clam.utils.utils import quote
+
+if TYPE_CHECKING:
+    from clam.utils.context import GuildContext
 
 
 num2words1 = {
@@ -225,7 +231,7 @@ class Fun(commands.Cog):
 
         await ctx.send("Ended conversation. Thanks for talking!")
 
-    @commands.command(aliases=["emote", "nitro"])
+    @commands.group(aliases=["emote", "nitro"], invoke_without_command=True)
     async def emoji(self, ctx, emoji):
         """Shows one of my emojis."""
 
@@ -239,6 +245,61 @@ class Fun(commands.Cog):
             return await ctx.send(f"{ctx.tick(False)} Sorry, I can't use this emoji.")
 
         await ctx.send(str(emoji))
+
+    @emoji.command(name="create")
+    @commands.has_guild_permissions(manage_emojis=True)
+    @commands.bot_has_permissions(manage_emojis=True)
+    async def emoji_create(self, ctx: GuildContext, name: str, url: Union[discord.PartialEmoji, str] = None):
+        """Creates an emoji.
+
+        You must have the Manage Emojis permission to use this command.
+        """
+        static_slots = ctx.guild.emoji_limit - len([e for e in ctx.guild.emojis if not e.animated])
+        animated_slots = ctx.guild.emoji_limit - len([e for e in ctx.guild.emojis if e.animated])
+
+        if static_slots == 0 and animated_slots == 0:
+            return await ctx.send(ctx.tick(False, "There are no available emoji slots."))
+
+        data = io.BytesIO()
+
+        if not url:
+            if not ctx.message.attachments:
+                raise commands.BadArgument("An image must be provided as an attachment or URL.")
+
+            await ctx.message.attachments[0].save(data)
+
+        elif isinstance(url, (discord.PartialEmoji)):
+            await url.save(data)
+
+        else:
+            async with self.bot.session.get(url) as resp:
+                if resp.status == 200:
+                    data.write(await resp.read())
+                    data.seek(0)
+                else:
+                    return await ctx.send(f"Could not download image (error code {resp.status}).")
+
+        try:
+            await ctx.guild.create_custom_emoji(
+                name=name,
+                image=data.read(),
+                reason=f"Action done by {ctx.author}"
+            )
+        except discord.HTTPException as e:
+            await ctx.send(f"Could not create emoji: {e}")
+        else:
+            await ctx.send(ctx.tick(True, f"Created emoji {name}"))
+
+    @emoji.command(name="delete")
+    @commands.has_guild_permissions(manage_emojis=True)
+    @commands.bot_has_permissions(manage_emojis=True)
+    async def emoji_delete(self, ctx: GuildContext, emoji: discord.Emoji):
+        try:
+            await ctx.guild.delete_emoji(emoji, reason="Action done by {ctx.author}")
+        except discord.HTTPException as e:
+            await ctx.send(f"Could not delete emoji: {e}")
+        else:
+            await ctx.send(ctx.tick(True, f"Deleted emoji {emoji.name}"))
 
     def format_emojis(self, emojis):
         descriptions = [""]
