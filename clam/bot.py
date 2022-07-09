@@ -55,6 +55,7 @@ initial_extensions = [
     "settings",
     "stars",
     "stats",
+    "streams",
     "tags",
     "timers",
     "todo",
@@ -64,6 +65,7 @@ initial_extensions = [
 
 class Clam(commands.Bot):
     pool: asyncpg.Pool
+    session: aiohttp.ClientSession
 
     def __init__(self):
         log.info("Loading config...")
@@ -103,7 +105,6 @@ class Clam(commands.Bot):
         self.error_cache = collections.deque(maxlen=100)
         self.console = None
         self.uptime = None
-        self.session = None
         self.highlight_words = []
 
         log.info("Preparing external features...")

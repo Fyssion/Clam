@@ -62,3 +62,6 @@ class Config:
         self.debug = DebugMode(self._data.get("debug", 0))
         # Webhook for status messages
         self.status_hook = self._data.get("status-hook")
+
+        self.twitch_client_id = self._data.get("twitch-client-id")
+        self.twitch_client_secret = self._data.get("twitch-client-secret")
