@@ -733,6 +733,7 @@ class Meta(commands.Cog):
             read_message_history=True,
             use_external_emojis=True,
             add_reactions=True,
+            manage_emojis=True,
         )
         invite = discord.utils.oauth_url(self.bot.user.id, permissions=permissions)
 
