@@ -280,8 +280,8 @@ class Streams(commands.Cog):
 
         # I'm aware that you can only request 100 IDs at once, but the likelihood of that
         # happening is very slim.
-        user_ids = ";".join(users.keys())
-        data = await self.make_request("GET", f"https://api.twitch.tv/helix/streams?user_id={user_ids}")
+        user_ids = "&user_id=".join(users.keys())
+        data = await self.make_request("GET", f"https://api.twitch.tv/helix/streams?first=100&user_id={user_ids}")
 
         for stream in data:
             if users[stream["user_id"]][0].current_stream_id == stream["id"]:
