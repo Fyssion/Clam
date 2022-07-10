@@ -9,10 +9,11 @@ from typing import TYPE_CHECKING, Any, Optional
 
 import aiohttp
 import asyncpg
+import dateutil.parser
 import discord
 from discord.ext import commands, tasks
 
-from clam.utils import cache, db
+from clam.utils import cache, db, humantime
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -77,7 +78,7 @@ class Stream:
 
     @property
     def url(self) -> str:
-        return f"https://www.twitch.tv/{self.username}/"
+        return f"https://www.twitch.tv/{self.username}"
 
 
 class CachedToken:
@@ -287,9 +288,17 @@ class Streams(commands.Cog):
 
             for stream_channel in users[stream["user_id"]]:
                 role_mention = stream_channel.role.mention if stream_channel.role else ""
-                name = discord.utils.escape_markdown(stream_channel.display_name or stream_channel.username)
-                message = f"{role_mention} {name} is now live! {stream_channel.url}"
-                await stream_channel.channel.send(message)
+                name = stream["user_name"] or stream["user_login"]
+                message = f"{role_mention} {discord.utils.escape_markdown(name)} is now live!"
+
+                started_at = dateutil.parser.isoparse(stream["started_at"])
+                em = discord.Embed(title=stream_channel.url, color=0x9146FF)
+                em.set_author(name=f"{name} is now streaming")
+                em.add_field(name="Playing", value=stream["game_name"])
+                em.add_field(name="Started Streaming", value=discord.utils.format_dt(started_at, style="R"))
+                em.set_image(url=stream["thumbnail_url"].format(width=640, height=330))  # hardcoded >:)
+
+                await stream_channel.channel.send(message, embed=em)
 
             query = "UPDATE streams SET current_stream_id=$1 WHERE user_id=$2;"
             await self.bot.pool.execute(query, stream["id"], stream["user_id"])
