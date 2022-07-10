@@ -104,7 +104,7 @@ class Streams(commands.Cog):
 
     def __init__(self, bot: Clam):
         self.bot = bot
-        self.emoji = "🪄"
+        self.emoji = "\N{BELL}"
 
         self.cached_token: Optional[CachedToken] = None
         self.check_twitch_loop.start()
