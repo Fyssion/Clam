@@ -371,7 +371,7 @@ class Log(commands.Cog):
 
         em.add_field(name="Channel", value=message.channel.mention, inline=False)
         content = message.content[:1000] + ("..." if len(message.content) > 1000 else "")
-        em.add_field(name="Content", value=content, inline=False)
+        em.add_field(name="Content", value=content or "No content", inline=False)
 
         if guild_log.channel:
             await guild_log.channel.send(embed=em)
@@ -479,7 +479,7 @@ class Log(commands.Cog):
             )
 
         audit_logs = [entry async for entry in member.guild.audit_logs(limit=1)]
-        five_seconds_ago = datetime.datetime.utcnow() - datetime.timedelta(seconds=5)
+        five_seconds_ago = discord.utils.utcnow() - datetime.timedelta(seconds=5)
         if audit_logs and audit_logs[0].action in no_nos and audit_logs[0].created_at >= five_seconds_ago:
             return  # don't log kicks/prunes
 
