@@ -177,6 +177,7 @@ class Streams(commands.Cog):
 
         async with await self.bot.session.request(method, url, **kwargs) as resp:
             if resp.status != 200:
+                log.error(f"Request failed to {url}. Status code: {resp.status} Extra: {await resp.text()}")
                 raise RuntimeError(f"Failed to make a request to Twitch (status code {resp.status})")
 
             data = await resp.json()
