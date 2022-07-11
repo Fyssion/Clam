@@ -304,7 +304,7 @@ class Streams(commands.Cog):
             query = "UPDATE streams SET current_stream_id=$1 WHERE user_id=$2;"
             await self.bot.pool.execute(query, stream["id"], stream["user_id"])
 
-        self.get_streams.invalidate(self, None)
+        self.get_streams.invalidate(self)
 
 async def setup(bot: Clam):
     if not all((bot.config.twitch_client_id, bot.config.twitch_client_secret)):
