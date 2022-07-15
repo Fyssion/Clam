@@ -718,6 +718,9 @@ class Selfroles(commands.Cog):
                 ctx, converter=ReactionroleEmojiConverter, delete_after=5.0, return_message=True, react=True
             )
 
+            if isinstance(response, FailedPromptResponse):
+                return
+
             if not response.result:
                 if not emojis_and_roles:
                     await ctx.send("You didn't provide any emojis or roles. Aborting.")
@@ -725,9 +728,6 @@ class Selfroles(commands.Cog):
 
                 await ctx.send("Alright!")
                 break
-
-            if isinstance(response.result, FailedPromptResponse):
-                return
 
             if response.result[0] in [e for e, r in emojis_and_roles]:
                 await ctx.send(ctx.tick(False, "You have already used that emoji."), delete_after=5.0)
@@ -783,7 +783,7 @@ class Selfroles(commands.Cog):
 
         emojis_and_roles = await self.prompt_emojis_and_roles(ctx)
 
-        if isinstance(title, FailedPromptResponse):
+        if not emojis_and_roles:
             return
 
         await ctx.send("Creating reactionrole menu...")
@@ -849,8 +849,8 @@ class Selfroles(commands.Cog):
         elif option == "add roles":
             emojis_and_roles = await self.prompt_emojis_and_roles(ctx, existing_emojis_and_roles=emojis_and_roles)
 
-            if isinstance(title, FailedPromptResponse):
-                return
+            if not emojis_and_roles:
+                return None
 
             query = """UPDATE reactionroles
                        SET emojis_and_roles=$1::jsonb WHERE id=$2;
@@ -867,7 +867,7 @@ class Selfroles(commands.Cog):
 
             emojis = await self.prompt(ctx, converter=RemoveEmojisConverter(emojis_and_roles))
 
-            if isinstance(title, FailedPromptResponse):
+            if isinstance(emojis, FailedPromptResponse):
                 return
 
             formatted = human_join(emojis, final="and")
