@@ -302,7 +302,7 @@ class Admin(commands.Cog):
         console = self.bot.console
         await console.send(embed=em)
 
-    @commands.group(name="reload", aliases=["load"], invoke_without_command=True)
+    @commands.command(name="reload", aliases=["load"])
     @commands.is_owner()
     async def _reload(self, ctx, *, cog):
         """Reloads an extension."""
@@ -365,9 +365,9 @@ class Admin(commands.Cog):
         except commands.ExtensionNotLoaded:
             await self.bot.load_extension(module)
 
-    @_reload.command(name="all")
-    async def _reload_all(self, ctx):
-        """Reloads all modules, while pulling from git."""
+    @commands.command()
+    async def update(self, ctx):
+        """Pulls changes from GitHub and reloads affected modules."""
 
         async with ctx.typing():
             stdout, stderr = await self.run_process("git pull")
