@@ -6,9 +6,9 @@ My personal Discord bot.
 
 Clam was originally created as a fun, simple testing bot.
 I used it to experiment with new programming concepts and learn different technologies.
-These days, Clam is used by my friends for music, a starboard, moderation, and more.
-Unfortunately, the bot is private due to Discord's verification policies.
-However, there are some [installation instructions](#running) below.
+Clam was used by my friends for music, a starboard, moderation, and more.
+Unfortunately, the bot is no longer actively maintained.
+My time writing Discord bots is over.
 
 ## Features
 
